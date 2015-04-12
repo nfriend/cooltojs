@@ -47,13 +47,18 @@
             var coolProgramSources: string[] = [];
             for (var i = 0; i < coolPrograms.length; i++) {
                 coolProgramSources.push(coolPrograms[i].program);
-                var output = '<b>' + coolPrograms[i].filename + ':</b>';
+                var output = '<div class="source-label">' + coolPrograms[i].filename + ':</div>';
                 output += '<pre>' + coolPrograms[i].program + '</pre>';
                 output += '<br />';
-                document.getElementById('output').innerHTML += output;
+                document.getElementById('sources').innerHTML += output;
             }
 
-            CoolToJS.Transpile(coolProgramSources);
+            CoolToJS.Transpile({
+                coolProgramSources: coolProgramSources,
+                outputFunction: (output: string) => {
+                    document.getElementById('output').innerHTML += output;
+                }
+            });
         }
     }
 }

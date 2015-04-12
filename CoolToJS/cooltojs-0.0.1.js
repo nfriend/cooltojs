@@ -42,12 +42,17 @@ var CoolToJS;
             var coolProgramSources = [];
             for (var i = 0; i < coolPrograms.length; i++) {
                 coolProgramSources.push(coolPrograms[i].program);
-                var output = '<b>' + coolPrograms[i].filename + ':</b>';
+                var output = '<div class="source-label">' + coolPrograms[i].filename + ':</div>';
                 output += '<pre>' + coolPrograms[i].program + '</pre>';
                 output += '<br />';
-                document.getElementById('output').innerHTML += output;
+                document.getElementById('sources').innerHTML += output;
             }
-            CoolToJS.Transpile(coolProgramSources);
+            CoolToJS.Transpile({
+                coolProgramSources: coolProgramSources,
+                outputFunction: function (output) {
+                    document.getElementById('output').innerHTML += output;
+                }
+            });
         }
     }
     CoolToJS.Run = Run;
@@ -77,8 +82,23 @@ var CoolToJS;
 })(CoolToJS || (CoolToJS = {}));
 var CoolToJS;
 (function (CoolToJS) {
-    function Transpile(coolProgramSources) {
-        var concatenatedCoolProgram = typeof coolProgramSources === 'string' ? coolProgramSources : coolProgramSources.join('\n');
+    function Transpile(transpilerOptions) {
+        var coolProgramSources = transpilerOptions.coolProgramSources;
+        if (typeof coolProgramSources === 'string') {
+            var concatenatedCoolProgram = coolProgramSources;
+        }
+        else {
+            var concatenatedCoolProgram = coolProgramSources.join('\n');
+        }
+        if (transpilerOptions.outputFunction) {
+            var outputFunction = transpilerOptions.outputFunction;
+        }
+        else {
+            var outputFunction = function (output) {
+                console.log(output);
+            };
+        }
+        outputFunction('Testing output function.');
         var lexicalAnalyzer = new CoolToJS.LexicalAnalyzer();
         lexicalAnalyzer.Analyze(concatenatedCoolProgram);
     }

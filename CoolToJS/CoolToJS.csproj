@@ -22,6 +22,8 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="cooltojs-0.0.1.js" />
+    <Content Include="favicon.ico" />
+    <Content Include="img\coolToJsLogo.png" />
     <Content Include="index.html" />
     <Content Include="lib\bootstrap-3.3.4-dist\css\bootstrap-theme.css" />
     <Content Include="lib\bootstrap-3.3.4-dist\css\bootstrap-theme.min.css" />

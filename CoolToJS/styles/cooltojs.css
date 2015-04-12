@@ -1,1 +1,17 @@
-﻿
+﻿html, body {
+    font-family: 'Roboto', sans-serif;
+}
+
+.title-container {
+    margin-top: 38px;
+    margin-left: 40px;
+}
+
+.output-label {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.source-label {
+    margin-bottom: 5px;
+}
