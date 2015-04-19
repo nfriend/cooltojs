@@ -34,6 +34,17 @@
     <Content Include="lib\bootstrap-3.3.4-dist\js\bootstrap.js" />
     <Content Include="lib\bootstrap-3.3.4-dist\js\bootstrap.min.js" />
     <Content Include="lib\bootstrap-3.3.4-dist\js\npm.js" />
+    <Content Include="lib\codemirror-5.1\lib\codemirror.css" />
+    <Content Include="lib\codemirror-5.1\lib\codemirror.js" />
+    <Content Include="lib\codemirror-5.1\mode\clike\clike.js" />
+    <Content Include="lib\codemirror-5.1\mode\clike\index.html" />
+    <Content Include="lib\codemirror-5.1\mode\clike\scala.html" />
+    <Content Include="lib\codemirror-5.1\mode\javascript\index.html" />
+    <Content Include="lib\codemirror-5.1\mode\javascript\javascript.js" />
+    <Content Include="lib\codemirror-5.1\mode\javascript\json-ld.html" />
+    <Content Include="lib\codemirror-5.1\mode\javascript\test.js" />
+    <Content Include="lib\codemirror-5.1\mode\javascript\typescript.html" />
+    <Content Include="scripts\demo.js" />
     <Content Include="web.config">
       <SubType>Designer</SubType>
     </Content>
@@ -42,6 +53,7 @@
     <TypeScriptCompile Include="scripts\cooltojs.ts" />
     <TypeScriptCompile Include="scripts\LexicalAnalyzer.ts" />
     <TypeScriptCompile Include="scripts\Parser.ts" />
+    <TypeScriptCompile Include="scripts\TokenType.ts" />
     <TypeScriptCompile Include="scripts\Transpiler.ts" />
   </ItemGroup>
   <ItemGroup>
@@ -64,6 +76,7 @@
       <DependentUpon>web.config</DependentUpon>
     </None>
   </ItemGroup>
+  <ItemGroup />
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">12.0</VisualStudioVersion>
   </PropertyGroup>

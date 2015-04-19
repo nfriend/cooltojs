@@ -44,17 +44,8 @@
 
         // displays the source of all referenced Cool programs on the screen
         function allCoolProgramsFetchedSuccessfully() {
-            var coolProgramSources: string[] = [];
-            for (var i = 0; i < coolPrograms.length; i++) {
-                coolProgramSources.push(coolPrograms[i].program);
-                var output = '<div class="source-label">' + coolPrograms[i].filename + ':</div>';
-                output += '<pre>' + coolPrograms[i].program + '</pre>';
-                output += '<br />';
-                document.getElementById('sources').innerHTML += output;
-            }
-
             CoolToJS.Transpile({
-                coolProgramSources: coolProgramSources,
+                coolProgramSources: coolPrograms.map(x => { return x.program }),
                 outputFunction: (output: string) => {
                     document.getElementById('output').innerHTML += output;
                 }

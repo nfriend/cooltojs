@@ -2,9 +2,13 @@
     font-family: 'Roboto', sans-serif;
 }
 
+.logo-container {
+    margin-right: 20px;
+}
+
 .title-container {
     margin-top: 38px;
-    margin-left: 40px;
+    margin-left: 20px;
 }
 
 .output-label {
@@ -14,4 +18,16 @@
 
 .source-label {
     margin-bottom: 5px;
+}
+
+.editor {
+    border: 1px solid #DDD;
+}
+
+#output {
+    min-height: 300px;
+    border-radius: 0;
+    font-size: 14px;
+    padding: 4px 8px;
+    background-color: #FAFAFA;
 }

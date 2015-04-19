@@ -7,30 +7,52 @@
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="lib/bootstrap-3.3.4-dist/css/bootstrap.min.css" type="text/css" />
     <link href='http://fonts.googleapis.com/css?family=Roboto:400,700,400italic' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="lib/codemirror-5.1/lib/codemirror.css" type="text/css" />
     <link rel="stylesheet" href="styles/cooltojs.css" type="text/css" />
 </head>
 <body>
     <div class="jumbotron">
-        <div class="container">
-            <div class="pull-left">
-                <img src="img/coolToJsLogo.png" />
+        <div class="container" style="text-align: center;">
+            <div style="display: inline-block">
+                <div class="pull-left logo-container">
+                    <img src="img/coolToJsLogo.png" />
+                </div>
+                <div class="pull-left title-container" style="text-align: left;">
+                    <h1>
+                        <span>Cool</span><span style="color: #4D4D4D">To</span><span>JS</span>
+                    </h1>
+                    <p style="margin-bottom: 0;">A <a href="http://en.wikipedia.org/wiki/Cool_(programming_language)">Cool</a>-to-JavaScript transpiler, written in <a href="http://www.typescriptlang.org/">TypeScript</a>.</p>
+                    <p>Source: <a href="https://github.com/nfriend/cooltojs">https://github.com/nfriend/cooltojs</a></p>
+                </div>
             </div>
-            <div class="pull-left title-container">
-                <h1>
-                    <span>Cool</span><span style="color: #4D4D4D">To</span><span>JS</span>
-                </h1>
-                <p style="margin-bottom: 0;">A <a href="http://en.wikipedia.org/wiki/Cool_(programming_language)">Cool</a>-to-JavaScript transpiler, written in <a href="http://www.typescriptlang.org/">TypeScript</a>.</p>
-                <p>Source: <a href="https://github.com/nfriend/cooltojs">https://github.com/nfriend/cooltojs</a></p>
-            </div>
-            
         </div>
     </div>
-    <div class="container">
-        <p class="output-label">Output:</p>
-        <pre id="output"></pre>
-        <br />
-        <p class="output-label">Sources:</p>
-        <div id="sources"></div>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-4 col-sm-12">
+                <p id="source-label" class="output-label pull-left">Cool Source:</p>
+                <button id="transpile-button" type="button" class="btn btn-default btn-sm pull-right">
+                    <span class="glyphicon glyphicon-import" style="color: #337ab7"></span> Transpile
+                </button>
+                <div class="clearfix"></div>
+                <div id="cool-editor" class="editor"></div>
+                <br />
+            </div>
+            <div class="col-md-4 col-sm-12">
+                <p class="output-label pull-left">Generated JavaScript:</p>
+                <button id="play-button" type="button" class="btn btn-default btn-sm pull-right">
+                    <span class="glyphicon glyphicon-play" style="color: #5cb85c"></span> Run
+                </button>
+                <div class="clearfix"></div>
+                <div id="generated-javascript" class="editor"></div>
+                <br />
+            </div>
+            <div class="col-md-4 col-sm-12">
+                <p class="output-label">Output:</p>
+                <pre id="output"></pre>
+                <br />
+            </div>
+        </div>
     </div>
 
     <script type="text/cool" src="cool/HelloWorld.cl">
@@ -40,11 +62,13 @@
     <script type="text/cool" src="cool/list.cl">
     </script>
 
+    <script src="lib/codemirror-5.1/lib/codemirror.js"></script>
+    <!--<script src="lib/codemirror-5.1/mode/clike/clike.js"></script>-->
+    <script src="lib/codemirror-5.1/mode/javascript/javascript.js"></script>
+
     <script src="cooltojs-0.0.1.js"></script>
 
-    <script>
-        CoolToJS.Run();
-    </script>
+    <script src="scripts/demo.js"></script>
 
 </body>
 </html>

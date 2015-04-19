@@ -24,6 +24,10 @@
         outputFunction('Testing output function.');
 
         var lexicalAnalyzer = new LexicalAnalyzer();
-        lexicalAnalyzer.Analyze(concatenatedCoolProgram);
+        //lexicalAnalyzer.Analyze(concatenatedCoolProgram);
+        var testString = '987 else if case esac sdHU9 \
+        \
+        sd33_4 ';
+        lexicalAnalyzer.Analyze(testString);
     }
 }
