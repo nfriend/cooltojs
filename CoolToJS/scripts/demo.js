@@ -62,6 +62,7 @@ __outputFunction("Hello, world.\\n");\
 
     document.getElementById('play-button').onclick = function () {
         if (hasBeenTranspiled) {
+            document.getElementById('output').innerHTML = '';
             eval(generatedJavaScriptEditor.getValue());
         }
     };
