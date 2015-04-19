@@ -149,13 +149,8 @@ var CoolToJS;
                 console.log(output);
             };
         }
-        outputFunction('Testing output function.');
         var lexicalAnalyzer = new CoolToJS.LexicalAnalyzer();
-        //lexicalAnalyzer.Analyze(concatenatedCoolProgram);
-        var testString = '987 else if case esac sdHU9 \
-        \
-        sd33_4 ';
-        lexicalAnalyzer.Analyze(testString);
+        lexicalAnalyzer.Analyze(concatenatedCoolProgram);
     }
     CoolToJS.Transpile = Transpile;
 })(CoolToJS || (CoolToJS = {}));

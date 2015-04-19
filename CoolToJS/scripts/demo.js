@@ -12,6 +12,12 @@ class Main inherits IO {\n\
 };\
 ';
 
+    var coolProgramExampleForDebugging = '\
+something here else\n\
+if\n\
+sdf45\n\
+';
+
     var generatedJavaScriptExample = '\
 // note that this generated code (and its output)\n\
 // is currently hardcoded while the transpiler\n\
@@ -27,7 +33,7 @@ __outputFunction("Hello, world.\\n");\
     var outputExample = 'Hello, world.\n';
 
     var coolEditor = CodeMirror(document.getElementById('cool-editor'), {
-        value: coolProgramExample,
+        value: coolProgramExampleForDebugging,
         mode: 'javascript',
         lineNumbers: true,
         indentUnit: 4,
@@ -42,13 +48,21 @@ __outputFunction("Hello, world.\\n");\
 
     var hasBeenTranspiled = false;
     document.getElementById('transpile-button').onclick = function () {
+
+        CoolToJS.Transpile({
+            coolProgramSources: coolEditor.getValue(),
+            outputFunction: function (output) {
+                document.getElementById('output').innerHTML += output;
+            }
+        });
+
         generatedJavaScriptEditor.setValue(generatedJavaScriptExample);
         hasBeenTranspiled = true;
     };
 
     document.getElementById('play-button').onclick = function () {
         if (hasBeenTranspiled) {
-            document.getElementById('output').innerHTML = outputExample;
+            eval(generatedJavaScriptEditor.getValue());
         }
     };
 
