@@ -30,8 +30,6 @@ function __outputFunction(output) {\n\
 __outputFunction("Hello, world.\\n");\
 ';
 
-    var outputExample = 'Hello, world.\n';
-
     var coolEditor = CodeMirror(document.getElementById('cool-editor'), {
         value: coolProgramExampleForDebugging,
         mode: 'javascript',
