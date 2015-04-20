@@ -43,7 +43,7 @@
                             + ', column '
                             + currentColumnNumber
                             + ', near "'
-                            + coolProgramSource.slice(0, 20)
+                            + coolProgramSource.slice(0, 20).replace(/\r\n|\r|\n|\t|[\s]+/g, ' ')
                             + '..."']
                     };
                 }
@@ -51,7 +51,7 @@
                 if (longestMatch.token === TokenType.WhiteSpace) {
                     // increment the line counter appropriately if
                     // the whitespace contains newline characters
-                    var newlineCount = longestMatch.match.split(/\r\n|\r|\n/).length - 1;
+                    var newlineCount = longestMatch.match.split(/\r\n|\r|\n|/).length - 1;
                     if (newlineCount > 0) {
                         currentLineNumber += newlineCount;
                         currentColumnNumber = 1;
