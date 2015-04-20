@@ -13,9 +13,8 @@
 
     // temporary
     var generatedJavaScriptExample = '\
-// note that this generated code (and its output)\n\
-// is currently hardcoded while the transpiler\n\
-// is being built\n\
+// note that this generated code is currently hardcoded\n\
+// while the transpiler is being built\n\
 \n\
 function __outputFunction(output) {\n\
     document.getElementById(\'output\').innerHTML += output;\n\
