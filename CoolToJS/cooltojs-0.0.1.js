@@ -77,7 +77,6 @@ var CoolToJS;
                     }
                     tokenizedSource.push(longestMatch);
                     coolProgramSource = coolProgramSource.slice(longestMatch.match.length);
-                    console.log('"' + coolProgramSource + '"');
                 }
                 for (var i = 0; i < tokenizedSource.length; i++) {
                     console.log(CoolToJS.TokenType[tokenizedSource[i].token] + ': "' + tokenizedSource[i].match + '"');
@@ -107,30 +106,53 @@ var CoolToJS;
         TokenType[TokenType["ObjectIdentifier"] = 2] = "ObjectIdentifier";
         TokenType[TokenType["TypeIdentifier"] = 3] = "TypeIdentifier";
         TokenType[TokenType["WhiteSpace"] = 4] = "WhiteSpace";
-        TokenType[TokenType["ClassKeyword"] = 5] = "ClassKeyword";
-        TokenType[TokenType["ElseKeyword"] = 6] = "ElseKeyword";
-        TokenType[TokenType["FalseKeyword"] = 7] = "FalseKeyword";
-        TokenType[TokenType["FiKeyword"] = 8] = "FiKeyword";
-        TokenType[TokenType["IfKeyword"] = 9] = "IfKeyword";
-        TokenType[TokenType["InheritsKeyword"] = 10] = "InheritsKeyword";
-        TokenType[TokenType["IsvoidKeyword"] = 11] = "IsvoidKeyword";
-        TokenType[TokenType["LetKeyword"] = 12] = "LetKeyword";
-        TokenType[TokenType["LoopKeyword"] = 13] = "LoopKeyword";
-        TokenType[TokenType["PoolKeyword"] = 14] = "PoolKeyword";
-        TokenType[TokenType["ThenKeyword"] = 15] = "ThenKeyword";
-        TokenType[TokenType["WhileKeyword"] = 16] = "WhileKeyword";
-        TokenType[TokenType["CaseKeyword"] = 17] = "CaseKeyword";
-        TokenType[TokenType["EsacKeyword"] = 18] = "EsacKeyword";
-        TokenType[TokenType["NewKeyword"] = 19] = "NewKeyword";
-        TokenType[TokenType["OfKeyword"] = 20] = "OfKeyword";
-        TokenType[TokenType["NotKeyword"] = 21] = "NotKeyword";
-        TokenType[TokenType["TrueKeyword"] = 22] = "TrueKeyword";
+        TokenType[TokenType["Comment"] = 5] = "Comment";
+        TokenType[TokenType["ClassKeyword"] = 6] = "ClassKeyword";
+        TokenType[TokenType["ElseKeyword"] = 7] = "ElseKeyword";
+        TokenType[TokenType["FalseKeyword"] = 8] = "FalseKeyword";
+        TokenType[TokenType["FiKeyword"] = 9] = "FiKeyword";
+        TokenType[TokenType["IfKeyword"] = 10] = "IfKeyword";
+        TokenType[TokenType["InheritsKeyword"] = 11] = "InheritsKeyword";
+        TokenType[TokenType["IsvoidKeyword"] = 12] = "IsvoidKeyword";
+        TokenType[TokenType["LetKeyword"] = 13] = "LetKeyword";
+        TokenType[TokenType["LoopKeyword"] = 14] = "LoopKeyword";
+        TokenType[TokenType["PoolKeyword"] = 15] = "PoolKeyword";
+        TokenType[TokenType["ThenKeyword"] = 16] = "ThenKeyword";
+        TokenType[TokenType["WhileKeyword"] = 17] = "WhileKeyword";
+        TokenType[TokenType["CaseKeyword"] = 18] = "CaseKeyword";
+        TokenType[TokenType["EsacKeyword"] = 19] = "EsacKeyword";
+        TokenType[TokenType["NewKeyword"] = 20] = "NewKeyword";
+        TokenType[TokenType["OfKeyword"] = 21] = "OfKeyword";
+        TokenType[TokenType["NotKeyword"] = 22] = "NotKeyword";
+        TokenType[TokenType["TrueKeyword"] = 23] = "TrueKeyword";
+        TokenType[TokenType["DotOperator"] = 24] = "DotOperator";
+        TokenType[TokenType["AtSignOperator"] = 25] = "AtSignOperator";
+        TokenType[TokenType["TildeOperator"] = 26] = "TildeOperator";
+        TokenType[TokenType["MultiplationOperator"] = 27] = "MultiplationOperator";
+        TokenType[TokenType["DivisionOperator"] = 28] = "DivisionOperator";
+        TokenType[TokenType["AdditionOperator"] = 29] = "AdditionOperator";
+        TokenType[TokenType["SubtrationOperator"] = 30] = "SubtrationOperator";
+        TokenType[TokenType["LessThanOrEqualsOperator"] = 31] = "LessThanOrEqualsOperator";
+        TokenType[TokenType["LessThanOperator"] = 32] = "LessThanOperator";
+        TokenType[TokenType["EqualsOperator"] = 33] = "EqualsOperator";
+        TokenType[TokenType["AssignmentOperator"] = 34] = "AssignmentOperator";
+        TokenType[TokenType["OpenParenthesis"] = 35] = "OpenParenthesis";
+        TokenType[TokenType["ClosedParenthesis"] = 36] = "ClosedParenthesis";
+        TokenType[TokenType["OpenCurlyBracket"] = 37] = "OpenCurlyBracket";
+        TokenType[TokenType["ClosedCurlyBracket"] = 38] = "ClosedCurlyBracket";
+        TokenType[TokenType["Colon"] = 39] = "Colon";
+        TokenType[TokenType["SemiColon"] = 40] = "SemiColon";
     })(CoolToJS.TokenType || (CoolToJS.TokenType = {}));
     var TokenType = CoolToJS.TokenType;
     CoolToJS.TokenLookup = [
         {
             token: 0 /* Integer */,
             regex: /^([0-9]+)\b/,
+        },
+        {
+            token: 1 /* String */,
+            // this is too simple
+            regex: /^(".*")/,
         },
         {
             token: 2 /* ObjectIdentifier */,
@@ -145,77 +167,149 @@ var CoolToJS;
             regex: /^(\s+)/,
         },
         {
-            token: 5 /* ClassKeyword */,
+            token: 5 /* Comment */,
+            regex: /^(--.*)|(\(\*.*\*\))/,
+        },
+        {
+            token: 6 /* ClassKeyword */,
             regex: /^(class)\b/i,
         },
         {
-            token: 6 /* ElseKeyword */,
+            token: 7 /* ElseKeyword */,
             regex: /^(else)\b/i,
         },
         {
-            token: 7 /* FalseKeyword */,
+            token: 8 /* FalseKeyword */,
             regex: /^(f[aA][lL][sS][eE])\b/,
         },
         {
-            token: 22 /* TrueKeyword */,
+            token: 23 /* TrueKeyword */,
             regex: /^(t[rR][uU][eE])\b/,
         },
         {
-            token: 8 /* FiKeyword */,
+            token: 9 /* FiKeyword */,
             regex: /^(fi)\b/i,
         },
         {
-            token: 9 /* IfKeyword */,
+            token: 10 /* IfKeyword */,
             regex: /^(if)\b/i,
         },
         {
-            token: 10 /* InheritsKeyword */,
+            token: 11 /* InheritsKeyword */,
             regex: /^(inherits)\b/i,
         },
         {
-            token: 11 /* IsvoidKeyword */,
+            token: 12 /* IsvoidKeyword */,
             regex: /^(isvoid)\b/i,
         },
         {
-            token: 12 /* LetKeyword */,
+            token: 13 /* LetKeyword */,
             regex: /^(let)\b/i,
         },
         {
-            token: 13 /* LoopKeyword */,
+            token: 14 /* LoopKeyword */,
             regex: /^(loop)\b/i,
         },
         {
-            token: 14 /* PoolKeyword */,
+            token: 15 /* PoolKeyword */,
             regex: /^(pool)\b/i,
         },
         {
-            token: 15 /* ThenKeyword */,
+            token: 16 /* ThenKeyword */,
             regex: /^(then)\b/i,
         },
         {
-            token: 16 /* WhileKeyword */,
+            token: 17 /* WhileKeyword */,
             regex: /^(while)\b/i,
         },
         {
-            token: 17 /* CaseKeyword */,
+            token: 18 /* CaseKeyword */,
             regex: /^(case)\b/i,
         },
         {
-            token: 18 /* EsacKeyword */,
+            token: 19 /* EsacKeyword */,
             regex: /^(esac)\b/i,
         },
         {
-            token: 19 /* NewKeyword */,
+            token: 20 /* NewKeyword */,
             regex: /^(new)\b/i,
         },
         {
-            token: 20 /* OfKeyword */,
+            token: 21 /* OfKeyword */,
             regex: /^(of)\b/i,
         },
         {
-            token: 21 /* NotKeyword */,
+            token: 22 /* NotKeyword */,
             regex: /^(not)\b/i,
         },
+        {
+            token: 24 /* DotOperator */,
+            regex: /^(\.)/
+        },
+        {
+            token: 25 /* AtSignOperator */,
+            regex: /^(\@)/
+        },
+        {
+            token: 26 /* TildeOperator */,
+            regex: /^(~)/
+        },
+        {
+            token: 27 /* MultiplationOperator */,
+            regex: /^(\*)/
+        },
+        {
+            token: 28 /* DivisionOperator */,
+            regex: /^(\/)/
+        },
+        {
+            token: 29 /* AdditionOperator */,
+            regex: /^(\+)/
+        },
+        {
+            token: 30 /* SubtrationOperator */,
+            regex: /^(-)/
+        },
+        {
+            token: 31 /* LessThanOrEqualsOperator */,
+            regex: /^(<=)/
+        },
+        {
+            token: 32 /* LessThanOperator */,
+            regex: /^(<)/
+        },
+        {
+            token: 33 /* EqualsOperator */,
+            regex: /^(=)/
+        },
+        {
+            token: 34 /* AssignmentOperator */,
+            regex: /^(<-)/
+        },
+        {
+            token: 35 /* OpenParenthesis */,
+            regex: /^(\()/
+        },
+        {
+            token: 36 /* ClosedParenthesis */,
+            regex: /^(\))/
+        },
+        {
+            token: 37 /* OpenCurlyBracket */,
+            regex: /^(\{)/
+        },
+        {
+            token: 38 /* ClosedCurlyBracket */,
+            regex: /^(\})/
+        },
+        {
+            token: 39 /* Colon */,
+            regex: /^(:)/
+        },
+        {
+            token: 40 /* SemiColon */,
+            regex: /^(;)/
+        }
     ];
 })(CoolToJS || (CoolToJS = {}));
 var CoolToJS;

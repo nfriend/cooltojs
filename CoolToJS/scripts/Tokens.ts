@@ -25,10 +25,28 @@
         OfKeyword,
         NotKeyword,
         TrueKeyword,
-        
+
+        DotOperator,
+        AtSignOperator,
+        TildeOperator,
+        MultiplationOperator,
+        DivisionOperator,
+        AdditionOperator,
+        SubtrationOperator,
+        LessThanOrEqualsOperator,
+        LessThanOperator,
+        EqualsOperator,
+        AssignmentOperator,
+
+        OpenParenthesis,
+        ClosedParenthesis,
+        OpenCurlyBracket,
+        ClosedCurlyBracket,
+        Colon,
+        SemiColon
     }
 
-    export var TokenLookup = [
+    export var TokenLookup: { token: TokenType; regex: RegExp }[] = [
         {
             token: TokenType.Integer,
             regex: /^([0-9]+)\b/,
@@ -54,6 +72,7 @@
             token: TokenType.Comment,
             regex: /^(--.*)|(\(\*.*\*\))/,
         },
+
         {
             token: TokenType.ClassKeyword,
             regex: /^(class)\b/i,
@@ -126,7 +145,75 @@
             token: TokenType.NotKeyword,
             regex: /^(not)\b/i,
         },
+
+        {
+            token: TokenType.DotOperator,
+            regex: /^(\.)/
+        },
+        {
+            token: TokenType.AtSignOperator,
+            regex: /^(\@)/
+        },
+        {
+            token: TokenType.TildeOperator,
+            regex: /^(~)/
+        },
+        {
+            token: TokenType.MultiplationOperator,
+            regex: /^(\*)/
+        },
+        {
+            token: TokenType.DivisionOperator,
+            regex: /^(\/)/
+        },
+        {
+            token: TokenType.AdditionOperator,
+            regex: /^(\+)/
+        },
+        {
+            token: TokenType.SubtrationOperator,
+            regex: /^(-)/
+        },
+        {
+            token: TokenType.LessThanOrEqualsOperator,
+            regex: /^(<=)/
+        },
+        {
+            token: TokenType.LessThanOperator,
+            regex: /^(<)/
+        },
+        {
+            token: TokenType.EqualsOperator,
+            regex: /^(=)/
+        },
+        {
+            token: TokenType.AssignmentOperator,
+            regex: /^(<-)/
+        },
+
+        {
+            token: TokenType.OpenParenthesis,
+            regex: /^(\()/
+        },
+        {
+            token: TokenType.ClosedParenthesis,
+            regex: /^(\))/
+        },
+        {
+            token: TokenType.OpenCurlyBracket,
+            regex: /^(\{)/
+        },
+        {
+            token: TokenType.ClosedCurlyBracket,
+            regex: /^(\})/
+        },
+        {
+            token: TokenType.Colon,
+            regex: /^(:)/
+        },
+        {
+            token: TokenType.SemiColon,
+            regex: /^(;)/
+        }
     ];
-
-
 }

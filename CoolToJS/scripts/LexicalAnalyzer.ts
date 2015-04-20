@@ -31,7 +31,6 @@
 
                 tokenizedSource.push(longestMatch);
                 coolProgramSource = coolProgramSource.slice(longestMatch.match.length);
-                console.log('"' + coolProgramSource + '"');
             }
 
             for (var i = 0; i < tokenizedSource.length; i++) {
