@@ -1,5 +1,5 @@
 # cooltojs
-<img align="right" src="http://nathanfriend.io/cooltojs/img/coolToJsLogo-with-margin.png">
+<img align="right" width="220" src="http://nathanfriend.io/cooltojs/img/coolToJsLogo-with-margin.png">
 A [Cool](http://en.wikipedia.org/wiki/Cool_%28programming_language%29)-to-JavaScript transpiler, written in TypeScript.
 
 Example usage:
