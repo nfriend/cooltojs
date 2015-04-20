@@ -1,0 +1,16 @@
+﻿.cool-theme .cm-typeidentifier {
+    color: #00c;
+}
+
+.cool-theme .cm-comment {
+    font-style: italic;
+    color: #3F7F5F;
+}
+
+.cool-theme .cm-number {
+    color: #a50;
+}
+
+.cool-theme .cm-selfkeyword, .cool-theme .cm-selftypekeyword {
+    color: #7d4626
+}

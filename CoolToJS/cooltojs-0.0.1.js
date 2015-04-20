@@ -77,13 +77,13 @@ var CoolToJS;
                     if (!longestMatch) {
                         return {
                             success: false,
-                            errorMessages: ['Syntax error: Unexpected character at line ' + currentLineNumber + ', column ' + currentColumnNumber + ', near "' + coolProgramSource.slice(0, 20) + '..."']
+                            errorMessages: ['Syntax error: Unexpected character at line ' + currentLineNumber + ', column ' + currentColumnNumber + ', near "' + coolProgramSource.slice(0, 20).replace(/\r\n|\r|\n|\t|[\s]+/g, ' ') + '..."']
                         };
                     }
                     if (longestMatch.token === 22 /* WhiteSpace */) {
                         // increment the line counter appropriately if
                         // the whitespace contains newline characters
-                        var newlineCount = longestMatch.match.split(/\r\n|\r|\n/).length - 1;
+                        var newlineCount = longestMatch.match.split(/\r\n|\r|\n|/).length - 1;
                         if (newlineCount > 0) {
                             currentLineNumber += newlineCount;
                             currentColumnNumber = 1;

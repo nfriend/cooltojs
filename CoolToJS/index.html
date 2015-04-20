@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="lib/bootstrap-3.3.4-dist/css/bootstrap.min.css" type="text/css" />
     <link href='http://fonts.googleapis.com/css?family=Roboto:400,700,400italic' rel='stylesheet' type='text/css'>
     <link rel="stylesheet" href="lib/codemirror-5.1/lib/codemirror.css" type="text/css" />
+    <link rel="stylesheet" href="styles/CodeMirror-cool-theme.css" type="text/css" />
     <link rel="stylesheet" href="styles/cooltojs.css" type="text/css" />
 
     <meta property="og:type" content="website">
@@ -48,7 +49,7 @@
                     <span class="glyphicon glyphicon-import" style="color: #337ab7"></span> Transpile
                 </button>
                 <div class="clearfix"></div>
-                <div id="cool-editor" class="editor"></div>
+                <div id="cool-editor" class="editor cool-theme"></div>
                 <br />
             </div>
             <div class="col-md-4 col-sm-12">
@@ -57,7 +58,7 @@
                     <span class="glyphicon glyphicon-play" style="color: #5cb85c"></span> Run
                 </button>
                 <div class="clearfix"></div>
-                <div id="generated-javascript" class="editor"></div>
+                <div id="generated-javascript" class="editor javascript-theme"></div>
                 <br />
             </div>
             <div class="col-md-4 col-sm-12">
@@ -76,7 +77,8 @@
     </script>
 
     <script src="lib/codemirror-5.1/lib/codemirror.js"></script>
-    <!--<script src="lib/codemirror-5.1/mode/clike/clike.js"></script>-->
+    <script src="lib/codemirror-5.1/addon/mode/simple.js"></script>
+    <script src="scripts/CodeMirror-cool.js"></script>
     <script src="lib/codemirror-5.1/mode/javascript/javascript.js"></script>
 
     <script src="cooltojs-0.0.1.js"></script>

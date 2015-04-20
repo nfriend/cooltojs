@@ -4,7 +4,7 @@
 
     var coolEditor = CodeMirror(document.getElementById('cool-editor'), {
         value: CoolToJS.CoolProgramSources.HelloWorld,
-        mode: 'javascript',
+        mode: 'cool',
         lineNumbers: true,
         indentUnit: 4,
     });

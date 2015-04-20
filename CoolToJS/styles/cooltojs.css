@@ -24,6 +24,12 @@
     border: 1px solid #DDD;
 }
 
+/* match cool's comment color */
+.javascript-theme .cm-comment {
+    font-style: italic;
+    color: #3F7F5F;
+}
+
 #output {
     min-height: 300px;
     border-radius: 0;

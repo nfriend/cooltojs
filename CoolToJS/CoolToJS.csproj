@@ -34,6 +34,7 @@
     <Content Include="lib\bootstrap-3.3.4-dist\js\bootstrap.js" />
     <Content Include="lib\bootstrap-3.3.4-dist\js\bootstrap.min.js" />
     <Content Include="lib\bootstrap-3.3.4-dist\js\npm.js" />
+    <Content Include="lib\codemirror-5.1\addon\mode\simple.js" />
     <Content Include="lib\codemirror-5.1\lib\codemirror.css" />
     <Content Include="lib\codemirror-5.1\lib\codemirror.js" />
     <Content Include="lib\codemirror-5.1\mode\clike\clike.js" />
@@ -44,7 +45,9 @@
     <Content Include="lib\codemirror-5.1\mode\javascript\json-ld.html" />
     <Content Include="lib\codemirror-5.1\mode\javascript\test.js" />
     <Content Include="lib\codemirror-5.1\mode\javascript\typescript.html" />
+    <Content Include="scripts\CodeMirror-cool.js" />
     <Content Include="scripts\demo.js" />
+    <Content Include="styles\CodeMirror-cool-theme.css" />
     <Content Include="web.config">
       <SubType>Designer</SubType>
     </Content>
