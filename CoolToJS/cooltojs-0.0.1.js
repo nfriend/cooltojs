@@ -9,9 +9,10 @@ var CoolToJS;
 })(CoolToJS || (CoolToJS = {}));
 var CoolToJS;
 (function (CoolToJS) {
-    // finds all Cool program references, transpiles the source to JavaScript, 
-    // and runs the final product in the page
-    function Run() {
+    // finds all Cool program sources referenced in 
+    // <script type="text/cool"> elements and returns 
+    // them asynchonously via the completedCallback
+    function GetReferencedCoolSources(completedCallback) {
         // get all <script> elements of type "text/cool" and get the script's source as a string
         var coolProgramReferences = document.querySelectorAll('script[type="text/cool"]');
         var coolPrograms = [];
@@ -23,8 +24,11 @@ var CoolToJS;
         function getCoolProgramText(index, filename) {
             makeAjaxRequest(filename, function (responseText) {
                 coolPrograms[index] = ({ filename: filename, program: responseText });
+                // if all ajax calls have returned, execute the callback with the Cool source 
                 if (coolPrograms.length == coolProgramReferences.length) {
-                    allCoolProgramsFetchedSuccessfully();
+                    completedCallback(coolPrograms.map(function (x) {
+                        return x.program;
+                    }));
                 }
             });
         }
@@ -46,19 +50,8 @@ var CoolToJS;
             xmlhttp.open('GET', url, true);
             xmlhttp.send();
         }
-        // displays the source of all referenced Cool programs on the screen
-        function allCoolProgramsFetchedSuccessfully() {
-            CoolToJS.Transpile({
-                coolProgramSources: coolPrograms.map(function (x) {
-                    return x.program;
-                }),
-                outputFunction: function (output) {
-                    document.getElementById('output').innerHTML += output;
-                }
-            });
-        }
     }
-    CoolToJS.Run = Run;
+    CoolToJS.GetReferencedCoolSources = GetReferencedCoolSources;
 })(CoolToJS || (CoolToJS = {}));
 var CoolToJS;
 (function (CoolToJS) {

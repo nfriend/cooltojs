@@ -3,7 +3,7 @@
     'use strict';
 
     var coolEditor = CodeMirror(document.getElementById('cool-editor'), {
-        value: CoolToJS.CoolProgramSources.List,
+        value: CoolToJS.CoolProgramSources.HelloWorld,
         mode: 'javascript',
         lineNumbers: true,
         indentUnit: 4,
