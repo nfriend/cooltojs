@@ -2,24 +2,8 @@
 (function (CoolToJSDemo) {
     'use strict';
 
-    // faking the transpilation process for now
-
-    var coolProgramExample = '\
-class Main inherits IO {\n\
-    main() : Object {\n\
-        out_string("Hello, world.\\n")\n\
-    };\n\
-};\
-';
-
-    var coolProgramExampleForDebugging = '\
-something here else\n\
-if\n\
-sdf45\n\
-';
-
     var coolEditor = CodeMirror(document.getElementById('cool-editor'), {
-        value: coolProgramExample,
+        value: CoolToJS.CoolProgramSources.List,
         mode: 'javascript',
         lineNumbers: true,
         indentUnit: 4,

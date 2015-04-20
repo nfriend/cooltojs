@@ -50,6 +50,7 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <TypeScriptCompile Include="scripts\CoolProgramSources.ts" />
     <TypeScriptCompile Include="scripts\cooltojs.ts" />
     <TypeScriptCompile Include="scripts\LexicalAnalyzer.ts" />
     <TypeScriptCompile Include="scripts\Parser.ts" />

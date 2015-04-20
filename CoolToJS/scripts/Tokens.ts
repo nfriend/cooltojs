@@ -1,12 +1,5 @@
 ﻿module CoolToJS {
     export enum TokenType {
-        Integer,
-        String,
-        ObjectIdentifier, 
-        TypeIdentifier, 
-        WhiteSpace,
-        Comment,
-
         ClassKeyword,
         ElseKeyword,
         FalseKeyword,
@@ -26,6 +19,13 @@
         NotKeyword,
         TrueKeyword,
 
+        Integer,
+        String,
+        ObjectIdentifier,
+        TypeIdentifier,
+        WhiteSpace,
+        Comment,
+
         DotOperator,
         AtSignOperator,
         TildeOperator,
@@ -43,36 +43,12 @@
         OpenCurlyBracket,
         ClosedCurlyBracket,
         Colon,
-        SemiColon
+        SemiColon,
+        Comma
     }
 
+    // order signifies priority (keywords are listed first)
     export var TokenLookup: { token: TokenType; regex: RegExp }[] = [
-        {
-            token: TokenType.Integer,
-            regex: /^([0-9]+)\b/,
-        },
-        {
-            token: TokenType.String,
-            // this is too simple
-            regex: /^(".*")/,
-        },
-        {
-            token: TokenType.ObjectIdentifier,
-            regex: /^([a-z][a-zA-Z0-9_]*)\b/,
-        },
-        {
-            token: TokenType.TypeIdentifier,
-            regex: /^([A-Z][a-zA-Z0-9_]*)\b/,
-        },
-        {
-            token: TokenType.WhiteSpace,
-            regex: /^(\s+)/,
-        },
-        {
-            token: TokenType.Comment,
-            regex: /^(--.*)|(\(\*.*\*\))/,
-        },
-
         {
             token: TokenType.ClassKeyword,
             regex: /^(class)\b/i,
@@ -147,6 +123,32 @@
         },
 
         {
+            token: TokenType.Integer,
+            regex: /^([0-9]+)\b/,
+        },
+        {
+            token: TokenType.String,
+            // this is too simple
+            regex: /^(".*")/,
+        },
+        {
+            token: TokenType.ObjectIdentifier,
+            regex: /^([a-z][a-zA-Z0-9_]*)\b/,
+        },
+        {
+            token: TokenType.TypeIdentifier,
+            regex: /^([A-Z][a-zA-Z0-9_]*)\b/,
+        },
+        {
+            token: TokenType.WhiteSpace,
+            regex: /^(\s+)/,
+        },
+        {
+            token: TokenType.Comment,
+            regex: /^((?:--.*)|(?:\(\*(?:(?!\*\))[\s\S])*\*\)))/,
+        },
+
+        {
             token: TokenType.DotOperator,
             regex: /^(\.)/
         },
@@ -214,6 +216,31 @@
         {
             token: TokenType.SemiColon,
             regex: /^(;)/
+        },
+        {
+            token: TokenType.Comma,
+            regex: /^(,)/
         }
     ];
+
+    export function isKeyword(tokenType: TokenType) {
+        return (tokenType == TokenType.ClassKeyword
+            || tokenType == TokenType.ElseKeyword
+            || tokenType == TokenType.FalseKeyword
+            || tokenType == TokenType.FiKeyword
+            || tokenType == TokenType.IfKeyword
+            || tokenType == TokenType.InheritsKeyword
+            || tokenType == TokenType.IsvoidKeyword
+            || tokenType == TokenType.LetKeyword
+            || tokenType == TokenType.LoopKeyword
+            || tokenType == TokenType.PoolKeyword
+            || tokenType == TokenType.ThenKeyword
+            || tokenType == TokenType.WhileKeyword
+            || tokenType == TokenType.CaseKeyword
+            || tokenType == TokenType.EsacKeyword
+            || tokenType == TokenType.NewKeyword
+            || tokenType == TokenType.OfKeyword
+            || tokenType == TokenType.NotKeyword
+            || tokenType == TokenType.TrueKeyword);
+    }
 }

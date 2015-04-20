@@ -41,7 +41,14 @@ __outputFunction("Hello, world.\\n");\
         }
 
         var lexicalAnalyzer = new LexicalAnalyzer();
-        lexicalAnalyzer.Analyze(concatenatedCoolProgram);
+        var lexicalAnalyzerOutput = lexicalAnalyzer.Analyze(concatenatedCoolProgram);
+
+        if (!lexicalAnalyzerOutput.success) {
+            return {
+                success: false,
+                errorMessages: lexicalAnalyzerOutput.errorMessages
+            }
+        }
 
         return {
             success: true,
