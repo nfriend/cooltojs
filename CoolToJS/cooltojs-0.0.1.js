@@ -55,31 +55,12 @@ var CoolToJS;
 (function (CoolToJS) {
     var LexicalAnalyzer = (function () {
         function LexicalAnalyzer() {
-            var _this = this;
-            this.tokenLookup = [
-                {
-                    token: 1 /* Integer */,
-                    regex: /^([0-9]+)\b/,
-                },
-                {
-                    token: 6 /* Keyword */,
-                    regex: /^(class|else|false|fi|if|in|inherits|isvoid|let|loop|pool|then|while|case|esac|new|of|not|true)\b/,
-                },
-                {
-                    token: 3 /* ObjectIdentifier */,
-                    regex: /^([a-zA-Z][a-zA-Z0-9_-]+)\b/,
-                },
-                {
-                    token: 7 /* WhiteSpace */,
-                    regex: /^(\s+)/,
-                },
-            ];
             this.Analyze = function (coolProgramSource) {
                 var tokenizedSource = [];
                 while (coolProgramSource.length > 0) {
                     var longestMatch = null;
-                    for (var i = 0; i < _this.tokenLookup.length; i++) {
-                        var currentTokenOption = _this.tokenLookup[i];
+                    for (var i = 0; i < CoolToJS.TokenLookup.length; i++) {
+                        var currentTokenOption = CoolToJS.TokenLookup[i];
                         var match = currentTokenOption.regex.exec(coolProgramSource);
                         if (match === null || typeof match[1] === 'undefined') {
                             continue;
@@ -121,18 +102,136 @@ var CoolToJS;
 var CoolToJS;
 (function (CoolToJS) {
     (function (TokenType) {
-        TokenType[TokenType["Integer"] = 1] = "Integer";
-        TokenType[TokenType["TypeIdentifier"] = 2] = "TypeIdentifier";
-        TokenType[TokenType["ObjectIdentifier"] = 3] = "ObjectIdentifier";
-        TokenType[TokenType["SpecialNotation"] = 4] = "SpecialNotation";
-        TokenType[TokenType["String"] = 5] = "String";
-        TokenType[TokenType["Keyword"] = 6] = "Keyword";
-        TokenType[TokenType["WhiteSpace"] = 7] = "WhiteSpace";
+        TokenType[TokenType["Integer"] = 0] = "Integer";
+        TokenType[TokenType["String"] = 1] = "String";
+        TokenType[TokenType["ObjectIdentifier"] = 2] = "ObjectIdentifier";
+        TokenType[TokenType["TypeIdentifier"] = 3] = "TypeIdentifier";
+        TokenType[TokenType["WhiteSpace"] = 4] = "WhiteSpace";
+        TokenType[TokenType["ClassKeyword"] = 5] = "ClassKeyword";
+        TokenType[TokenType["ElseKeyword"] = 6] = "ElseKeyword";
+        TokenType[TokenType["FalseKeyword"] = 7] = "FalseKeyword";
+        TokenType[TokenType["FiKeyword"] = 8] = "FiKeyword";
+        TokenType[TokenType["IfKeyword"] = 9] = "IfKeyword";
+        TokenType[TokenType["InheritsKeyword"] = 10] = "InheritsKeyword";
+        TokenType[TokenType["IsvoidKeyword"] = 11] = "IsvoidKeyword";
+        TokenType[TokenType["LetKeyword"] = 12] = "LetKeyword";
+        TokenType[TokenType["LoopKeyword"] = 13] = "LoopKeyword";
+        TokenType[TokenType["PoolKeyword"] = 14] = "PoolKeyword";
+        TokenType[TokenType["ThenKeyword"] = 15] = "ThenKeyword";
+        TokenType[TokenType["WhileKeyword"] = 16] = "WhileKeyword";
+        TokenType[TokenType["CaseKeyword"] = 17] = "CaseKeyword";
+        TokenType[TokenType["EsacKeyword"] = 18] = "EsacKeyword";
+        TokenType[TokenType["NewKeyword"] = 19] = "NewKeyword";
+        TokenType[TokenType["OfKeyword"] = 20] = "OfKeyword";
+        TokenType[TokenType["NotKeyword"] = 21] = "NotKeyword";
+        TokenType[TokenType["TrueKeyword"] = 22] = "TrueKeyword";
     })(CoolToJS.TokenType || (CoolToJS.TokenType = {}));
     var TokenType = CoolToJS.TokenType;
+    CoolToJS.TokenLookup = [
+        {
+            token: 0 /* Integer */,
+            regex: /^([0-9]+)\b/,
+        },
+        {
+            token: 2 /* ObjectIdentifier */,
+            regex: /^([a-z][a-zA-Z0-9_]*)\b/,
+        },
+        {
+            token: 3 /* TypeIdentifier */,
+            regex: /^([A-Z][a-zA-Z0-9_]*)\b/,
+        },
+        {
+            token: 4 /* WhiteSpace */,
+            regex: /^(\s+)/,
+        },
+        {
+            token: 5 /* ClassKeyword */,
+            regex: /^(class)\b/i,
+        },
+        {
+            token: 6 /* ElseKeyword */,
+            regex: /^(else)\b/i,
+        },
+        {
+            token: 7 /* FalseKeyword */,
+            regex: /^(f[aA][lL][sS][eE])\b/,
+        },
+        {
+            token: 22 /* TrueKeyword */,
+            regex: /^(t[rR][uU][eE])\b/,
+        },
+        {
+            token: 8 /* FiKeyword */,
+            regex: /^(fi)\b/i,
+        },
+        {
+            token: 9 /* IfKeyword */,
+            regex: /^(if)\b/i,
+        },
+        {
+            token: 10 /* InheritsKeyword */,
+            regex: /^(inherits)\b/i,
+        },
+        {
+            token: 11 /* IsvoidKeyword */,
+            regex: /^(isvoid)\b/i,
+        },
+        {
+            token: 12 /* LetKeyword */,
+            regex: /^(let)\b/i,
+        },
+        {
+            token: 13 /* LoopKeyword */,
+            regex: /^(loop)\b/i,
+        },
+        {
+            token: 14 /* PoolKeyword */,
+            regex: /^(pool)\b/i,
+        },
+        {
+            token: 15 /* ThenKeyword */,
+            regex: /^(then)\b/i,
+        },
+        {
+            token: 16 /* WhileKeyword */,
+            regex: /^(while)\b/i,
+        },
+        {
+            token: 17 /* CaseKeyword */,
+            regex: /^(case)\b/i,
+        },
+        {
+            token: 18 /* EsacKeyword */,
+            regex: /^(esac)\b/i,
+        },
+        {
+            token: 19 /* NewKeyword */,
+            regex: /^(new)\b/i,
+        },
+        {
+            token: 20 /* OfKeyword */,
+            regex: /^(of)\b/i,
+        },
+        {
+            token: 21 /* NotKeyword */,
+            regex: /^(not)\b/i,
+        },
+    ];
 })(CoolToJS || (CoolToJS = {}));
 var CoolToJS;
 (function (CoolToJS) {
+    // temporary
+    var generatedJavaScriptExample = '\
+// note that this generated code (and its output)\n\
+// is currently hardcoded while the transpiler\n\
+// is being built\n\
+\n\
+function __outputFunction(output) {\n\
+    document.getElementById(\'output\').innerHTML += output;\n\
+}\n\
+\n\
+__outputFunction("Hello, world.\\n");\
+';
     function Transpile(transpilerOptions) {
         var coolProgramSources = transpilerOptions.coolProgramSources;
         if (typeof coolProgramSources === 'string') {
@@ -151,6 +250,10 @@ var CoolToJS;
         }
         var lexicalAnalyzer = new CoolToJS.LexicalAnalyzer();
         lexicalAnalyzer.Analyze(concatenatedCoolProgram);
+        return {
+            success: true,
+            generatedJavaScript: generatedJavaScriptExample
+        };
     }
     CoolToJS.Transpile = Transpile;
 })(CoolToJS || (CoolToJS = {}));

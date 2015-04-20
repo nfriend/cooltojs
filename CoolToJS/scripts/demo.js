@@ -18,20 +18,8 @@ if\n\
 sdf45\n\
 ';
 
-    var generatedJavaScriptExample = '\
-// note that this generated code (and its output)\n\
-// is currently hardcoded while the transpiler\n\
-// is being built\n\
-\n\
-function __outputFunction(output) {\n\
-    document.getElementById(\'output\').innerHTML += output;\n\
-}\n\
-\n\
-__outputFunction("Hello, world.\\n");\
-';
-
     var coolEditor = CodeMirror(document.getElementById('cool-editor'), {
-        value: coolProgramExampleForDebugging,
+        value: coolProgramExample,
         mode: 'javascript',
         lineNumbers: true,
         indentUnit: 4,
@@ -44,24 +32,42 @@ __outputFunction("Hello, world.\\n");\
         readOnly: true
     });
 
-    var hasBeenTranspiled = false;
     document.getElementById('transpile-button').onclick = function () {
 
-        CoolToJS.Transpile({
+        var transpilerOutput = CoolToJS.Transpile({
             coolProgramSources: coolEditor.getValue(),
             outputFunction: function (output) {
                 document.getElementById('output').innerHTML += output;
             }
         });
 
-        generatedJavaScriptEditor.setValue(generatedJavaScriptExample);
-        hasBeenTranspiled = true;
+        if (transpilerOutput.success) {
+            generatedJavaScriptEditor.setValue(transpilerOutput.generatedJavaScript);
+        } else {
+            if (transpilerOutput.errorMessages) {
+                var errorComments = '/*\n\nThe following errors occured while transpiling:\n\n';
+                for (var i = 0; i < transpilerOutput.errorMessages.length; i++) {
+                    errorComments += '• ' + transpilerOutput.errorMessages[i] + '\n';
+                }
+                errorComments += '\n*/';
+            } else {
+                var errorComments = '/* An unknown error occured while transpiling */';
+            }
+
+            generatedJavaScriptEditor.setValue(errorComments);
+        }
     };
 
     document.getElementById('play-button').onclick = function () {
-        if (hasBeenTranspiled) {
-            document.getElementById('output').innerHTML = '';
+        var outputElement = document.getElementById('output');
+        outputElement.innerHTML = '';
+        try {
             eval(generatedJavaScriptEditor.getValue());
+            outputElement.className = outputElement.className.replace(/error-state/g, '');
+        } catch (data) {
+            outputElement.className += ' error-state';
+            outputElement.innerHTML = 'JavaScript runtime error: \n\n' + data;
+            throw data;
         }
     };
 

@@ -31,3 +31,7 @@
     padding: 4px 8px;
     background-color: #FAFAFA;
 }
+
+#output.error-state {
+    color: red;
+}

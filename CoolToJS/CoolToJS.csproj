@@ -53,7 +53,7 @@
     <TypeScriptCompile Include="scripts\cooltojs.ts" />
     <TypeScriptCompile Include="scripts\LexicalAnalyzer.ts" />
     <TypeScriptCompile Include="scripts\Parser.ts" />
-    <TypeScriptCompile Include="scripts\TokenType.ts" />
+    <TypeScriptCompile Include="scripts\Tokens.ts" />
     <TypeScriptCompile Include="scripts\Transpiler.ts" />
   </ItemGroup>
   <ItemGroup>
