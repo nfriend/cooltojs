@@ -131,7 +131,7 @@
     // to the bottom allows for full-screen editing
     window.onresize = function () {
         var $window = $(window);
-        if ($window.width() > 991) {
+        if ($window.innerWidth() > 991) {
             $('.CodeMirror, div.console div.jquery-console-inner').css({
                 height: $window.height() - 85 + 'px'
             });
