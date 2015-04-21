@@ -57,3 +57,4 @@ var transpilerOutput = CoolToJS.Transpile({
     }
 });
 ````
+By default, the `in_string` and `in_int` functions are mapped to empty functions, so you won't be able to send input to your Cool program without providing these functions.
