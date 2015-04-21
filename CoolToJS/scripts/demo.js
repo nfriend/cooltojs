@@ -4,7 +4,7 @@
 
     //#region set up editors and the console
     var coolEditor = CodeMirror(document.getElementById('cool-editor'), {
-        value: CoolToJS.CoolProgramSources.HelloWorld,
+        value: CoolToJS.CoolProgramSources.AdvancedHelloWorld,
         mode: 'cool',
         lineNumbers: true,
         indentUnit: 4,
@@ -14,7 +14,7 @@
         mode: 'javascript',
         lineNumbers: true,
         indentUnit: 4,
-        readOnly: true
+        readOnly: false
     });
 
     // global so we can access it inside a Cool program
@@ -30,12 +30,18 @@
                     className: "jquery-console-error"
                 }];
             } else {
-                if (inputFunction) {
-                    inputFunction(line);
-                    inputFunction = null;
+                if (window.inputFunction) {
+
+                    // we want any output that results from this callback
+                    // to appear *after* the entered text, so schedule
+                    // it after this function returns
+                    setTimeout(function () {
+                        window.inputFunction(line);
+                        window.inputFunction = null;
+                    }, 0)
 
                     return [{
-                        msg: line,
+                        msg: '',
                         className: "jquery-console-user-input"
                     }];
                 }
@@ -74,16 +80,17 @@
 
     var in_string = function (onInput) {
         isInputRestrictedToNumbers = false;
-        inputFunction = onInput;
+        window.inputFunction = onInput;
     };
 
     var in_int = function (onInput) {
         isInputRestrictedToNumbers = true;
-        inputFunction = onInput;
+        window.inputFunction = onInput;
     };
 
-    // the function that will actually be called when input is entered
-    var inputFunction = null;
+    // the function that will actually be called when input is entered.
+    // global so as to be available to the Cool program
+    window.inputFunction = null;
 
     //#endregion
 
@@ -115,6 +122,7 @@
     };
 
     document.getElementById('play-button').onclick = function () {
+        $('.console').click();
         try {
             eval(generatedJavaScriptEditor.getValue());
         } catch (data) {

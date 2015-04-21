@@ -19,14 +19,28 @@
 // note that this generated code is currently hardcoded\n\
 // while the transpiler is being built\n\
 \n\
-function _outputFunction(output) {\n\
+function _out_string(output) {\n\
     window.consoleController.report([{\n\
         msg: output,\n\
         className: "jquery-console-output"\n\
     }]);\n\
 }\n\
 \n\
-_outputFunction("Hello, world.\\n");\
+function _in_string(callback) {\n\
+    window.inputFunction = function(input) {\n\
+        callback(input);\n\
+    };\n\
+}\n\
+\n\
+var hello = "Hello, ",\n\
+	name = "",\n\
+    ending = "!\\n";\n\
+\n\
+_out_string("Please enter your name:\\n");\n\
+_in_string(function(input) {\n\
+    name = input;\n\
+    _out_string(hello + name + ending);\n\
+});\n\
 ';
 
     export function Transpile(transpilerOptions: TranspilerOptions): TranspilerOutput {
