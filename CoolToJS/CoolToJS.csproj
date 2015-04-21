@@ -45,6 +45,8 @@
     <Content Include="lib\codemirror-5.1\mode\javascript\json-ld.html" />
     <Content Include="lib\codemirror-5.1\mode\javascript\test.js" />
     <Content Include="lib\codemirror-5.1\mode\javascript\typescript.html" />
+    <Content Include="lib\jquery\jquery-1.11.2.min.js" />
+    <Content Include="lib\jquery-console-master\jquery.console.js" />
     <Content Include="scripts\CodeMirror-cool.js" />
     <Content Include="scripts\demo.js" />
     <Content Include="styles\CodeMirror-cool-theme.css" />

@@ -158,13 +158,14 @@ var CoolToJS;
         TokenType[TokenType["LessThanOperator"] = 32] = "LessThanOperator";
         TokenType[TokenType["EqualsOperator"] = 33] = "EqualsOperator";
         TokenType[TokenType["AssignmentOperator"] = 34] = "AssignmentOperator";
-        TokenType[TokenType["OpenParenthesis"] = 35] = "OpenParenthesis";
-        TokenType[TokenType["ClosedParenthesis"] = 36] = "ClosedParenthesis";
-        TokenType[TokenType["OpenCurlyBracket"] = 37] = "OpenCurlyBracket";
-        TokenType[TokenType["ClosedCurlyBracket"] = 38] = "ClosedCurlyBracket";
-        TokenType[TokenType["Colon"] = 39] = "Colon";
-        TokenType[TokenType["SemiColon"] = 40] = "SemiColon";
-        TokenType[TokenType["Comma"] = 41] = "Comma";
+        TokenType[TokenType["FatArrowOperator"] = 35] = "FatArrowOperator";
+        TokenType[TokenType["OpenParenthesis"] = 36] = "OpenParenthesis";
+        TokenType[TokenType["ClosedParenthesis"] = 37] = "ClosedParenthesis";
+        TokenType[TokenType["OpenCurlyBracket"] = 38] = "OpenCurlyBracket";
+        TokenType[TokenType["ClosedCurlyBracket"] = 39] = "ClosedCurlyBracket";
+        TokenType[TokenType["Colon"] = 40] = "Colon";
+        TokenType[TokenType["SemiColon"] = 41] = "SemiColon";
+        TokenType[TokenType["Comma"] = 42] = "Comma";
     })(CoolToJS.TokenType || (CoolToJS.TokenType = {}));
     var TokenType = CoolToJS.TokenType;
     // order signifies priority (keywords are listed first)
@@ -311,31 +312,35 @@ var CoolToJS;
             regex: /^(<-)/
         },
         {
-            token: 35 /* OpenParenthesis */,
+            token: 35 /* FatArrowOperator */,
+            regex: /^(=>)/
+        },
+        {
+            token: 36 /* OpenParenthesis */,
             regex: /^(\()/
         },
         {
-            token: 36 /* ClosedParenthesis */,
+            token: 37 /* ClosedParenthesis */,
             regex: /^(\))/
         },
         {
-            token: 37 /* OpenCurlyBracket */,
+            token: 38 /* OpenCurlyBracket */,
             regex: /^(\{)/
         },
         {
-            token: 38 /* ClosedCurlyBracket */,
+            token: 39 /* ClosedCurlyBracket */,
             regex: /^(\})/
         },
         {
-            token: 39 /* Colon */,
+            token: 40 /* Colon */,
             regex: /^(:)/
         },
         {
-            token: 40 /* SemiColon */,
+            token: 41 /* SemiColon */,
             regex: /^(;)/
         },
         {
-            token: 41 /* Comma */,
+            token: 42 /* Comma */,
             regex: /^(,)/
         }
     ];
@@ -351,11 +356,14 @@ var CoolToJS;
 // note that this generated code is currently hardcoded\n\
 // while the transpiler is being built\n\
 \n\
-function __outputFunction(output) {\n\
-    document.getElementById(\'output\').innerHTML += output;\n\
+function _outputFunction(output) {\n\
+    window.consoleController.report([{\n\
+        msg: output,\n\
+        className: "jquery-console-output"\n\
+    }]);\n\
 }\n\
 \n\
-__outputFunction("Hello, world.\\n");\
+_outputFunction("Hello, world.\\n");\
 ';
     function Transpile(transpilerOptions) {
         var coolProgramSources = transpilerOptions.coolProgramSources;
@@ -365,12 +373,34 @@ __outputFunction("Hello, world.\\n");\
         else {
             var concatenatedCoolProgram = coolProgramSources.join('\n');
         }
-        if (transpilerOptions.outputFunction) {
-            var outputFunction = transpilerOptions.outputFunction;
+        if (transpilerOptions.out_string) {
+            var out_string = transpilerOptions.out_string;
         }
         else {
-            var outputFunction = function (output) {
+            var out_string = function (output) {
                 console.log(output);
+            };
+        }
+        if (transpilerOptions.out_int) {
+            var out_int = transpilerOptions.out_int;
+        }
+        else {
+            var out_int = function (output) {
+                console.log(output);
+            };
+        }
+        if (transpilerOptions.in_string) {
+            var in_string = transpilerOptions.in_string;
+        }
+        else {
+            var in_string = function (onInput) {
+            };
+        }
+        if (transpilerOptions.in_int) {
+            var in_int = transpilerOptions.in_int;
+        }
+        else {
+            var in_int = function (onInput) {
             };
         }
         var lexicalAnalyzer = new CoolToJS.LexicalAnalyzer();

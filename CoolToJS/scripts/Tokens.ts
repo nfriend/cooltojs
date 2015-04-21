@@ -37,6 +37,7 @@
         LessThanOperator,
         EqualsOperator,
         AssignmentOperator,
+        FatArrowOperator,
 
         OpenParenthesis,
         ClosedParenthesis,
@@ -191,6 +192,10 @@
         {
             token: TokenType.AssignmentOperator,
             regex: /^(<-)/
+        },
+        {
+            token: TokenType.FatArrowOperator,
+            regex: /^(=>)/
         },
 
         {

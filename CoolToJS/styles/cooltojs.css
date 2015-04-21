@@ -30,14 +30,90 @@
     color: #3F7F5F;
 }
 
+.CodeMirror {
+    min-height: 450px;
+}
+
 #output {
-    min-height: 300px;
+    height: 450px;
     border-radius: 0;
     font-size: 14px;
     padding: 4px 8px;
     background-color: #FAFAFA;
 }
 
-#output.error-state {
-    color: red;
+    #output.error-state {
+        color: red;
+    }
+
+
+/* console styles */
+
+div.console {
+    font-size: 14px;
+    border: 1px solid #DDD;
 }
+
+    div.console div.jquery-console-inner {
+        height: 450px;
+        background: #FAFAFA;
+        padding: 0.5em;
+        overflow: auto;
+    }
+
+    div.console div.jquery-console-prompt-box {
+        color: black;
+        font-family: monospace;
+    }
+
+    div.console div.jquery-console-focus span.jquery-console-cursor {
+        background: #667;
+        color: white;
+        font-weight: bold;
+        -moz-animation: blink 1.2s steps(2, start) infinite;
+        -o-animation: blink 1.2s steps(2, start) infinite;
+        -webkit-animation: blink 1.2s steps(2, start) infinite;
+        animation: blink 1.2s steps(2, start) infinite;
+    }
+
+    div.console div.jquery-console-output {
+        color: #364b55;
+        font-family: monospace;
+        padding: 0.1em;
+    }
+
+    div.console div.jquery-console-error {
+        color: #ef0505;
+        font-family: monospace;
+        padding: 0.1em;
+    }
+
+    div.console div.jquery-console-user-input {
+        color: #488026;
+        font-family: monospace;
+        padding: 0.1em;
+    }
+
+    div.console span.jquery-console-prompt-label {
+        color: black;
+    }
+
+@keyframes blink {
+    to {
+        visibility: hidden;
+    }
+}
+
+@-webkit-keyframes blink {
+    to {
+        visibility: hidden;
+    }
+}
+
+@-moz-keyframes blink {
+    to {
+        visibility: hidden;
+    }
+}
+
+/* /console styles */

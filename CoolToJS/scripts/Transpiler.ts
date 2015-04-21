@@ -2,7 +2,10 @@
 
     export interface TranspilerOptions {
         coolProgramSources: string|string[];
-        outputFunction?: (output: string) => void;
+        out_string?: (output: string) => void;
+        out_int?: (output: number) => void;
+        in_string?: (onInput: (input: string) => any) => void;
+        in_int?: (onInput: (input: string) => any) => void;
     }
 
     export interface TranspilerOutput {
@@ -16,11 +19,14 @@
 // note that this generated code is currently hardcoded\n\
 // while the transpiler is being built\n\
 \n\
-function __outputFunction(output) {\n\
-    document.getElementById(\'output\').innerHTML += output;\n\
+function _outputFunction(output) {\n\
+    window.consoleController.report([{\n\
+        msg: output,\n\
+        className: "jquery-console-output"\n\
+    }]);\n\
 }\n\
 \n\
-__outputFunction("Hello, world.\\n");\
+_outputFunction("Hello, world.\\n");\
 ';
 
     export function Transpile(transpilerOptions: TranspilerOptions): TranspilerOutput {
@@ -31,12 +37,32 @@ __outputFunction("Hello, world.\\n");\
             var concatenatedCoolProgram = coolProgramSources.join('\n');
         }
 
-        if (transpilerOptions.outputFunction) {
-            var outputFunction = transpilerOptions.outputFunction;
+        if (transpilerOptions.out_string) {
+            var out_string = transpilerOptions.out_string;
         } else {
-            var outputFunction = (output: string) => {
+            var out_string = (output: string) => {
                 console.log(output);
             };
+        }
+
+        if (transpilerOptions.out_int) {
+            var out_int = transpilerOptions.out_int;
+        } else {
+            var out_int = (output: number) => {
+                console.log(output);
+            };
+        }
+
+        if (transpilerOptions.in_string) {
+            var in_string = transpilerOptions.in_string;
+        } else {
+            var in_string = (onInput: (input: string) => any) => { /* noop */ };
+        }
+
+        if (transpilerOptions.in_int) {
+            var in_int = transpilerOptions.in_int;
+        } else {
+            var in_int = (onInput: (input: string) => any) => { /* noop */ };
         }
 
         var lexicalAnalyzer = new LexicalAnalyzer();
