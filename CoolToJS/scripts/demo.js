@@ -126,10 +126,20 @@
         }
     };
 
+    // when the window is resized, set the heights of the various 
+    // editors/consoles to take the height of one page, so that scrolling
+    // to the bottom allows for full-screen editing
     window.onresize = function () {
-        $('.CodeMirror, div.console div.jquery-console-inner').css({
-            height: $(window).height() - 85 + 'px'
-        });
+        var $window = $(window);
+        if ($window.width() > 991) {
+            $('.CodeMirror, div.console div.jquery-console-inner').css({
+                height: $window.height() - 85 + 'px'
+            });
+        } else {
+            $('.CodeMirror, div.console div.jquery-console-inner').css({
+                height: '400px'
+            });
+        }
     }
 
     window.onresize();
