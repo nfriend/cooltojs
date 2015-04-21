@@ -14,7 +14,7 @@
         mode: 'javascript',
         lineNumbers: true,
         indentUnit: 4,
-        readOnly: false
+        readOnly: true
     });
 
     // global so we can access it inside a Cool program
