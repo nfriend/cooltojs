@@ -134,6 +134,10 @@
         }
     };
 
+    document.getElementById('clear-button').onclick = function () {
+        window.consoleController.reset();
+    };
+
     // when the window is resized, set the heights of the various 
     // editors/consoles to take the height of one page, so that scrolling
     // to the bottom allows for full-screen editing
