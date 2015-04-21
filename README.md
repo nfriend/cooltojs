@@ -2,7 +2,7 @@
 A [Cool](http://en.wikipedia.org/wiki/Cool_%28programming_language%29)-to-JavaScript transpiler, written in TypeScript.
 <br />
 <br />
-<img width="256" src="http://nathanfriend.io/cooltojs/img/coolToJsLogo-with-margin.png" />
+<img height="256" src="http://nathanfriend.io/cooltojs/img/coolToJsLogo-with-margin.png" />
 
 Example usage:
 ```` HTML
