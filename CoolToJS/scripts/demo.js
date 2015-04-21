@@ -40,6 +40,10 @@
                     }];
                 }
 
+                if (/^\s*clear\s*$/i.test(line) || /^\s*cls\s*$/i.test(line)) {
+                    window.consoleController.reset();
+                }
+
                 return [{
                     msg: '',
                     className: "jquery-console-user-input"
@@ -68,7 +72,7 @@
 
     var isInputRestrictedToNumbers = false;
 
-    var in_string = function(onInput) {
+    var in_string = function (onInput) {
         isInputRestrictedToNumbers = false;
         inputFunction = onInput;
     };
@@ -121,5 +125,15 @@
             throw data;
         }
     };
+
+    window.onresize = function () {
+        $('.CodeMirror, div.console div.jquery-console-inner').css({
+            height: $(window).height() - 85 + 'px'
+        });
+    }
+
+    window.onresize();
+    coolEditor.refresh();
+    generatedJavaScriptEditor.refresh();
 
 })(CoolToJSDemo || (CoolToJSDemo = {}));

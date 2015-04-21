@@ -30,23 +30,6 @@
     color: #3F7F5F;
 }
 
-.CodeMirror {
-    min-height: 450px;
-}
-
-#output {
-    height: 450px;
-    border-radius: 0;
-    font-size: 14px;
-    padding: 4px 8px;
-    background-color: #FAFAFA;
-}
-
-    #output.error-state {
-        color: red;
-    }
-
-
 /* console styles */
 
 div.console {
@@ -55,7 +38,6 @@ div.console {
 }
 
     div.console div.jquery-console-inner {
-        height: 450px;
         background: #FAFAFA;
         padding: 0.5em;
         overflow: auto;
