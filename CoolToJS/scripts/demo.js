@@ -33,10 +33,15 @@
                 if (inputFunction) {
                     inputFunction(line);
                     inputFunction = null;
+
+                    return [{
+                        msg: line,
+                        className: "jquery-console-user-input"
+                    }];
                 }
 
                 return [{
-                    msg: line,
+                    msg: '',
                     className: "jquery-console-user-input"
                 }];
             }
