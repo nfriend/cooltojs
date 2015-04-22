@@ -118,7 +118,8 @@ var CoolToJS;
                             }
                         });
                         // chop off the problematic chunk of input and try to keep analyzing
-                        coolProgramSource = coolProgramSource.replace(/^[^\s]*/, '');
+                        coolProgramSource = coolProgramSource.slice(length);
+                        currentColumnNumber += length;
                     }
                 }
                 for (var i = 0; i < tokens.length; i++) {
