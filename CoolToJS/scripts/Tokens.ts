@@ -51,8 +51,14 @@
         Comma
     }
 
+    export interface TokenDefinition {
+        token: TokenType;
+        regex?: RegExp;
+        matchFunction?: (input: string) => string;
+    }
+
     // order signifies priority (keywords are listed first)
-    export var TokenLookup: { token: TokenType; regex: RegExp }[] = [
+    export var TokenLookup: TokenDefinition[] = [
         {
             token: TokenType.ClassKeyword,
             regex: /^(class)\b/i,
@@ -125,14 +131,52 @@
             token: TokenType.NotKeyword,
             regex: /^(not)\b/i,
         },
-
         {
             token: TokenType.Integer,
             regex: /^([0-9]+)\b/,
         },
         {
             token: TokenType.String,
-            regex: /^("(?:[^\\]|\\.)*?")/,
+            matchFunction: (input) => {
+
+                if (input.indexOf('"Hello') === 0) {
+                    console.log('sdfsd');
+                }
+
+                // for a single-line string
+                var singleLineMatch = /^("(?:[^\\]|\\.)*?")/.exec(input);
+                if (singleLineMatch !== null && typeof singleLineMatch[1] !== 'undefined') {
+                    return singleLineMatch[1];
+                }
+
+                // for a multi-line string
+
+                // doesn't yet handle \" inside string
+                var fullMatch: string = null;
+                var firstLineMatch = /^("[^"\n]*\\[\s]*\n)/.exec(input);
+                if (firstLineMatch !== null && typeof firstLineMatch[1] !== 'undefined') {
+                    fullMatch = firstLineMatch[1];
+                    input = input.slice(firstLineMatch[1].length);
+
+                    var middleLineRegex = /^([^"\n]*\\[\s]*\n)/;
+                    var middleLineMatch = middleLineRegex.exec(input);
+                    while (middleLineMatch !== null && typeof middleLineMatch[1] !== 'undefined') {
+                        fullMatch += middleLineMatch[1];
+                        input = input.slice(middleLineMatch[1].length);
+                        middleLineMatch = middleLineRegex.exec(input);
+                    }
+
+                    var lastLineMatch = /^(.*?")/.exec(input);
+                    if (lastLineMatch !== null && lastLineMatch[1] !== 'undefined') {
+                        fullMatch += lastLineMatch[1];
+                        return fullMatch;
+                    } else {
+                        return null;
+                    }
+                } else {
+                    return null;
+                }
+            }
         },
         {
             token: TokenType.ObjectIdentifier,

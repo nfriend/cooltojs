@@ -20,19 +20,32 @@
                 var longestMatch: TokenMatch = null;
                 for (var i = 0; i < CoolToJS.TokenLookup.length; i++) {
                     var currentTokenOption = CoolToJS.TokenLookup[i],
-                        matchIsKeyword = CoolToJS.isKeyword(currentTokenOption.token);
-                    var match = currentTokenOption.regex.exec(coolProgramSource);
-                    if (match === null || typeof match[1] === 'undefined') {
+                        matchIsKeyword = CoolToJS.isKeyword(currentTokenOption.token),
+                        matchString = null;
+
+                    if (currentTokenOption.matchFunction) {
+                        matchString = currentTokenOption.matchFunction(coolProgramSource);
+                    } else {
+                        var match = currentTokenOption.regex.exec(coolProgramSource);
+                        if (match !== null && typeof match[1] !== 'undefined') {
+                            matchString = match[1];
+                        } else {
+                            matchString = null;
+                        }
+                    }
+
+                    if (!matchString) {
                         continue;
                     }
-                    if (!longestMatch || match[1].length > longestMatch.match.length) {
+
+                    if (!longestMatch || matchString.length > longestMatch.match.length) {
                         longestMatch = {
                             token: currentTokenOption.token,
-                            match: match[1],
+                            match: matchString,
                             location: {
                                 line: currentLineNumber,
                                 column: currentColumnNumber,
-                                length: match[1].length
+                                length: matchString.length
                             }
                         }
                     }

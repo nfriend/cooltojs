@@ -65,19 +65,30 @@ var CoolToJS;
                 while (coolProgramSource.length > 0) {
                     var longestMatch = null;
                     for (var i = 0; i < CoolToJS.TokenLookup.length; i++) {
-                        var currentTokenOption = CoolToJS.TokenLookup[i], matchIsKeyword = CoolToJS.isKeyword(currentTokenOption.token);
-                        var match = currentTokenOption.regex.exec(coolProgramSource);
-                        if (match === null || typeof match[1] === 'undefined') {
+                        var currentTokenOption = CoolToJS.TokenLookup[i], matchIsKeyword = CoolToJS.isKeyword(currentTokenOption.token), matchString = null;
+                        if (currentTokenOption.matchFunction) {
+                            matchString = currentTokenOption.matchFunction(coolProgramSource);
+                        }
+                        else {
+                            var match = currentTokenOption.regex.exec(coolProgramSource);
+                            if (match !== null && typeof match[1] !== 'undefined') {
+                                matchString = match[1];
+                            }
+                            else {
+                                matchString = null;
+                            }
+                        }
+                        if (!matchString) {
                             continue;
                         }
-                        if (!longestMatch || match[1].length > longestMatch.match.length) {
+                        if (!longestMatch || matchString.length > longestMatch.match.length) {
                             longestMatch = {
                                 token: currentTokenOption.token,
-                                match: match[1],
+                                match: matchString,
                                 location: {
                                     line: currentLineNumber,
                                     column: currentColumnNumber,
-                                    length: match[1].length
+                                    length: matchString.length
                                 }
                             };
                         }
@@ -278,7 +289,42 @@ var CoolToJS;
         },
         {
             token: 19 /* String */,
-            regex: /^("(?:[^\\]|\\.)*?")/,
+            matchFunction: function (input) {
+                if (input.indexOf('"Hello') === 0) {
+                    console.log('sdfsd');
+                }
+                // for a single-line string
+                var singleLineMatch = /^("(?:[^\\]|\\.)*?")/.exec(input);
+                if (singleLineMatch !== null && typeof singleLineMatch[1] !== 'undefined') {
+                    return singleLineMatch[1];
+                }
+                // for a multi-line string
+                // doesn't yet handle \" inside string
+                var fullMatch = null;
+                var firstLineMatch = /^("[^"\n]*\\[\s]*\n)/.exec(input);
+                if (firstLineMatch !== null && typeof firstLineMatch[1] !== 'undefined') {
+                    fullMatch = firstLineMatch[1];
+                    input = input.slice(firstLineMatch[1].length);
+                    var middleLineRegex = /^([^"\n]*\\[\s]*\n)/;
+                    var middleLineMatch = middleLineRegex.exec(input);
+                    while (middleLineMatch !== null && typeof middleLineMatch[1] !== 'undefined') {
+                        fullMatch += middleLineMatch[1];
+                        input = input.slice(middleLineMatch[1].length);
+                        middleLineMatch = middleLineRegex.exec(input);
+                    }
+                    var lastLineMatch = /^(.*?")/.exec(input);
+                    if (lastLineMatch !== null && lastLineMatch[1] !== 'undefined') {
+                        fullMatch += lastLineMatch[1];
+                        return fullMatch;
+                    }
+                    else {
+                        return null;
+                    }
+                }
+                else {
+                    return null;
+                }
+            }
         },
         {
             token: 20 /* ObjectIdentifier */,
