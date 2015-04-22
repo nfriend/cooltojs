@@ -278,8 +278,7 @@ var CoolToJS;
         },
         {
             token: 19 /* String */,
-            // this is too simple
-            regex: /^(".*")/,
+            regex: /^("(?:[^\\]|\\.)*?")/,
         },
         {
             token: 20 /* ObjectIdentifier */,

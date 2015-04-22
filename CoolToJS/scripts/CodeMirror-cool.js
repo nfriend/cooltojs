@@ -3,51 +3,60 @@
     start: [
       {
           regex: /"(?:[^\\]|\\.)*?"/,
-          token: "string"
+          token: 'string'
+      },
+      {
+          regex: /"(?:[^\\]|\\.)*?\\[\s]*$/,
+          token: 'string',
+          next: 'multilineString'
       },
       {
           regex: /(?:class|else|if|fi|inherits|isvoid|let|loop|pool|then|while|case|esac|new|of|not)\b/i,
-          token: "keyword"
+          token: 'keyword'
       },
       {
           regex: /t[Rr][Uu][Ee]|f[Aa][Ll][Ss][Ee]/,
-          token: "keyword"
+          token: 'keyword'
       },
       {
           regex: /[0-9]+/,
-          token: "number"
+          token: 'number'
       },
       {
           regex: /--.*/,
-          token: "comment",
+          token: 'comment',
       },
       {
           regex: /\(\*/,
-          token: "comment",
-          next: "comment"
+          token: 'comment',
+          next: 'comment'
       },
       {
           regex: /(?:self)\b/i,
-          token: "selfkeyword"
+          token: 'selfkeyword'
       },
       {
           regex: /(?:SELF_TYPE)\b/i,
-          token: "selftypekeyword"
+          token: 'selftypekeyword'
       },
 
-      { regex: /[-+\/*=<>!]+/, token: "operator" },
+      { regex: /[-+\/*=<>!]+/, token: 'operator' },
       { regex: /[\{\[\(]/, indent: true },
       { regex: /[\}\]\)]/, dedent: true },
-      { regex: /([a-z][a-zA-Z0-9_]*)/, token: "objectidentifier" },
-      { regex: /([A-Z][a-zA-Z0-9_]*)/, token: "typeidentifier" },
+      { regex: /([a-z][a-zA-Z0-9_]*)/, token: 'objectidentifier' },
+      { regex: /([A-Z][a-zA-Z0-9_]*)/, token: 'typeidentifier' },
     ],
     comment: [
-      { regex: /.*?\*\)/, token: "comment", next: "start" },
-      { regex: /.*/, token: "comment" }
+      { regex: /.*?\*\)/, token: 'comment', next: 'start' },
+      { regex: /.*/, token: 'comment' }
+    ],
+    multilineString: [
+        { regex: /(?:[^\\]|\\.)*?\\[\s]*$/, token: 'string' },
+        { regex: /(?:[^\\]|\\.)*?"/, token: 'string', next: 'start' }
     ],
     meta: {
-        dontIndentStates: ["comment"],
-        lineComment: "--",
+        dontIndentStates: ['comment'],
+        lineComment: '--',
         electricChars: '}])'
     }
 });

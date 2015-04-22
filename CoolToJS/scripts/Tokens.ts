@@ -132,8 +132,7 @@
         },
         {
             token: TokenType.String,
-            // this is too simple
-            regex: /^(".*")/,
+            regex: /^("(?:[^\\]|\\.)*?")/,
         },
         {
             token: TokenType.ObjectIdentifier,

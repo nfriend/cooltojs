@@ -129,6 +129,8 @@
     document.getElementById('transpile-button').onclick = transpile;
 
     function transpile() {
+        removeAllUnderlinesFromCoolEditor();
+
         var transpilerOutput = CoolToJS.Transpile({
             coolProgramSources: coolEditor.getValue(),
             out_string: out_string,
