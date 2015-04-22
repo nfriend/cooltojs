@@ -61,7 +61,7 @@ var CoolToJS;
             var _this = this;
             this.tabLength = 4;
             this.Analyze = function (coolProgramSource) {
-                var tokens = [], currentLineNumber = 1, currentColumnNumber = 1;
+                var tokens = [], currentLineNumber = 1, currentColumnNumber = 1, errorMessages = [];
                 while (coolProgramSource.length > 0) {
                     var longestMatch = null;
                     for (var i = 0; i < CoolToJS.TokenLookup.length; i++) {
@@ -82,8 +82,25 @@ var CoolToJS;
                             };
                         }
                     }
-                    if (!longestMatch) {
-                        var errorMessage = 'Syntax error: Unexpected character at line ' + currentLineNumber + ', column ' + currentColumnNumber + ', near "' + coolProgramSource.slice(0, 20).replace(/\r\n|\r|\n|\t|[\s]+/g, ' ') + '..."';
+                    if (longestMatch) {
+                        // we successfully found a match
+                        if (longestMatch.token === 24 /* NewLine */) {
+                            currentLineNumber++;
+                            currentColumnNumber = 1;
+                        }
+                        else if (longestMatch.token === 25 /* Tab */) {
+                            currentColumnNumber += _this.tabLength;
+                        }
+                        else if (longestMatch.token !== 23 /* CarriageReturn */) {
+                            // update the column counter
+                            currentColumnNumber += longestMatch.match.length;
+                        }
+                        tokens.push(longestMatch);
+                        coolProgramSource = coolProgramSource.slice(longestMatch.match.length);
+                    }
+                    else {
+                        // we weren't able to find a match
+                        var errorMessage = 'Line ' + currentLineNumber + ', column ' + currentColumnNumber + ':\tSyntax error: Unexpected character sequence near "' + coolProgramSource.slice(0, 20).replace(/\r\n|\r|\n|\t|[\s]+/g, ' ') + '..."';
                         // figure out an approximate length of the error token
                         var untilWhitespaceMatch = /^([^\s]*)/.exec(coolProgramSource);
                         if (untilWhitespaceMatch === null || typeof untilWhitespaceMatch[1] === 'undefined') {
@@ -92,38 +109,25 @@ var CoolToJS;
                         else {
                             var length = untilWhitespaceMatch[1].length;
                         }
-                        return {
-                            success: false,
-                            errorMessages: [{
-                                message: errorMessage,
-                                location: {
-                                    line: currentLineNumber,
-                                    column: currentColumnNumber,
-                                    length: length
-                                }
-                            }]
-                        };
+                        errorMessages.push({
+                            message: errorMessage,
+                            location: {
+                                line: currentLineNumber,
+                                column: currentColumnNumber,
+                                length: length
+                            }
+                        });
+                        // chop off the problematic chunk of input and try to keep analyzing
+                        coolProgramSource = coolProgramSource.replace(/^[^\s]*/, '');
                     }
-                    if (longestMatch.token === 24 /* NewLine */) {
-                        currentLineNumber++;
-                        currentColumnNumber = 1;
-                    }
-                    else if (longestMatch.token === 25 /* Tab */) {
-                        currentColumnNumber += _this.tabLength;
-                    }
-                    else if (longestMatch.token !== 23 /* CarriageReturn */) {
-                        // update the column counter
-                        currentColumnNumber += longestMatch.match.length;
-                    }
-                    tokens.push(longestMatch);
-                    coolProgramSource = coolProgramSource.slice(longestMatch.match.length);
                 }
                 for (var i = 0; i < tokens.length; i++) {
                     console.log(CoolToJS.TokenType[tokens[i].token] + ': "' + tokens[i].match + '", line: ' + tokens[i].location.line + ', column: ' + tokens[i].location.column);
                 }
                 return {
-                    success: true,
-                    tokens: tokens
+                    success: errorMessages.length === 0,
+                    tokens: tokens,
+                    errorMessages: errorMessages
                 };
             };
         }

@@ -8,6 +8,10 @@
         mode: 'cool',
         lineNumbers: true,
         indentUnit: 4,
+        extraKeys: {
+            'Ctrl-Enter': transpile,
+            'F5': transpile
+        }
     });
 
     function addUnderlineToCoolEditor(line, column, length) {
@@ -122,8 +126,9 @@
 
     //#endregion
 
-    document.getElementById('transpile-button').onclick = function () {
+    document.getElementById('transpile-button').onclick = transpile;
 
+    function transpile() {
         var transpilerOutput = CoolToJS.Transpile({
             coolProgramSources: coolEditor.getValue(),
             out_string: out_string,
@@ -154,9 +159,11 @@
 
             generatedJavaScriptEditor.setValue(errorComments);
         }
-    };
+    }
 
-    document.getElementById('play-button').onclick = function () {
+    document.getElementById('play-button').onclick = run;
+
+    function run() {
         $('.console').click();
         try {
             eval(generatedJavaScriptEditor.getValue());
@@ -167,7 +174,7 @@
             }]);
             throw data;
         }
-    };
+    }
 
     document.getElementById('clear-button').onclick = function () {
         window.consoleController.reset();
