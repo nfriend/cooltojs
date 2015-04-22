@@ -58,6 +58,8 @@ var CoolToJS;
 (function (CoolToJS) {
     var LexicalAnalyzer = (function () {
         function LexicalAnalyzer() {
+            var _this = this;
+            this.tabLength = 4;
             this.Analyze = function (coolProgramSource) {
                 var tokens = [], currentLineNumber = 1, currentColumnNumber = 1;
                 while (coolProgramSource.length > 0) {
@@ -71,26 +73,45 @@ var CoolToJS;
                         if (!longestMatch || match[1].length > longestMatch.match.length) {
                             longestMatch = {
                                 token: currentTokenOption.token,
-                                match: match[1]
+                                match: match[1],
+                                location: {
+                                    line: currentLineNumber,
+                                    column: currentColumnNumber,
+                                    length: match[1].length
+                                }
                             };
                         }
                     }
                     if (!longestMatch) {
+                        var errorMessage = 'Syntax error: Unexpected character at line ' + currentLineNumber + ', column ' + currentColumnNumber + ', near "' + coolProgramSource.slice(0, 20).replace(/\r\n|\r|\n|\t|[\s]+/g, ' ') + '..."';
+                        // figure out an approximate length of the error token
+                        var untilWhitespaceMatch = /^([^\s]*)/.exec(coolProgramSource);
+                        if (untilWhitespaceMatch === null || typeof untilWhitespaceMatch[1] === 'undefined') {
+                            var length = 1;
+                        }
+                        else {
+                            var length = untilWhitespaceMatch[1].length;
+                        }
                         return {
                             success: false,
-                            errorMessages: ['Syntax error: Unexpected character at line ' + currentLineNumber + ', column ' + currentColumnNumber + ', near "' + coolProgramSource.slice(0, 20).replace(/\r\n|\r|\n|\t|[\s]+/g, ' ') + '..."']
+                            errorMessages: [{
+                                message: errorMessage,
+                                location: {
+                                    line: currentLineNumber,
+                                    column: currentColumnNumber,
+                                    length: length
+                                }
+                            }]
                         };
                     }
-                    if (longestMatch.token === 22 /* WhiteSpace */) {
-                        // increment the line counter appropriately if
-                        // the whitespace contains newline characters
-                        var newlineCount = longestMatch.match.split(/\r\n|\r|\n|/).length - 1;
-                        if (newlineCount > 0) {
-                            currentLineNumber += newlineCount;
-                            currentColumnNumber = 1;
-                        }
+                    if (longestMatch.token === 24 /* NewLine */) {
+                        currentLineNumber++;
+                        currentColumnNumber = 1;
                     }
-                    else {
+                    else if (longestMatch.token === 25 /* Tab */) {
+                        currentColumnNumber += _this.tabLength;
+                    }
+                    else if (longestMatch.token !== 23 /* CarriageReturn */) {
                         // update the column counter
                         currentColumnNumber += longestMatch.match.length;
                     }
@@ -98,7 +119,7 @@ var CoolToJS;
                     coolProgramSource = coolProgramSource.slice(longestMatch.match.length);
                 }
                 for (var i = 0; i < tokens.length; i++) {
-                    console.log(CoolToJS.TokenType[tokens[i].token] + ': "' + tokens[i].match + '"');
+                    console.log(CoolToJS.TokenType[tokens[i].token] + ': "' + tokens[i].match + '", line: ' + tokens[i].location.line + ', column: ' + tokens[i].location.column);
                 }
                 return {
                     success: true,
@@ -147,26 +168,29 @@ var CoolToJS;
         TokenType[TokenType["ObjectIdentifier"] = 20] = "ObjectIdentifier";
         TokenType[TokenType["TypeIdentifier"] = 21] = "TypeIdentifier";
         TokenType[TokenType["WhiteSpace"] = 22] = "WhiteSpace";
-        TokenType[TokenType["Comment"] = 23] = "Comment";
-        TokenType[TokenType["DotOperator"] = 24] = "DotOperator";
-        TokenType[TokenType["AtSignOperator"] = 25] = "AtSignOperator";
-        TokenType[TokenType["TildeOperator"] = 26] = "TildeOperator";
-        TokenType[TokenType["MultiplationOperator"] = 27] = "MultiplationOperator";
-        TokenType[TokenType["DivisionOperator"] = 28] = "DivisionOperator";
-        TokenType[TokenType["AdditionOperator"] = 29] = "AdditionOperator";
-        TokenType[TokenType["SubtrationOperator"] = 30] = "SubtrationOperator";
-        TokenType[TokenType["LessThanOrEqualsOperator"] = 31] = "LessThanOrEqualsOperator";
-        TokenType[TokenType["LessThanOperator"] = 32] = "LessThanOperator";
-        TokenType[TokenType["EqualsOperator"] = 33] = "EqualsOperator";
-        TokenType[TokenType["AssignmentOperator"] = 34] = "AssignmentOperator";
-        TokenType[TokenType["FatArrowOperator"] = 35] = "FatArrowOperator";
-        TokenType[TokenType["OpenParenthesis"] = 36] = "OpenParenthesis";
-        TokenType[TokenType["ClosedParenthesis"] = 37] = "ClosedParenthesis";
-        TokenType[TokenType["OpenCurlyBracket"] = 38] = "OpenCurlyBracket";
-        TokenType[TokenType["ClosedCurlyBracket"] = 39] = "ClosedCurlyBracket";
-        TokenType[TokenType["Colon"] = 40] = "Colon";
-        TokenType[TokenType["SemiColon"] = 41] = "SemiColon";
-        TokenType[TokenType["Comma"] = 42] = "Comma";
+        TokenType[TokenType["CarriageReturn"] = 23] = "CarriageReturn";
+        TokenType[TokenType["NewLine"] = 24] = "NewLine";
+        TokenType[TokenType["Tab"] = 25] = "Tab";
+        TokenType[TokenType["Comment"] = 26] = "Comment";
+        TokenType[TokenType["DotOperator"] = 27] = "DotOperator";
+        TokenType[TokenType["AtSignOperator"] = 28] = "AtSignOperator";
+        TokenType[TokenType["TildeOperator"] = 29] = "TildeOperator";
+        TokenType[TokenType["MultiplationOperator"] = 30] = "MultiplationOperator";
+        TokenType[TokenType["DivisionOperator"] = 31] = "DivisionOperator";
+        TokenType[TokenType["AdditionOperator"] = 32] = "AdditionOperator";
+        TokenType[TokenType["SubtrationOperator"] = 33] = "SubtrationOperator";
+        TokenType[TokenType["LessThanOrEqualsOperator"] = 34] = "LessThanOrEqualsOperator";
+        TokenType[TokenType["LessThanOperator"] = 35] = "LessThanOperator";
+        TokenType[TokenType["EqualsOperator"] = 36] = "EqualsOperator";
+        TokenType[TokenType["AssignmentOperator"] = 37] = "AssignmentOperator";
+        TokenType[TokenType["FatArrowOperator"] = 38] = "FatArrowOperator";
+        TokenType[TokenType["OpenParenthesis"] = 39] = "OpenParenthesis";
+        TokenType[TokenType["ClosedParenthesis"] = 40] = "ClosedParenthesis";
+        TokenType[TokenType["OpenCurlyBracket"] = 41] = "OpenCurlyBracket";
+        TokenType[TokenType["ClosedCurlyBracket"] = 42] = "ClosedCurlyBracket";
+        TokenType[TokenType["Colon"] = 43] = "Colon";
+        TokenType[TokenType["SemiColon"] = 44] = "SemiColon";
+        TokenType[TokenType["Comma"] = 45] = "Comma";
     })(CoolToJS.TokenType || (CoolToJS.TokenType = {}));
     var TokenType = CoolToJS.TokenType;
     // order signifies priority (keywords are listed first)
@@ -262,86 +286,98 @@ var CoolToJS;
         },
         {
             token: 22 /* WhiteSpace */,
-            regex: /^(\s+)/,
+            regex: /^( +)/,
         },
         {
-            token: 23 /* Comment */,
+            token: 23 /* CarriageReturn */,
+            regex: /^(\r)/,
+        },
+        {
+            token: 24 /* NewLine */,
+            regex: /^(\n)/,
+        },
+        {
+            token: 25 /* Tab */,
+            regex: /^(\t)/,
+        },
+        {
+            token: 26 /* Comment */,
             regex: /^((?:--.*)|(?:\(\*(?:(?!\*\))[\s\S])*\*\)))/,
         },
         {
-            token: 24 /* DotOperator */,
+            token: 27 /* DotOperator */,
             regex: /^(\.)/
         },
         {
-            token: 25 /* AtSignOperator */,
+            token: 28 /* AtSignOperator */,
             regex: /^(\@)/
         },
         {
-            token: 26 /* TildeOperator */,
+            token: 29 /* TildeOperator */,
             regex: /^(~)/
         },
         {
-            token: 27 /* MultiplationOperator */,
+            token: 30 /* MultiplationOperator */,
             regex: /^(\*)/
         },
         {
-            token: 28 /* DivisionOperator */,
+            token: 31 /* DivisionOperator */,
             regex: /^(\/)/
         },
         {
-            token: 29 /* AdditionOperator */,
+            token: 32 /* AdditionOperator */,
             regex: /^(\+)/
         },
         {
-            token: 30 /* SubtrationOperator */,
+            token: 33 /* SubtrationOperator */,
             regex: /^(-)/
         },
         {
-            token: 31 /* LessThanOrEqualsOperator */,
+            token: 34 /* LessThanOrEqualsOperator */,
             regex: /^(<=)/
         },
         {
-            token: 32 /* LessThanOperator */,
+            token: 35 /* LessThanOperator */,
             regex: /^(<)/
         },
         {
-            token: 33 /* EqualsOperator */,
+            token: 36 /* EqualsOperator */,
             regex: /^(=)/
         },
         {
-            token: 34 /* AssignmentOperator */,
+            token: 37 /* AssignmentOperator */,
             regex: /^(<-)/
         },
         {
-            token: 35 /* FatArrowOperator */,
+            token: 38 /* FatArrowOperator */,
             regex: /^(=>)/
         },
         {
-            token: 36 /* OpenParenthesis */,
+            token: 39 /* OpenParenthesis */,
             regex: /^(\()/
         },
         {
-            token: 37 /* ClosedParenthesis */,
+            token: 40 /* ClosedParenthesis */,
             regex: /^(\))/
         },
         {
-            token: 38 /* OpenCurlyBracket */,
+            token: 41 /* OpenCurlyBracket */,
             regex: /^(\{)/
         },
         {
-            token: 39 /* ClosedCurlyBracket */,
+            token: 42 /* ClosedCurlyBracket */,
             regex: /^(\})/
         },
         {
-            token: 40 /* Colon */,
+            token: 43 /* Colon */,
             regex: /^(:)/
         },
         {
-            token: 41 /* SemiColon */,
+            token: 44 /* SemiColon */,
             regex: /^(;)/
         },
         {
-            token: 42 /* Comma */,
+            token: 45 /* Comma */,
             regex: /^(,)/
         }
     ];

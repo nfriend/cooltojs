@@ -58,6 +58,7 @@
     <TypeScriptCompile Include="scripts\CoolProgramSources.ts" />
     <TypeScriptCompile Include="scripts\cooltojs.ts" />
     <TypeScriptCompile Include="scripts\LexicalAnalyzer.ts" />
+    <TypeScriptCompile Include="scripts\OutputInterfaces.ts" />
     <TypeScriptCompile Include="scripts\Parser.ts" />
     <TypeScriptCompile Include="scripts\Tokens.ts" />
     <TypeScriptCompile Include="scripts\Transpiler.ts" />

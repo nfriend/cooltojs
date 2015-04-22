@@ -24,6 +24,9 @@
         ObjectIdentifier,
         TypeIdentifier,
         WhiteSpace,
+        CarriageReturn,
+        NewLine,
+        Tab,
         Comment,
 
         DotOperator,
@@ -142,7 +145,19 @@
         },
         {
             token: TokenType.WhiteSpace,
-            regex: /^(\s+)/,
+            regex: /^( +)/,
+        },
+        {
+            token: TokenType.CarriageReturn,
+            regex: /^(\r)/,
+        },
+        {
+            token: TokenType.NewLine,
+            regex: /^(\n)/,
+        },
+        {
+            token: TokenType.Tab,
+            regex: /^(\t)/,
         },
         {
             token: TokenType.Comment,

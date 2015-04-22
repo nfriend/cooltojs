@@ -2,16 +2,13 @@
 
     export interface TokenMatch {
         token: TokenType;
-        match: string
-    }
-
-    export interface LexicalAnalyzerOutput {
-        success: boolean;
-        tokens?: TokenMatch[];
-        errorMessages?: string[];
+        match: string;
+        location: SourceLocation;
     }
 
     export class LexicalAnalyzer {
+
+        private tabLength = 4;
 
         public Analyze = (coolProgramSource: string): LexicalAnalyzerOutput => {
             var tokens: TokenMatch[] = [],
@@ -30,33 +27,52 @@
                     if (!longestMatch || match[1].length > longestMatch.match.length) {
                         longestMatch = {
                             token: currentTokenOption.token,
-                            match: match[1]
+                            match: match[1],
+                            location: {
+                                line: currentLineNumber,
+                                column: currentColumnNumber,
+                                length: match[1].length
+                            }
                         }
                     }
                 }
 
                 if (!longestMatch) {
+                    var errorMessage = 'Syntax error: Unexpected character at line '
+                        + currentLineNumber
+                        + ', column '
+                        + currentColumnNumber
+                        + ', near "'
+                        + coolProgramSource.slice(0, 20).replace(/\r\n|\r|\n|\t|[\s]+/g, ' ')
+                        + '..."';
+
+                    // figure out an approximate length of the error token
+                    var untilWhitespaceMatch = /^([^\s]*)/.exec(coolProgramSource);
+                    if (untilWhitespaceMatch === null || typeof untilWhitespaceMatch[1] === 'undefined') {
+                        var length = 1;
+                    } else {
+                        var length = untilWhitespaceMatch[1].length;
+                    }
+
                     return {
                         success: false,
-                        errorMessages: ['Syntax error: Unexpected character at line '
-                            + currentLineNumber
-                            + ', column '
-                            + currentColumnNumber
-                            + ', near "'
-                            + coolProgramSource.slice(0, 20).replace(/\r\n|\r|\n|\t|[\s]+/g, ' ')
-                            + '..."']
+                        errorMessages: [{
+                            message: errorMessage,
+                            location: {
+                                line: currentLineNumber,
+                                column: currentColumnNumber,
+                                length: length
+                            }
+                        }]
                     };
                 }
 
-                if (longestMatch.token === TokenType.WhiteSpace) {
-                    // increment the line counter appropriately if
-                    // the whitespace contains newline characters
-                    var newlineCount = longestMatch.match.split(/\r\n|\r|\n|/).length - 1;
-                    if (newlineCount > 0) {
-                        currentLineNumber += newlineCount;
-                        currentColumnNumber = 1;
-                    }
-                } else {
+                if (longestMatch.token === TokenType.NewLine) {
+                    currentLineNumber++;
+                    currentColumnNumber = 1;
+                } else if (longestMatch.token === TokenType.Tab) {
+                    currentColumnNumber += this.tabLength;
+                } else if (longestMatch.token !== TokenType.CarriageReturn) {
                     // update the column counter
                     currentColumnNumber += longestMatch.match.length;
                 }
@@ -66,7 +82,7 @@
             }
 
             for (var i = 0; i < tokens.length; i++) {
-                console.log(TokenType[tokens[i].token] + ': "' + tokens[i].match + '"');
+                console.log(TokenType[tokens[i].token] + ': "' + tokens[i].match + '", line: ' + tokens[i].location.line + ', column: ' + tokens[i].location.column);
             }
 
             return {

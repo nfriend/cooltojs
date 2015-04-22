@@ -8,12 +8,6 @@
         in_int?: (onInput: (input: string) => any) => void;
     }
 
-    export interface TranspilerOutput {
-        success: boolean;
-        generatedJavaScript?: string;
-        errorMessages?: string[];
-    }
-
     // temporary
     var generatedJavaScriptExample = '\
 // note that this generated code is currently hardcoded\n\

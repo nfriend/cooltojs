@@ -30,8 +30,18 @@
     color: #3F7F5F;
 }
 
-/* console styles */
+.red-squiggly-underline {
+    position: absolute;
+    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3wQWDAwcHuBA/gAAAB1pVFh0Q29tbWVudAAAAAAAQ3JlYXRlZCB3aXRoIEdJTVBkLmUHAAAAOklEQVQI1zXIMRGAMBAAsDzHwoiLiqmN14EIxhqrg8p4hh5bLlG9P2CMF0cUO1oD5w9zgqi1blwyEz6qnwvN7E3FeQAAAABJRU5ErkJggg==');
+    background-repeat: repeat-x;
+    margin-top: -3px;
+    margin-left: -2px;
+    padding-left: 4px;
+    z-index: 100;
+    pointer-events: none;
+}
 
+/* console styles */
 div.console {
     font-size: 14px;
     border: 1px solid #DDD;

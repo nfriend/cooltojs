@@ -10,6 +10,34 @@
         indentUnit: 4,
     });
 
+    function addUnderlineToCoolEditor(line, column, length) {
+
+        length = typeof length === 'undefined' ? 1 : length;
+
+        var nbspString = '',
+            nbsp = '&nbsp';
+        for (var i = 0; i < length; i++) {
+            nbspString += nbsp;
+        }
+
+        var elementToAdd = $('<div class="red-squiggly-underline">' + nbspString + '</div>')[0];
+        coolEditor.addWidget({
+            line: line,
+            ch: column
+        }, elementToAdd, false);
+        underlineElements.push(elementToAdd);
+    }
+
+    var underlineElements = [];
+    function removeAllUnderlinesFromCoolEditor() {
+        for (var i = 0; i < underlineElements.length; i++) {
+            $(underlineElements[i]).remove();
+        }
+        underlineElements.length = 0;
+    }
+
+    coolEditor.on('change', removeAllUnderlinesFromCoolEditor);
+
     var generatedJavaScriptEditor = CodeMirror(document.getElementById('generated-javascript'), {
         mode: 'javascript',
         lineNumbers: true,
@@ -107,10 +135,17 @@
         if (transpilerOutput.success) {
             generatedJavaScriptEditor.setValue(transpilerOutput.generatedJavaScript);
         } else {
+
+            // display the error messages as comments in the JavaScript editor 
             if (transpilerOutput.errorMessages) {
                 var errorComments = '/*\n\nThe following errors occured while transpiling:\n\n';
                 for (var i = 0; i < transpilerOutput.errorMessages.length; i++) {
-                    errorComments += '• ' + transpilerOutput.errorMessages[i] + '\n';
+                    errorComments += '• ' + transpilerOutput.errorMessages[i].message + '\n';
+
+                    // underline the error in the Cool editor
+                    addUnderlineToCoolEditor(transpilerOutput.errorMessages[i].location.line - 1,
+                                             transpilerOutput.errorMessages[i].location.column - 1,
+                                             transpilerOutput.errorMessages[i].location.length);
                 }
                 errorComments += '\n*/';
             } else {
