@@ -99,6 +99,15 @@ var CoolToJS;
                             currentLineNumber++;
                             currentColumnNumber = 1;
                         }
+                        else if (longestMatch.token === 19 /* String */) {
+                            // strings call also have newlines in them, if they're
+                            // a multi-line string
+                            var lines = longestMatch.match.split('\n');
+                            currentLineNumber += lines.length - 1;
+                            if (lines.length > 1) {
+                                currentColumnNumber = lines[lines.length - 1].length + 1;
+                            }
+                        }
                         else if (longestMatch.token === 25 /* Tab */) {
                             currentColumnNumber += _this.tabLength;
                         }
@@ -301,18 +310,21 @@ var CoolToJS;
                 // for a multi-line string
                 // doesn't yet handle \" inside string
                 var fullMatch = null;
-                var firstLineMatch = /^("[^"\n]*\\[\s]*\n)/.exec(input);
+                var firstLineMatch = /^(".*\\[\s]*\n)/.exec(input);
                 if (firstLineMatch !== null && typeof firstLineMatch[1] !== 'undefined') {
+                    if (stringContainsUnescapedQuotes(firstLineMatch[1])) {
+                        return null;
+                    }
                     fullMatch = firstLineMatch[1];
                     input = input.slice(firstLineMatch[1].length);
-                    var middleLineRegex = /^([^"\n]*\\[\s]*\n)/;
+                    var middleLineRegex = /^(.*\\[\s]*\n)/;
                     var middleLineMatch = middleLineRegex.exec(input);
-                    while (middleLineMatch !== null && typeof middleLineMatch[1] !== 'undefined') {
+                    while (middleLineMatch !== null && typeof middleLineMatch[1] !== 'undefined' && !(stringContainsUnescapedQuotes(middleLineMatch[1]))) {
                         fullMatch += middleLineMatch[1];
                         input = input.slice(middleLineMatch[1].length);
                         middleLineMatch = middleLineRegex.exec(input);
                     }
-                    var lastLineMatch = /^(.*?")/.exec(input);
+                    var lastLineMatch = /^(.*?[^\\]")/.exec(input);
                     if (lastLineMatch !== null && lastLineMatch[1] !== 'undefined') {
                         fullMatch += lastLineMatch[1];
                         return fullMatch;
@@ -435,6 +447,15 @@ var CoolToJS;
         return (tokenType == 0 /* ClassKeyword */ || tokenType == 1 /* ElseKeyword */ || tokenType == 2 /* FalseKeyword */ || tokenType == 3 /* FiKeyword */ || tokenType == 4 /* IfKeyword */ || tokenType == 5 /* InheritsKeyword */ || tokenType == 6 /* IsvoidKeyword */ || tokenType == 7 /* LetKeyword */ || tokenType == 8 /* LoopKeyword */ || tokenType == 9 /* PoolKeyword */ || tokenType == 10 /* ThenKeyword */ || tokenType == 11 /* WhileKeyword */ || tokenType == 12 /* CaseKeyword */ || tokenType == 13 /* EsacKeyword */ || tokenType == 14 /* NewKeyword */ || tokenType == 15 /* OfKeyword */ || tokenType == 16 /* NotKeyword */ || tokenType == 17 /* TrueKeyword */);
     }
     CoolToJS.isKeyword = isKeyword;
+    function stringContainsUnescapedQuotes(input, ignoreFinalQuote) {
+        if (ignoreFinalQuote === void 0) { ignoreFinalQuote = false; }
+        if (ignoreFinalQuote) {
+            return /[^\\]".+/.test(input);
+        }
+        else {
+            return /[^\\]"/.test(input);
+        }
+    }
 })(CoolToJS || (CoolToJS = {}));
 var CoolToJS;
 (function (CoolToJS) {

@@ -153,20 +153,24 @@
 
                 // doesn't yet handle \" inside string
                 var fullMatch: string = null;
-                var firstLineMatch = /^("[^"\n]*\\[\s]*\n)/.exec(input);
+                var firstLineMatch = /^(".*\\[\s]*\n)/.exec(input);
                 if (firstLineMatch !== null && typeof firstLineMatch[1] !== 'undefined') {
+                    if (stringContainsUnescapedQuotes(firstLineMatch[1])) {
+                        return null;
+                    }
+
                     fullMatch = firstLineMatch[1];
                     input = input.slice(firstLineMatch[1].length);
 
-                    var middleLineRegex = /^([^"\n]*\\[\s]*\n)/;
+                    var middleLineRegex = /^(.*\\[\s]*\n)/;
                     var middleLineMatch = middleLineRegex.exec(input);
-                    while (middleLineMatch !== null && typeof middleLineMatch[1] !== 'undefined') {
+                    while (middleLineMatch !== null && typeof middleLineMatch[1] !== 'undefined' && !(stringContainsUnescapedQuotes(middleLineMatch[1]))) {
                         fullMatch += middleLineMatch[1];
                         input = input.slice(middleLineMatch[1].length);
                         middleLineMatch = middleLineRegex.exec(input);
                     }
 
-                    var lastLineMatch = /^(.*?")/.exec(input);
+                    var lastLineMatch = /^(.*?[^\\]")/.exec(input);
                     if (lastLineMatch !== null && lastLineMatch[1] !== 'undefined') {
                         fullMatch += lastLineMatch[1];
                         return fullMatch;
@@ -305,5 +309,13 @@
             || tokenType == TokenType.OfKeyword
             || tokenType == TokenType.NotKeyword
             || tokenType == TokenType.TrueKeyword);
+    }
+
+    function stringContainsUnescapedQuotes(input: string, ignoreFinalQuote: boolean = false): boolean {
+        if (ignoreFinalQuote) {
+            return /[^\\]".+/.test(input);
+        } else {
+            return /[^\\]"/.test(input);
+        }
     }
 }

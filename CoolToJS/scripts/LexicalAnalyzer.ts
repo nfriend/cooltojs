@@ -57,6 +57,15 @@
                     if (longestMatch.token === TokenType.NewLine) {
                         currentLineNumber++;
                         currentColumnNumber = 1;
+                    } else if (longestMatch.token === TokenType.String) {
+                        // strings call also have newlines in them, if they're
+                        // a multi-line string
+                        var lines = longestMatch.match.split('\n');
+                        currentLineNumber += lines.length - 1;
+                        if (lines.length > 1) {
+                            currentColumnNumber = lines[lines.length - 1].length + 1;
+                        }
+
                     } else if (longestMatch.token === TokenType.Tab) {
                         currentColumnNumber += this.tabLength;
                     } else if (longestMatch.token !== TokenType.CarriageReturn) {
