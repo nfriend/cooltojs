@@ -183,7 +183,7 @@
     });
 
 
-
+    // populate the "sources" dropdown with the example programs
     var options = '';
     for (var i = 0; i < CoolToJSDemo.CoolProgramSources.length; i++) {
         var currentSource = CoolToJSDemo.CoolProgramSources[i];
