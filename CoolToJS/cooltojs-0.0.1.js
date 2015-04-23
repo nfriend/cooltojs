@@ -99,9 +99,9 @@ var CoolToJS;
                             currentLineNumber++;
                             currentColumnNumber = 1;
                         }
-                        else if (longestMatch.token === 19 /* String */) {
-                            // strings call also have newlines in them, if they're
-                            // a multi-line string
+                        else if (longestMatch.token === 19 /* String */ || longestMatch.token === 26 /* Comment */) {
+                            // strings and comments can also have newlines 
+                            // in them, if they're multi-line
                             var lines = longestMatch.match.split('\n');
                             currentLineNumber += lines.length - 1;
                             if (lines.length > 1) {
@@ -142,9 +142,9 @@ var CoolToJS;
                         currentColumnNumber += length;
                     }
                 }
-                for (var i = 0; i < tokens.length; i++) {
-                    console.log(CoolToJS.TokenType[tokens[i].token] + ': "' + tokens[i].match + '", line: ' + tokens[i].location.line + ', column: ' + tokens[i].location.column);
-                }
+                //for (var i = 0; i < tokens.length; i++) {
+                //    console.log(TokenType[tokens[i].token] + ': "' + tokens[i].match + '", line: ' + tokens[i].location.line + ', column: ' + tokens[i].location.column);
+                //}
                 return {
                     success: errorMessages.length === 0,
                     tokens: tokens,

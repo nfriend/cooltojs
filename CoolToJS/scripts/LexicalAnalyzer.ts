@@ -57,9 +57,9 @@
                     if (longestMatch.token === TokenType.NewLine) {
                         currentLineNumber++;
                         currentColumnNumber = 1;
-                    } else if (longestMatch.token === TokenType.String) {
-                        // strings call also have newlines in them, if they're
-                        // a multi-line string
+                    } else if (longestMatch.token === TokenType.String || longestMatch.token === TokenType.Comment) {
+                        // strings and comments can also have newlines 
+                        // in them, if they're multi-line
                         var lines = longestMatch.match.split('\n');
                         currentLineNumber += lines.length - 1;
                         if (lines.length > 1) {
@@ -110,9 +110,9 @@
                 }
             }
 
-            for (var i = 0; i < tokens.length; i++) {
-                console.log(TokenType[tokens[i].token] + ': "' + tokens[i].match + '", line: ' + tokens[i].location.line + ', column: ' + tokens[i].location.column);
-            }
+            //for (var i = 0; i < tokens.length; i++) {
+            //    console.log(TokenType[tokens[i].token] + ': "' + tokens[i].match + '", line: ' + tokens[i].location.line + ', column: ' + tokens[i].location.column);
+            //}
 
             return {
                 success: errorMessages.length === 0,
