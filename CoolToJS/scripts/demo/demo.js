@@ -207,6 +207,13 @@
             $('.CodeMirror, div.console div.jquery-console-inner').css({
                 height: $window.height() - 85 + 'px'
             });
+
+            // i'm tired of scrolling down while developing this thing
+            setTimeout(function () {
+                if (document.location.hostname == "localhost") {
+                    $(document).scrollTop($(document).height());
+                }
+            }, 0);
         } else {
             $('.CodeMirror, div.console div.jquery-console-inner').css({
                 height: '400px'
