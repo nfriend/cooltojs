@@ -150,8 +150,6 @@
                 }
 
                 // for a multi-line string
-
-                // doesn't yet handle \" inside string
                 var fullMatch: string = null;
                 var firstLineMatch = /^(".*\\[\s]*\n)/.exec(input);
                 if (firstLineMatch !== null && typeof firstLineMatch[1] !== 'undefined') {
@@ -206,6 +204,8 @@
             token: TokenType.Tab,
             regex: /^(\t)/,
         },
+
+        // currently doesn't allow nested (* ... *) comments
         {
             token: TokenType.Comment,
             regex: /^((?:--.*)|(?:\(\*(?:(?!\*\))[\s\S])*\*\)))/,

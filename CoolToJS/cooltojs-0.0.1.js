@@ -308,7 +308,6 @@ var CoolToJS;
                     return singleLineMatch[1];
                 }
                 // for a multi-line string
-                // doesn't yet handle \" inside string
                 var fullMatch = null;
                 var firstLineMatch = /^(".*\\[\s]*\n)/.exec(input);
                 if (firstLineMatch !== null && typeof firstLineMatch[1] !== 'undefined') {
