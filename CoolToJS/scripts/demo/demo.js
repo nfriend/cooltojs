@@ -4,7 +4,7 @@
 
     //#region set up editors and the console
     var coolEditor = CodeMirror(document.getElementById('cool-editor'), {
-        value: CoolToJS.CoolProgramSources.HelloWorld2,
+        value: CoolToJSDemo.CoolProgramSources[9].source,
         mode: 'cool',
         lineNumbers: true,
         indentUnit: 4,
@@ -126,7 +126,7 @@
 
     //#endregion
 
-    document.getElementById('transpile-button').onclick = transpile;
+    $('#transpile-button').click(transpile);
 
     function transpile() {
         removeAllUnderlinesFromCoolEditor();
@@ -163,7 +163,7 @@
         }
     }
 
-    document.getElementById('play-button').onclick = run;
+    $('#play-button').click(run);
 
     function run() {
         $('.console').click();
@@ -178,12 +178,24 @@
         }
     }
 
-    document.getElementById('clear-button').onclick = function () {
+    $('#clear-button').click(function () {
         window.consoleController.reset();
-    };
+    });
 
-    $('#source-dropdown').change(function () {
-        coolEditor.setValue(CoolToJS.CoolProgramSources[$('#source-dropdown option:selected').val()]);
+
+
+    var options = '';
+    for (var i = 0; i < CoolToJSDemo.CoolProgramSources.length; i++) {
+        var currentSource = CoolToJSDemo.CoolProgramSources[i];
+        options += '<option '
+            + (currentSource.selected ? 'selected' : '')
+            + ' value="' + i + '">'
+            + currentSource.filename
+            + '</option>';
+    }
+
+    $('#source-dropdown').append(options).change(function () {
+        coolEditor.setValue(CoolToJSDemo.CoolProgramSources[$('#source-dropdown option:selected').val()].source);
     });
 
     // when the window is resized, set the heights of the various 

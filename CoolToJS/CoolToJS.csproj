@@ -47,21 +47,21 @@
     <Content Include="lib\codemirror-5.1\mode\javascript\typescript.html" />
     <Content Include="lib\jquery\jquery-1.11.2.min.js" />
     <Content Include="lib\jquery-console-master\jquery.console.js" />
-    <Content Include="scripts\CodeMirror-cool.js" />
-    <Content Include="scripts\demo.js" />
+    <Content Include="scripts\demo\CodeMirror-cool.js" />
+    <Content Include="scripts\demo\demo.js" />
     <Content Include="styles\CodeMirror-cool-theme.css" />
     <Content Include="web.config">
       <SubType>Designer</SubType>
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <TypeScriptCompile Include="scripts\CoolProgramSources.ts" />
-    <TypeScriptCompile Include="scripts\cooltojs.ts" />
-    <TypeScriptCompile Include="scripts\LexicalAnalyzer.ts" />
-    <TypeScriptCompile Include="scripts\OutputInterfaces.ts" />
-    <TypeScriptCompile Include="scripts\Parser.ts" />
-    <TypeScriptCompile Include="scripts\Tokens.ts" />
-    <TypeScriptCompile Include="scripts\Transpiler.ts" />
+    <Content Include="scripts\demo\cool-program-sources.js" />
+    <TypeScriptCompile Include="scripts\transpiler\cooltojs.ts" />
+    <TypeScriptCompile Include="scripts\transpiler\LexicalAnalyzer.ts" />
+    <TypeScriptCompile Include="scripts\transpiler\OutputInterfaces.ts" />
+    <TypeScriptCompile Include="scripts\transpiler\Parser.ts" />
+    <TypeScriptCompile Include="scripts\transpiler\Tokens.ts" />
+    <TypeScriptCompile Include="scripts\transpiler\Transpiler.ts" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="styles\cooltojs.css" />
