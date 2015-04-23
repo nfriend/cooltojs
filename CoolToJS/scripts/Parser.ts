@@ -1,6 +1,10 @@
 ﻿module CoolToJS {
     export class Parser {
-        public Parse = () => {
+        public Parse = (tokens: Array<Token>): ParserOutput => {
+            return {
+                success: true,
+                parseTree: {}
+            }
         }
     }
 }

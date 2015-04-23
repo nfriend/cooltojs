@@ -80,7 +80,17 @@ _in_string(function(input) {\n\
             return {
                 success: false,
                 errorMessages: lexicalAnalyzerOutput.errorMessages
-            }
+            };
+        }
+
+        var parser = new Parser();
+        var parserOutput = parser.Parse(lexicalAnalyzerOutput.tokens);
+
+        if (!parserOutput.success) {
+            return {
+                success: false,
+                errorMessages: parserOutput.errorMessages
+            };
         }
 
         return {

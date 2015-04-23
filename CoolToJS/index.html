@@ -44,10 +44,19 @@
     <div class="container-fluid">
         <div class="row">
             <div class="col-md-4 col-sm-12">
-                <p id="source-label" class="output-label pull-left">Cool Source:</p>
-                <button id="transpile-button" type="button" class="btn btn-default btn-sm pull-right">
-                    <span class="glyphicon glyphicon-import" style="color: #337ab7"></span> Transpile
-                </button>
+                <p class="output-label pull-left hidden-md">Cool Source:</p>
+                <p class="output-label pull-left hidden-lg hidden-sm hidden-xs">Source:</p>
+                <div class="form-inline pull-right" style="display: inline-block">
+                    <select id="source-dropdown" class="form-control" style="height: 30px">
+                        <option value="HelloWorld">helloWorld.cl</option>
+                        <option value="HelloWorld2" selected>helloWorld2.cl</option>
+                        <option value="List">list.cl</option>
+                        <option value="Atoi">atoi.cl</option>
+                    </select>
+                    <button id="transpile-button" type="button" class="btn btn-default btn-sm">
+                        <span class="glyphicon glyphicon-import" style="color: #337ab7"></span> Transpile
+                    </button>
+                </div>
                 <div class="clearfix"></div>
                 <div id="cool-editor" class="editor cool-theme"></div>
                 <br />
@@ -87,6 +96,8 @@
 
     <script src="lib/jquery/jquery-1.11.2.min.js"></script>
     <script src="lib/jquery-console-master/jquery.console.js"></script>
+
+    <script src="lib/bootstrap-3.3.4-dist/js/bootstrap.min.js"></script>
 
     <script src="cooltojs-0.0.1.js"></script>
 

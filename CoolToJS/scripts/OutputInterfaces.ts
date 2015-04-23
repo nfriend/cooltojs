@@ -19,7 +19,13 @@
 
     export interface LexicalAnalyzerOutput {
         success: boolean;
-        tokens?: TokenMatch[];
+        tokens?: Token[];
+        errorMessages?: Array<ErrorMessage>;
+    }
+
+    export interface ParserOutput {
+        success: boolean;
+        parseTree?: any;
         errorMessages?: Array<ErrorMessage>;
     }
 }

@@ -20,6 +20,14 @@
     margin-bottom: 5px;
 }
 
+@media (max-width: 767px) {
+    #source-dropdown {
+        display: inline-block;
+        width: auto;
+        vertical-align: middle;
+    }
+}
+
 .editor {
     border: 1px solid #DDD;
 }

@@ -1,6 +1,6 @@
 ﻿module CoolToJS {
 
-    export interface TokenMatch {
+    export interface Token {
         token: TokenType;
         match: string;
         location: SourceLocation;
@@ -11,13 +11,13 @@
         private tabLength = 4;
 
         public Analyze = (coolProgramSource: string): LexicalAnalyzerOutput => {
-            var tokens: TokenMatch[] = [],
+            var tokens: Token[] = [],
                 currentLineNumber: number = 1,
                 currentColumnNumber: number = 1,
                 errorMessages: Array<ErrorMessage> = [];
 
             while (coolProgramSource.length > 0) {
-                var longestMatch: TokenMatch = null;
+                var longestMatch: Token = null;
                 for (var i = 0; i < CoolToJS.TokenLookup.length; i++) {
                     var currentTokenOption = CoolToJS.TokenLookup[i],
                         matchIsKeyword = CoolToJS.isKeyword(currentTokenOption.token),
