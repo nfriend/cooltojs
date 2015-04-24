@@ -9,7 +9,7 @@
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="lib/bootstrap-3.3.4-dist/css/bootstrap.min.css" type="text/css" />
     <link href='http://fonts.googleapis.com/css?family=Roboto:400,700,400italic' rel='stylesheet' type='text/css'>
-    <link rel="stylesheet" href="lib/codemirror-5.1/lib/codemirror.css" type="text/css" />
+    <link rel="stylesheet" href="lib/codemirror-5.2/lib/codemirror.css" type="text/css" />
     <link rel="stylesheet" href="styles/CodeMirror-cool-theme.css" type="text/css" />
     <link rel="stylesheet" href="styles/cooltojs.css" type="text/css" />
 
@@ -22,6 +22,11 @@
     <meta property="og:image:height" content="256">
 
     <meta name="description" content="A Cool-to-JavaScript transpiler, written in TypeScript.">
+
+    <!--[if lt IE 9]><script type="text/javascript">
+        window.location = "old-browser.html";
+    </script><![endif]-->
+
 
 </head>
 <body>
@@ -47,8 +52,7 @@
                 <p class="output-label pull-left hidden-md">Cool Source:</p>
                 <p class="output-label pull-left hidden-lg hidden-sm hidden-xs">Source:</p>
                 <div class="form-inline pull-right" style="display: inline-block">
-                    <select id="source-dropdown" class="form-control" style="height: 30px">
-                    </select>
+                    <select id="source-dropdown" class="form-control" style="height: 30px"></select>
                     <button id="transpile-button" type="button" class="btn btn-default btn-sm">
                         <span class="glyphicon glyphicon-import" style="color: #337ab7"></span> Transpile
                     </button>
@@ -85,12 +89,12 @@
     <script type="text/cool" src="cool/list.cl">
     </script>
 
-    <script src="lib/codemirror-5.1/lib/codemirror.js"></script>
-    <script src="lib/codemirror-5.1/addon/mode/simple.js"></script>
+    <script src="lib/codemirror-5.2/lib/codemirror.js"></script>
+    <script src="lib/codemirror-5.2/addon/mode/simple.js"></script>
     <script src="scripts/demo/CodeMirror-cool.js"></script>
-    <script src="lib/codemirror-5.1/mode/javascript/javascript.js"></script>
+    <script src="lib/codemirror-5.2/mode/javascript/javascript.js"></script>
 
-    <script src="lib/jquery/jquery-1.11.2.min.js"></script>
+    <script src="lib/jquery/jquery-2.1.3.min.js"></script>
     <script src="lib/jquery-console-master/jquery.console.js"></script>
 
     <script src="lib/bootstrap-3.3.4-dist/js/bootstrap.min.js"></script>
