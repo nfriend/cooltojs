@@ -1,0 +1,36 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Test</title>
+</head>
+<body>
+
+    <script type="text/cool" src="cool/HelloWorld2.cl">
+    </script>
+    <script src="cooltojs-0.0.1.js"></script>
+    <script>
+
+        // automatically fetch any Cool source referenced
+        // by a <script type="text/cool"> element
+        CoolToJS.GetReferencedCoolSources(function (sources) {
+
+            // transpile the source
+            var transpilerOutput = CoolToJS.Transpile({
+                coolProgramSources: sources,
+                out_string: function(output) {
+                    alert(output);
+                },
+                in_string: function (callback) {
+                    var input = prompt('Please enter a string:');
+                    callback(input);
+                },
+            });
+
+            if (transpilerOutput.success) {
+                // do what you want with the output
+                eval(transpilerOutput.generatedJavaScript);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -50,6 +50,7 @@
     <Content Include="scripts\demo\CodeMirror-cool.js" />
     <Content Include="scripts\demo\demo.js" />
     <Content Include="styles\CodeMirror-cool-theme.css" />
+    <Content Include="test.html" />
     <Content Include="web.config">
       <SubType>Designer</SubType>
     </Content>
@@ -75,6 +76,7 @@
     <Content Include="lib\bootstrap-3.3.4-dist\fonts\glyphicons-halflings-regular.woff2" />
     <Content Include="cool\atoi.cl" />
     <Content Include="cool\list.cl" />
+    <Content Include="cool\HelloWorld2.cl" />
     <None Include="package.json" />
     <None Include="web.Debug.config">
       <DependentUpon>web.config</DependentUpon>
