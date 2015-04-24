@@ -85,6 +85,9 @@ var CoolToJS;
                     }
                     if (longestMatch) {
                         // we successfully found a match
+                        if (longestMatch.match.indexOf("\"\\n\\tTo add") === 0) {
+                            console.log("\\n\\tTo add a number to");
+                        }
                         if (longestMatch.token === 24 /* NewLine */) {
                             currentLineNumber++;
                             currentColumnNumber = 1;
@@ -96,6 +99,9 @@ var CoolToJS;
                             currentLineNumber += lines.length - 1;
                             if (lines.length > 1) {
                                 currentColumnNumber = lines[lines.length - 1].length + 1;
+                            }
+                            else {
+                                currentColumnNumber += longestMatch.match.length;
                             }
                         }
                         else if (longestMatch.token === 25 /* Tab */) {
