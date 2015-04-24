@@ -187,16 +187,17 @@
     var options = '';
     for (var i = 0; i < CoolToJSDemo.CoolProgramSources.length; i++) {
         var currentSource = CoolToJSDemo.CoolProgramSources[i];
-        options += '<option '
-            + (currentSource.selected ? 'selected' : '')
-            + ' value="' + i + '">'
+        options += '<option value="' + i + '">'
             + currentSource.filename
             + '</option>';
     }
 
+    // select the appropriate source to start
     $('#source-dropdown').append(options).change(function () {
         coolEditor.setValue(CoolToJSDemo.CoolProgramSources[$('#source-dropdown option:selected').val()].source);
     });
+
+    $('#source-dropdown option:eq(9)').attr('selected', 'selected');
 
     // when the window is resized, set the heights of the various 
     // editors/consoles to take the height of one page, so that scrolling
