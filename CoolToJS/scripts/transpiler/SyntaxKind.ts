@@ -1,62 +1,73 @@
-﻿module CoolToJS.DontCompile {
+﻿module CoolToJS {
     export enum SyntaxKind {
-        ClassKeyword = 0,
-        ElseKeyword = 1,
-        FalseKeyword = 2,
-        FiKeyword = 3,
-        IfKeyword = 4,
-        InheritsKeyword = 5,
-        IsvoidKeyword = 6,
-        LetKeyword = 7,
-        LoopKeyword = 8,
-        PoolKeyword = 9,
-        ThenKeyword = 10,
-        WhileKeyword = 11,
-        CaseKeyword = 12,
-        EsacKeyword = 13,
-        NewKeyword = 14,
-        OfKeyword = 15,
-        NotKeyword = 16,
-        TrueKeyword = 17,
+        EndOfInput,
+        OpenParenthesis,
+        ClosedParenthesis,
+        MultiplationOperator,
+        AdditionOperator,
+        Comma,
+        SubtractionOperator,
+        DotOperator,
+        DivisionOperator,
+        Colon,
+        SemiColon,
+        LessThanOperator,
+        AssignmentOperator,
+        LessThanOrEqualsOperator,
+        EqualsOperator,
+        FatArrowOperator,
+        AtSignOperator,
 
-        Integer = 18,
-        String = 19,
-        ObjectIdentifier = 20,
-        TypeIdentifier = 21,
-        WhiteSpace = 22,
-        CarriageReturn = 23,
-        NewLine = 24,
-        Tab = 25,
-        Comment = 26,
+        ClassKeyword,
+        CaseKeyword,
+        ElseKeyword,
+        EsacKeyword,
+        FalseKeyword,
+        FiKeyword,
+        IfKeyword,
+        InKeyword,
+        InheritsKeyword,
+        Integer,
+        IsvoidKeyword,
+        LetKeyword,
+        LocalVariableDeclaration,
+        LoopKeyword,
+        NewKeyword,
+        NotKeyword,
+        ObjectIdentifier,
+        OfKeyword,
+        PoolKeyword,
+        String,
+        ThenKeyword,
+        TrueKeyword,
+        TypeIdentifier,
+        WhileKeyword,
 
-        DotOperator = 27,
-        AtSignOperator = 28,
-        TildeOperator = 29,
-        MultiplationOperator = 30,
-        DivisionOperator = 31,
-        AdditionOperator = 32,
-        SubtrationOperator = 33,
-        LessThanOrEqualsOperator = 34,
-        LessThanOperator = 35,
-        EqualsOperator = 36,
-        AssignmentOperator = 37,
-        FatArrowOperator = 38,
+        OpenCurlyBracket,
+        ClosedCurlyBracket,
+        TildeOperator,
 
-        OpenParenthesis = 39,
-        ClosedParenthesis = 40,
-        OpenCurlyBracket = 41,
-        ClosedCurlyBracket = 42,
-        Colon = 43,
-        SemiColon = 44,
-        Comma = 45,
+        CaseOption,
+        Class,
+        Expression,
+        ExpressionList,
+        Feature,
+        FeatureList,
+        Formal,
+        FormalList,
+        LocalVariableDeclarationList,
+        Program,
+
+        WhiteSpace,
+        CarriageReturn,
+        NewLine,
+        Tab,
+        Comment,
 
         // higher-level constructs, not used in lexical analysis
-        Program = 46,
-        Class = 47,
-        Feature = 48,
-        Formal = 49,
-        Expression = 50
     }
+
+    export var StartSyntaxKind: SyntaxKind = SyntaxKind.Program;
 
     export interface TokenDefinition {
         token: SyntaxKind;
@@ -101,6 +112,10 @@
         {
             token: SyntaxKind.LetKeyword,
             regex: /^(let)\b/i,
+        },
+        {
+            token: SyntaxKind.InKeyword,
+            regex: /^(in)\b/i,
         },
         {
             token: SyntaxKind.LoopKeyword,
@@ -243,7 +258,7 @@
             regex: /^(\+)/
         },
         {
-            token: SyntaxKind.SubtrationOperator,
+            token: SyntaxKind.SubtractionOperator,
             regex: /^(-)/
         },
         {
@@ -303,6 +318,7 @@
             || tokenType == SyntaxKind.FalseKeyword
             || tokenType == SyntaxKind.FiKeyword
             || tokenType == SyntaxKind.IfKeyword
+            || tokenType == SyntaxKind.InKeyword
             || tokenType == SyntaxKind.InheritsKeyword
             || tokenType == SyntaxKind.IsvoidKeyword
             || tokenType == SyntaxKind.LetKeyword

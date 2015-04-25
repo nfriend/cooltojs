@@ -55,11 +55,16 @@
             for (var i = 0; i < lines.length; i++) {
                 output += '\t\t/* state ' + i + ' */[';
 
-                var cells = lines[i].split(/,/);
+                var cells = lines[i].split(/\|/);
                 for (var j = 0; j < cells.length; j++) {
                     if (cells[j] === '') {
                         output += 'null';
+                    } else if (/[sr]+[0-9]+,[sr]+[0-9]+/.test(cells[j])) {
+                        output += 'null /* ' + cells[j] + ' */';
                     } else if (cells[j][0] === 's') {
+                        if (cells[j].indexOf('r') !== -1) {
+                            console.log()
+                        }
                         output += '{ action: Action.Shift, nextState: ' + cells[j].slice(1) + ' }';
                     } else if (cells[j][0] === 'r') {
                         output += '{ action: Action.Reduce, productionIndex: ' + cells[j].slice(1) + ' }';

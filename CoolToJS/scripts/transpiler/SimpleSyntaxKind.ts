@@ -1,4 +1,4 @@
-﻿module CoolToJS {
+﻿module CoolToJS.DontCompile {
     export enum SyntaxKind {
         EndOfInput = 0,
         OpenParenthesis = 1,

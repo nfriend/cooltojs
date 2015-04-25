@@ -32,9 +32,9 @@ FeatureList
 	;
 
 Class
-	: Class TypeIdentifier InheritsKeyword TypeIdentifier '{' FeatureList '}'
-	| Class TypeIdentifier InheritsKeyword TypeIdentifier '{' '}'
-	| Class TypeIdentifier '{' FeatureList '}'
+	: ClassKeyword TypeIdentifier InheritsKeyword TypeIdentifier '{' FeatureList '}'
+	| ClassKeyword TypeIdentifier InheritsKeyword TypeIdentifier '{' '}'
+	| ClassKeyword TypeIdentifier '{' FeatureList '}'
 	;
 
 FormalList
@@ -71,7 +71,7 @@ Expression
 	: ObjectIdentifier '<-' Expression
 	| Expression '.' '(' ExpressionList ')'
 	| Expression '@' TypeIdentifier '.' '(' ExpressionList ')'
-	| Identifier '(' ExpressionList ')'
+	| ObjectIdentifier '(' ExpressionList ')'
 	| IfKeyword Expression ThenKeyword Expression ElseKeyword Expression FiKeyword
 	| WhileKeyword Expression LoopKeyword Expression PoolKeyword
 	| '{' ExpressionList '}'
