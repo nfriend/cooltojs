@@ -58,7 +58,7 @@
   <ItemGroup>
     <Content Include="scripts\demo\cool-program-sources.js" />
     <TypeScriptCompile Include="scripts\transpiler\cooltojs.ts" />
-    <TypeScriptCompile Include="scripts\transpiler\DFA.ts" />
+    <TypeScriptCompile Include="scripts\transpiler\ParseTable.ts" />
     <TypeScriptCompile Include="scripts\transpiler\LexicalAnalyzer.ts" />
     <TypeScriptCompile Include="scripts\transpiler\OutputInterfaces.ts" />
     <TypeScriptCompile Include="scripts\transpiler\Parser.ts" />

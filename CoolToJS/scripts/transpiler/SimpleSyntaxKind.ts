@@ -1,13 +1,12 @@
 ﻿module CoolToJS {
     export enum SyntaxKind {
-        End = 0,
+        EndOfInput = 0,
         OpenParenthesis = 1,
         ClosedParenthesis = 2,
         MultiplicationOperator = 3,
         AdditionOperator = 4,
         Integer = 5,
         E = 6,
-        T = 7,
         WhiteSpace = 100,
         CarriageReturn = 101,
         NewLine = 102,
@@ -17,6 +16,8 @@
         String = 1000,
         Comment = 1001
     }
+
+    export var StartSyntaxKind: SyntaxKind = SyntaxKind.E;
 
     export interface TokenDefinition {
         token: SyntaxKind;

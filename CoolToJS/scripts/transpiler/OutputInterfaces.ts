@@ -25,7 +25,7 @@
 
     export interface ParserOutput {
         success: boolean;
-        parseTree?: any;
+        syntaxTree?: SyntaxTree;
         errorMessages?: Array<ErrorMessage>;
     }
 }

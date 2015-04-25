@@ -121,6 +121,18 @@
                 console.log(SyntaxKind[tokens[i].token] + ': "' + tokens[i].match + '", line: ' + tokens[i].location.line + ', column: ' + tokens[i].location.column);
             }
 
+            // put an EndOfInput on the end of the token array
+            tokens.push({
+                token: SyntaxKind.EndOfInput,
+                tokenName: SyntaxKind[SyntaxKind.EndOfInput],
+                match: null,
+                location: {
+                    column: currentColumnNumber,
+                    line: currentLineNumber,
+                    length: 1
+                }
+            });
+
             return {
                 success: errorMessages.length === 0,
                 tokens: tokens,

@@ -46,21 +46,6 @@ var CoolToJS;
 })(CoolToJS || (CoolToJS = {}));
 var CoolToJS;
 (function (CoolToJS) {
-    CoolToJS.DFA = [
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    ];
-})(CoolToJS || (CoolToJS = {}));
-var CoolToJS;
-(function (CoolToJS) {
     var LexicalAnalyzer = (function () {
         function LexicalAnalyzer() {
             var _this = this;
@@ -154,6 +139,17 @@ var CoolToJS;
                 for (var i = 0; i < tokens.length; i++) {
                     console.log(CoolToJS.SyntaxKind[tokens[i].token] + ': "' + tokens[i].match + '", line: ' + tokens[i].location.line + ', column: ' + tokens[i].location.column);
                 }
+                // put an EndOfInput on the end of the token array
+                tokens.push({
+                    token: 0 /* EndOfInput */,
+                    tokenName: CoolToJS.SyntaxKind[0 /* EndOfInput */],
+                    match: null,
+                    location: {
+                        column: currentColumnNumber,
+                        line: currentLineNumber,
+                        length: 1
+                    }
+                });
                 return {
                     success: errorMessages.length === 0,
                     tokens: tokens,
@@ -171,122 +167,124 @@ var CoolToJS;
         function Parser() {
             var _this = this;
             this.Parse = function (tokens) {
-                // for debugging
+                var stack = [], inputPointer = 0, isAtEndOfInput = function () {
+                    return inputPointer === tokens.length - 1;
+                };
+                tokens = _this.cleanseTokenArray(tokens);
+                // #region for debugging
                 var printStack = function () {
                     var output = [];
                     for (var i = 0; i < stack.length; i++) {
-                        output.push(CoolToJS.SyntaxKind[stack[i]]);
+                        output.push(CoolToJS.SyntaxKind[stack[i].syntaxKind]);
                     }
                     return output;
                 };
-                tokens.push({
-                    token: 0 /* End */,
-                    tokenName: CoolToJS.SyntaxKind[0 /* End */],
-                    match: null,
-                    location: null
-                });
-                var stack = [], inputPointer = 0;
-                // clear out any nonessential tokens for now
-                var nextToken = 0;
-                while (nextToken < tokens.length) {
-                    if (tokens[nextToken].token === 101 /* CarriageReturn */ || tokens[nextToken].token === 1001 /* Comment */ || tokens[nextToken].token === 102 /* NewLine */ || tokens[nextToken].token === 1000 /* String */ || tokens[nextToken].token === 103 /* Tab */ || tokens[nextToken].token === 100 /* WhiteSpace */) {
-                        tokens.splice(nextToken, 1);
-                    }
-                    else {
-                        nextToken++;
-                    }
-                }
-                while (!(stack[0] === 6 /* E */ && inputPointer === tokens.length - 1)) {
-                    if (stack[0] === 1 /* OpenParenthesis */ && stack[1] === 6 /* E */ && stack[2] == 2 /* ClosedParenthesis */) {
-                        debugger;
-                    }
-                    var nextState = 0, nextMoveString;
-                    for (var i = 0; i < stack.length; i++) {
-                        var nextMoveString = _this.slr1ParseTable[nextState][stack[i]];
-                        if (nextMoveString.slice(0, 1) === 's') {
-                            nextState = parseInt(nextMoveString.slice(1), 10);
-                        }
-                        else if (nextMoveString.slice(0, 1) === 'r') {
-                            throw 'I don\'t think we should be here.';
-                            nextState = parseInt(nextMoveString.slice(1), 10);
-                        }
-                        else {
-                            nextState = parseInt(nextMoveString, 10);
-                        }
-                    }
-                    var nextMoveString = _this.slr1ParseTable[nextState][tokens[inputPointer].token];
-                    if (nextMoveString === null || (nextMoveString === 'a ' && inputPointer !== tokens.length - 1)) {
-                        nextMoveString = _this.slr1ParseTable[nextState][0 /* End */];
-                    }
-                    if (nextMoveString.slice(0, 1) === 's') {
-                        stack.push(tokens[inputPointer].token);
+                while (!(stack.length === 1 && stack[0].syntaxKind === CoolToJS.StartSyntaxKind && isAtEndOfInput())) {
+                    var state = stack.length > 0 ? stack[0].state : 0, tableEntry = CoolToJS.slr1ParseTable[state][stack[i].syntaxKind];
+                    var nextTableEntry = CoolToJS.slr1ParseTable[state][tokens[inputPointer].token];
+                    if (nextTableEntry === null || (nextTableEntry.action === 2 /* Accept */ && isAtEndOfInput()))
+                        nextTableEntry = CoolToJS.slr1ParseTable[state][0 /* EndOfInput */];
+                    if (nextTableEntry.action === 0 /* Shift */) {
+                        stack.push({
+                            syntaxKind: tokens[inputPointer].token,
+                            token: tokens[inputPointer],
+                            parent: null,
+                            children: [],
+                            state: state
+                        });
                         inputPointer++;
                     }
-                    else if (nextMoveString.slice(0, 1) === 'r') {
-                        var production = _this.productions[parseInt(nextMoveString.slice(1, 2), 10)];
-                        for (var i = 0; i < production.popCount; i++) {
-                            stack.pop();
+                    else if (nextTableEntry.action === 1 /* Reduce */) {
+                        var production = CoolToJS.productions[nextTableEntry.productionIndex];
+                        var removedItems = stack.splice(-1 * production.popCount, production.popCount);
+                        var newStackItem = {
+                            syntaxKind: production.reduceResult,
+                            state: state,
+                            children: removedItems,
+                            parent: null,
+                        };
+                        for (var i = 0; i < newStackItem.children.length; i++) {
+                            newStackItem.children[i].parent = newStackItem;
                         }
-                        stack.push(production.reduceResult);
+                        stack.push(newStackItem);
+                        inputPointer++;
                     }
                     else {
-                        nextState = parseInt(nextMoveString.slice(0, 1), 10);
+                        throw 'Do we ever get here?';
                     }
                 }
                 return {
                     success: true,
-                    parseTree: {}
+                    syntaxTree: stack[0]
                 };
             };
-            this.productions = [
-                { popCount: 2, reduceResult: null },
-                { popCount: 3, reduceResult: 6 /* E */ },
-                { popCount: 1, reduceResult: 6 /* E */ },
-                { popCount: 3, reduceResult: 7 /* T */ },
-                { popCount: 1, reduceResult: 7 /* T */ },
-                { popCount: 3, reduceResult: 7 /* T */ },
-            ];
-            this.slr1ParseTable = [
-                [null, 's4', null, null, null, 's3', '1 ', '2 '],
-                ['a ', null, null, null, null, null, null, null],
-                ['r2', null, 'r2', null, 's5', null, null, null],
-                ['r4', null, 'r4', 's6', 'r4', null, null, null],
-                [null, 's4', null, null, null, 's3', '7 ', '2 '],
-                [null, 's4', null, null, null, 's3', '8 ', '2 '],
-                [null, 's4', null, null, null, 's3', null, '9 '],
-                [null, null, 's10', null, null, null, null, null],
-                ['r1', null, 'r1', null, null, null, null, null],
-                ['r3', null, 'r3', null, 'r3', null, null, null],
-                ['r5', null, 'r5', null, 'r5', null, null, null],
-            ];
-            this.follows = {
-                // E
-                6: [0 /* End */, 2 /* ClosedParenthesis */],
-                // T
-                7: [4 /* AdditionOperator */, 0 /* End */, 2 /* ClosedParenthesis */]
-            };
-            this.firsts = {
-                // E
-                6: [5 /* Integer */, 1 /* OpenParenthesis */],
-                // T
-                7: [5 /* Integer */, 1 /* OpenParenthesis */]
-            };
         }
+        // returns a copy of the provided array with whitespace,
+        // newlines, comments, etc. removed
+        Parser.prototype.cleanseTokenArray = function (tokens) {
+            var cleanArray = [];
+            for (var i = 0; i < tokens.length; i++) {
+                if (tokens[i].token !== 101 /* CarriageReturn */ && tokens[i].token !== 1001 /* Comment */ && tokens[i].token !== 102 /* NewLine */ && tokens[i].token !== 1000 /* String */ && tokens[i].token !== 103 /* Tab */ && tokens[i].token !== 100 /* WhiteSpace */) {
+                    cleanArray.push(tokens[i]);
+                }
+            }
+            return cleanArray;
+        };
         return Parser;
     })();
     CoolToJS.Parser = Parser;
 })(CoolToJS || (CoolToJS = {}));
 var CoolToJS;
 (function (CoolToJS) {
+    (function (Action) {
+        Action[Action["Shift"] = 0] = "Shift";
+        Action[Action["Reduce"] = 1] = "Reduce";
+        Action[Action["Accept"] = 2] = "Accept";
+        Action[Action["None"] = 3] = "None";
+    })(CoolToJS.Action || (CoolToJS.Action = {}));
+    var Action = CoolToJS.Action;
+    CoolToJS.slr1ParseTable = [
+        [null, { action: 0 /* Shift */, nextState: 2 }, null, null, null, { action: 0 /* Shift */, nextState: 3 }, { action: 3 /* None */, nextState: 1 }],
+        [{ action: 2 /* Accept */ }, null, null, { action: 0 /* Shift */, nextState: 5 }, { action: 0 /* Shift */, nextState: 4 }, null, null],
+        [null, { action: 0 /* Shift */, nextState: 2 }, null, null, null, { action: 0 /* Shift */, nextState: 3 }, { action: 3 /* None */, nextState: 6 }],
+        [{ action: 1 /* Reduce */, nextState: 4 }, null, { action: 1 /* Reduce */, nextState: 4 }, { action: 0 /* Shift */, nextState: 4 }, { action: 1 /* Reduce */, nextState: 4 }, null, null],
+        [null, { action: 0 /* Shift */, nextState: 2 }, null, null, null, { action: 0 /* Shift */, nextState: 3 }, { action: 0 /* Shift */, nextState: 7 }],
+        [null, { action: 0 /* Shift */, nextState: 2 }, null, null, null, { action: 0 /* Shift */, nextState: 3 }, { action: 3 /* None */, nextState: 8 }],
+        [null, null, { action: 0 /* Shift */, nextState: 9 }, { action: 0 /* Shift */, nextState: 5 }, { action: 0 /* Shift */, nextState: 4 }, null, null],
+        [{ action: 1 /* Reduce */, nextState: 1 }, null, { action: 1 /* Reduce */, nextState: 1 }, { action: 0 /* Shift */, nextState: 5 }, { action: 1 /* Reduce */, nextState: 1 }, null, null],
+        [{ action: 1 /* Reduce */, nextState: 2 }, null, { action: 1 /* Reduce */, nextState: 2 }, { action: 1 /* Reduce */, nextState: 2 }, { action: 1 /* Reduce */, nextState: 2 }, null, null],
+        [{ action: 1 /* Reduce */, nextState: 3 }, null, { action: 1 /* Reduce */, nextState: 3 }, { action: 1 /* Reduce */, nextState: 3 }, { action: 1 /* Reduce */, nextState: 3 }, null, null],
+    ];
+    CoolToJS.slr1ParseTableOld = [
+        [null, 's2', null, null, null, 's3', '1 '],
+        ['a ', null, null, 's5', 's4', null, null],
+        [null, 's2', null, null, null, 's3', '6'],
+        ['r4', null, 'r4', 's4', 'r4', null, null],
+        [null, 's2', null, null, null, 's3', '7 '],
+        [null, 's2', null, null, null, 's3', '8 '],
+        [null, null, 's9', 's5', 's4', null, null],
+        ['r1', null, 'r1', 's5', 'r1', null, null],
+        ['r2', null, 'r2', 'r2', 'r2', null, null],
+        ['r3', null, 'r3', 'r3', 'r3', null, null],
+    ];
+    CoolToJS.productions = [
+        { popCount: 2, reduceResult: null },
+        { popCount: 3, reduceResult: 6 /* E */ },
+        { popCount: 3, reduceResult: 6 /* E */ },
+        { popCount: 3, reduceResult: 6 /* E */ },
+        { popCount: 1, reduceResult: 6 /* E */ },
+    ];
+})(CoolToJS || (CoolToJS = {}));
+var CoolToJS;
+(function (CoolToJS) {
     (function (SyntaxKind) {
-        SyntaxKind[SyntaxKind["End"] = 0] = "End";
+        SyntaxKind[SyntaxKind["EndOfInput"] = 0] = "EndOfInput";
         SyntaxKind[SyntaxKind["OpenParenthesis"] = 1] = "OpenParenthesis";
         SyntaxKind[SyntaxKind["ClosedParenthesis"] = 2] = "ClosedParenthesis";
         SyntaxKind[SyntaxKind["MultiplicationOperator"] = 3] = "MultiplicationOperator";
         SyntaxKind[SyntaxKind["AdditionOperator"] = 4] = "AdditionOperator";
         SyntaxKind[SyntaxKind["Integer"] = 5] = "Integer";
         SyntaxKind[SyntaxKind["E"] = 6] = "E";
-        SyntaxKind[SyntaxKind["T"] = 7] = "T";
         SyntaxKind[SyntaxKind["WhiteSpace"] = 100] = "WhiteSpace";
         SyntaxKind[SyntaxKind["CarriageReturn"] = 101] = "CarriageReturn";
         SyntaxKind[SyntaxKind["NewLine"] = 102] = "NewLine";
@@ -296,6 +294,7 @@ var CoolToJS;
         SyntaxKind[SyntaxKind["Comment"] = 1001] = "Comment";
     })(CoolToJS.SyntaxKind || (CoolToJS.SyntaxKind = {}));
     var SyntaxKind = CoolToJS.SyntaxKind;
+    CoolToJS.StartSyntaxKind = 6 /* E */;
     // order signifies priority (keywords are listed first)
     CoolToJS.TokenLookup = [
         {

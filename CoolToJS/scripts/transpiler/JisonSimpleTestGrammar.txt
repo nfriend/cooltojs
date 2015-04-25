@@ -1,18 +1,13 @@
 ﻿%token int
 
-%start E
-
-&left '+'
-&left '*'
+%left '+'
+%left '*'
 
 %%
-
-// from video
-// E : T '+' E | T;
-// T : int '*' T | int | '(' E ')';
 
 E 
 	: E '+' E
 	| E '*' E
 	| '(' E ')'
+	| int
 	;
