@@ -22,13 +22,13 @@
 %%
 
 Program
-	: Class
-	| Class Program
+	: Class ';'
+	| Class ';' Program
 	;
 
 FeatureList
-	: Feature
-	| FeatureList
+	: Feature ';'
+	| Feature ';' FeatureList
 	;
 
 Class
@@ -39,12 +39,14 @@ Class
 
 FormalList
 	: Formal
-	| FormalList
+	| Formal ',' FormalList
 	;
 
 Feature
-	: ObjectIdentifier '(' FormalList ':' TypeIdentifier '{' Expression '}'
+	: ObjectIdentifier '(' FormalList ')' ':' TypeIdentifier '{' Expression '}'
+	| ObjectIdentifier '(' ')' ':' TypeIdentifier '{' Expression '}'
 	| ObjectIdentifier ':' TypeIdentifier '<-' Expression
+	| ObjectIdentifier ':' TypeIdentifier
 	;
 
 Formal
@@ -53,7 +55,12 @@ Formal
 
 ExpressionList
 	: Expression
-	| ExpressionList
+	| Expression ',' ExpressionList
+	;
+
+ExpressionSeries
+	: Expression ';'
+	| Expression ';' ExpressionSeries
 	;
 
 LocalVariableDeclarationList
@@ -71,10 +78,11 @@ Expression
 	: ObjectIdentifier '<-' Expression
 	| Expression '.' '(' ExpressionList ')'
 	| Expression '@' TypeIdentifier '.' '(' ExpressionList ')'
+	| ObjectIdentifier '(' ')'
 	| ObjectIdentifier '(' ExpressionList ')'
 	| IfKeyword Expression ThenKeyword Expression ElseKeyword Expression FiKeyword
 	| WhileKeyword Expression LoopKeyword Expression PoolKeyword
-	| '{' ExpressionList '}'
+	| '{' ExpressionSeries '}'
 	| LetKeyword LocalVariableDeclaration InKeyword Expression
 	| CaseKeyword Expression OfKeyword CaseOption EsacKeyword
 	| NewKeyword TypeIdentifier

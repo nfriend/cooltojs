@@ -147,7 +147,6 @@
                 if (tokens[i].token !== SyntaxKind.CarriageReturn
                     && tokens[i].token !== SyntaxKind.Comment
                     && tokens[i].token !== SyntaxKind.NewLine
-                    && tokens[i].token !== SyntaxKind.String
                     && tokens[i].token !== SyntaxKind.Tab
                     && tokens[i].token !== SyntaxKind.WhiteSpace) {
 

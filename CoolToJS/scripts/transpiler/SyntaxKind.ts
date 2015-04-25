@@ -18,8 +18,8 @@
         FatArrowOperator,
         AtSignOperator,
 
-        ClassKeyword,
         CaseKeyword,
+        ClassKeyword,
         ElseKeyword,
         EsacKeyword,
         FalseKeyword,
@@ -51,6 +51,7 @@
         Class,
         Expression,
         ExpressionList,
+        ExpressionSeries,
         Feature,
         FeatureList,
         Formal,
@@ -160,10 +161,6 @@
         {
             token: SyntaxKind.String,
             matchFunction: (input) => {
-
-                if (input.indexOf('"Hello') === 0) {
-                    console.log('sdfsd');
-                }
 
                 // for a single-line string
                 var singleLineMatch = /^("(?:[^\\]|\\.)*?")/.exec(input);

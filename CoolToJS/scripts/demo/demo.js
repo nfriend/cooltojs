@@ -2,7 +2,7 @@
 (function (CoolToJSDemo) {
     'use strict';
 
-    var programIndexToUse = 18;
+    var programIndexToUse = 8;
 
     //#region set up editors and the console
     var coolEditor = CodeMirror(document.getElementById('cool-editor'), {
