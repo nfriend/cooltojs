@@ -4,6 +4,10 @@
         token: SyntaxKind;
         match: string;
         location: SourceLocation;
+
+        // for debugging purposes, so we can see the name
+        // of the token without looking it up in the enum definition
+        tokenName: string;
     }
 
     export class LexicalAnalyzer {
@@ -41,6 +45,7 @@
                     if (!longestMatch || matchString.length > longestMatch.match.length) {
                         longestMatch = {
                             token: currentTokenOption.token,
+                            tokenName: SyntaxKind[currentTokenOption.token],
                             match: matchString,
                             location: {
                                 line: currentLineNumber,
@@ -112,9 +117,9 @@
                 }
             }
 
-            //for (var i = 0; i < tokens.length; i++) {
-            //    console.log(TokenType[tokens[i].token] + ': "' + tokens[i].match + '", line: ' + tokens[i].location.line + ', column: ' + tokens[i].location.column);
-            //}
+            for (var i = 0; i < tokens.length; i++) {
+                console.log(SyntaxKind[tokens[i].token] + ': "' + tokens[i].match + '", line: ' + tokens[i].location.line + ', column: ' + tokens[i].location.column);
+            }
 
             return {
                 success: errorMessages.length === 0,

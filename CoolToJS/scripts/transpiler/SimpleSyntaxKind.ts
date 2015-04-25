@@ -3,7 +3,7 @@
         End = 0,
         OpenParenthesis = 1,
         ClosedParenthesis = 2,
-        MultiplationOperator = 3,
+        MultiplicationOperator = 3,
         AdditionOperator = 4,
         Integer = 5,
         E = 6,
@@ -31,7 +31,7 @@
             regex: /^([0-9]+)\b/,
         },
         {
-            token: SyntaxKind.MultiplationOperator,
+            token: SyntaxKind.MultiplicationOperator,
             regex: /^(\*)/
         },
         {

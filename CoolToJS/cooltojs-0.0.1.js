@@ -89,6 +89,7 @@ var CoolToJS;
                         if (!longestMatch || matchString.length > longestMatch.match.length) {
                             longestMatch = {
                                 token: currentTokenOption.token,
+                                tokenName: CoolToJS.SyntaxKind[currentTokenOption.token],
                                 match: matchString,
                                 location: {
                                     line: currentLineNumber,
@@ -150,9 +151,9 @@ var CoolToJS;
                         currentColumnNumber += length;
                     }
                 }
-                //for (var i = 0; i < tokens.length; i++) {
-                //    console.log(TokenType[tokens[i].token] + ': "' + tokens[i].match + '", line: ' + tokens[i].location.line + ', column: ' + tokens[i].location.column);
-                //}
+                for (var i = 0; i < tokens.length; i++) {
+                    console.log(CoolToJS.SyntaxKind[tokens[i].token] + ': "' + tokens[i].match + '", line: ' + tokens[i].location.line + ', column: ' + tokens[i].location.column);
+                }
                 return {
                     success: errorMessages.length === 0,
                     tokens: tokens,
@@ -170,16 +171,66 @@ var CoolToJS;
         function Parser() {
             var _this = this;
             this.Parse = function (tokens) {
+                // for debugging
+                var printStack = function () {
+                    var output = [];
+                    for (var i = 0; i < stack.length; i++) {
+                        output.push(CoolToJS.SyntaxKind[stack[i]]);
+                    }
+                    return output;
+                };
                 tokens.push({
                     token: 0 /* End */,
+                    tokenName: CoolToJS.SyntaxKind[0 /* End */],
                     match: null,
                     location: null
                 });
                 var stack = [], inputPointer = 0;
-                while (stack[0] !== 6 /* E */ && inputPointer !== tokens.length - 1) {
-                    var nextMove;
+                // clear out any nonessential tokens for now
+                var nextToken = 0;
+                while (nextToken < tokens.length) {
+                    if (tokens[nextToken].token === 101 /* CarriageReturn */ || tokens[nextToken].token === 1001 /* Comment */ || tokens[nextToken].token === 102 /* NewLine */ || tokens[nextToken].token === 1000 /* String */ || tokens[nextToken].token === 103 /* Tab */ || tokens[nextToken].token === 100 /* WhiteSpace */) {
+                        tokens.splice(nextToken, 1);
+                    }
+                    else {
+                        nextToken++;
+                    }
+                }
+                while (!(stack[0] === 6 /* E */ && inputPointer === tokens.length - 1)) {
+                    if (stack[0] === 1 /* OpenParenthesis */ && stack[1] === 6 /* E */ && stack[2] == 2 /* ClosedParenthesis */) {
+                        debugger;
+                    }
+                    var nextState = 0, nextMoveString;
                     for (var i = 0; i < stack.length; i++) {
-                        nextMove = _this.slr1ParseTable[stack[i]][0];
+                        var nextMoveString = _this.slr1ParseTable[nextState][stack[i]];
+                        if (nextMoveString.slice(0, 1) === 's') {
+                            nextState = parseInt(nextMoveString.slice(1), 10);
+                        }
+                        else if (nextMoveString.slice(0, 1) === 'r') {
+                            throw 'I don\'t think we should be here.';
+                            nextState = parseInt(nextMoveString.slice(1), 10);
+                        }
+                        else {
+                            nextState = parseInt(nextMoveString, 10);
+                        }
+                    }
+                    var nextMoveString = _this.slr1ParseTable[nextState][tokens[inputPointer].token];
+                    if (nextMoveString === null || (nextMoveString === 'a ' && inputPointer !== tokens.length - 1)) {
+                        nextMoveString = _this.slr1ParseTable[nextState][0 /* End */];
+                    }
+                    if (nextMoveString.slice(0, 1) === 's') {
+                        stack.push(tokens[inputPointer].token);
+                        inputPointer++;
+                    }
+                    else if (nextMoveString.slice(0, 1) === 'r') {
+                        var production = _this.productions[parseInt(nextMoveString.slice(1, 2), 10)];
+                        for (var i = 0; i < production.popCount; i++) {
+                            stack.pop();
+                        }
+                        stack.push(production.reduceResult);
+                    }
+                    else {
+                        nextState = parseInt(nextMoveString.slice(0, 1), 10);
                     }
                 }
                 return {
@@ -187,6 +238,14 @@ var CoolToJS;
                     parseTree: {}
                 };
             };
+            this.productions = [
+                { popCount: 2, reduceResult: null },
+                { popCount: 3, reduceResult: 6 /* E */ },
+                { popCount: 1, reduceResult: 6 /* E */ },
+                { popCount: 3, reduceResult: 7 /* T */ },
+                { popCount: 1, reduceResult: 7 /* T */ },
+                { popCount: 3, reduceResult: 7 /* T */ },
+            ];
             this.slr1ParseTable = [
                 [null, 's4', null, null, null, 's3', '1 ', '2 '],
                 ['a ', null, null, null, null, null, null, null],
@@ -200,6 +259,18 @@ var CoolToJS;
                 ['r3', null, 'r3', null, 'r3', null, null, null],
                 ['r5', null, 'r5', null, 'r5', null, null, null],
             ];
+            this.follows = {
+                // E
+                6: [0 /* End */, 2 /* ClosedParenthesis */],
+                // T
+                7: [4 /* AdditionOperator */, 0 /* End */, 2 /* ClosedParenthesis */]
+            };
+            this.firsts = {
+                // E
+                6: [5 /* Integer */, 1 /* OpenParenthesis */],
+                // T
+                7: [5 /* Integer */, 1 /* OpenParenthesis */]
+            };
         }
         return Parser;
     })();
@@ -211,7 +282,7 @@ var CoolToJS;
         SyntaxKind[SyntaxKind["End"] = 0] = "End";
         SyntaxKind[SyntaxKind["OpenParenthesis"] = 1] = "OpenParenthesis";
         SyntaxKind[SyntaxKind["ClosedParenthesis"] = 2] = "ClosedParenthesis";
-        SyntaxKind[SyntaxKind["MultiplationOperator"] = 3] = "MultiplationOperator";
+        SyntaxKind[SyntaxKind["MultiplicationOperator"] = 3] = "MultiplicationOperator";
         SyntaxKind[SyntaxKind["AdditionOperator"] = 4] = "AdditionOperator";
         SyntaxKind[SyntaxKind["Integer"] = 5] = "Integer";
         SyntaxKind[SyntaxKind["E"] = 6] = "E";
@@ -232,7 +303,7 @@ var CoolToJS;
             regex: /^([0-9]+)\b/,
         },
         {
-            token: 3 /* MultiplationOperator */,
+            token: 3 /* MultiplicationOperator */,
             regex: /^(\*)/
         },
         {

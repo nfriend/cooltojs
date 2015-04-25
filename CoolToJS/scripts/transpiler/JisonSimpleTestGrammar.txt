@@ -2,7 +2,17 @@
 
 %start E
 
+&left '+'
+&left '*'
+
 %%
 
-E : T '+' E | T;
-T : int '*' T | int | '(' E ')';
+// from video
+// E : T '+' E | T;
+// T : int '*' T | int | '(' E ')';
+
+E 
+	: E '+' E
+	| E '*' E
+	| '(' E ')'
+	;
