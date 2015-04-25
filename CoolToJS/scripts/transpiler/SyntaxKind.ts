@@ -30,7 +30,6 @@
         Integer,
         IsvoidKeyword,
         LetKeyword,
-        LocalVariableDeclaration,
         LoopKeyword,
         NewKeyword,
         NotKeyword,

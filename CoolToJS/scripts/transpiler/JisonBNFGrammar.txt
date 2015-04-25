@@ -67,6 +67,7 @@ LocalVariableDeclarationList
 	: ObjectIdentifier ':' TypeIdentifier
 	| ObjectIdentifier ':' TypeIdentifier '<-' Expression
 	| ObjectIdentifier ':' TypeIdentifier ',' LocalVariableDeclarationList
+	| ObjectIdentifier ':' TypeIdentifier '<-' Expression ',' LocalVariableDeclarationList
 	;
 
 CaseOption
@@ -76,14 +77,16 @@ CaseOption
 
 Expression
 	: ObjectIdentifier '<-' Expression
-	| Expression '.' '(' ExpressionList ')'
-	| Expression '@' TypeIdentifier '.' '(' ExpressionList ')'
+	| Expression '.' ObjectIdentifier '(' ')'
+	| Expression '.' ObjectIdentifier '(' ExpressionList ')'
+	| Expression '@' TypeIdentifier '.' ObjectIdentifier '(' ')'
+	| Expression '@' TypeIdentifier '.' ObjectIdentifier '(' ExpressionList ')'
 	| ObjectIdentifier '(' ')'
 	| ObjectIdentifier '(' ExpressionList ')'
 	| IfKeyword Expression ThenKeyword Expression ElseKeyword Expression FiKeyword
 	| WhileKeyword Expression LoopKeyword Expression PoolKeyword
 	| '{' ExpressionSeries '}'
-	| LetKeyword LocalVariableDeclaration InKeyword Expression
+	| LetKeyword LocalVariableDeclarationList InKeyword Expression
 	| CaseKeyword Expression OfKeyword CaseOption EsacKeyword
 	| NewKeyword TypeIdentifier
 	| IsvoidKeyword Expression
@@ -91,7 +94,7 @@ Expression
 	| Expression '-' Expression
 	| Expression '*' Expression
 	| Expression '/' Expression
-	| Expression '~' Expression
+	| '~' Expression
 	| Expression '<' Expression
 	| Expression '<=' Expression
 	| Expression '=' Expression
