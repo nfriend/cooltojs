@@ -1,58 +1,65 @@
 ﻿module CoolToJS {
-    export enum TokenType {
-        ClassKeyword,
-        ElseKeyword,
-        FalseKeyword,
-        FiKeyword,
-        IfKeyword,
-        InheritsKeyword,
-        IsvoidKeyword,
-        LetKeyword,
-        LoopKeyword,
-        PoolKeyword,
-        ThenKeyword,
-        WhileKeyword,
-        CaseKeyword,
-        EsacKeyword,
-        NewKeyword,
-        OfKeyword,
-        NotKeyword,
-        TrueKeyword,
+    export enum SyntaxKind {
+        ClassKeyword = 0,
+        ElseKeyword = 1,
+        FalseKeyword = 2,
+        FiKeyword = 3,
+        IfKeyword = 4,
+        InheritsKeyword = 5,
+        IsvoidKeyword = 6,
+        LetKeyword = 7,
+        LoopKeyword = 8,
+        PoolKeyword = 9,
+        ThenKeyword = 10,
+        WhileKeyword = 11,
+        CaseKeyword = 12,
+        EsacKeyword = 13,
+        NewKeyword = 14,
+        OfKeyword = 15,
+        NotKeyword = 16,
+        TrueKeyword = 17,
 
-        Integer,
-        String,
-        ObjectIdentifier,
-        TypeIdentifier,
-        WhiteSpace,
-        CarriageReturn,
-        NewLine,
-        Tab,
-        Comment,
+        Integer = 18,
+        String = 19,
+        ObjectIdentifier = 20,
+        TypeIdentifier = 21,
+        WhiteSpace = 22,
+        CarriageReturn = 23,
+        NewLine = 24,
+        Tab = 25,
+        Comment = 26,
 
-        DotOperator,
-        AtSignOperator,
-        TildeOperator,
-        MultiplationOperator,
-        DivisionOperator,
-        AdditionOperator,
-        SubtrationOperator,
-        LessThanOrEqualsOperator,
-        LessThanOperator,
-        EqualsOperator,
-        AssignmentOperator,
-        FatArrowOperator,
+        DotOperator = 27,
+        AtSignOperator = 28,
+        TildeOperator = 29,
+        MultiplationOperator = 30,
+        DivisionOperator = 31,
+        AdditionOperator = 32,
+        SubtrationOperator = 33,
+        LessThanOrEqualsOperator = 34,
+        LessThanOperator = 35,
+        EqualsOperator = 36,
+        AssignmentOperator = 37,
+        FatArrowOperator = 38,
 
-        OpenParenthesis,
-        ClosedParenthesis,
-        OpenCurlyBracket,
-        ClosedCurlyBracket,
-        Colon,
-        SemiColon,
-        Comma
+        OpenParenthesis = 39,
+        ClosedParenthesis = 40,
+        OpenCurlyBracket = 41,
+        ClosedCurlyBracket = 42,
+        Colon = 43,
+        SemiColon = 44,
+        Comma = 45,
+
+        // higher-level constructs, not used in lexical analysis
+        Program = 46,
+        Class = 47,
+        Feature = 48,
+        Formal = 49,
+        Expression = 50
     }
 
     export interface TokenDefinition {
-        token: TokenType;
+        token: SyntaxKind;
         regex?: RegExp;
         matchFunction?: (input: string) => string;
     }
@@ -60,83 +67,83 @@
     // order signifies priority (keywords are listed first)
     export var TokenLookup: TokenDefinition[] = [
         {
-            token: TokenType.ClassKeyword,
+            token: SyntaxKind.ClassKeyword,
             regex: /^(class)\b/i,
         },
         {
-            token: TokenType.ElseKeyword,
+            token: SyntaxKind.ElseKeyword,
             regex: /^(else)\b/i,
         },
         {
-            token: TokenType.FalseKeyword,
+            token: SyntaxKind.FalseKeyword,
             regex: /^(f[aA][lL][sS][eE])\b/,
         },
         {
-            token: TokenType.TrueKeyword,
+            token: SyntaxKind.TrueKeyword,
             regex: /^(t[rR][uU][eE])\b/,
         },
         {
-            token: TokenType.FiKeyword,
+            token: SyntaxKind.FiKeyword,
             regex: /^(fi)\b/i,
         },
         {
-            token: TokenType.IfKeyword,
+            token: SyntaxKind.IfKeyword,
             regex: /^(if)\b/i,
         },
         {
-            token: TokenType.InheritsKeyword,
+            token: SyntaxKind.InheritsKeyword,
             regex: /^(inherits)\b/i,
         },
         {
-            token: TokenType.IsvoidKeyword,
+            token: SyntaxKind.IsvoidKeyword,
             regex: /^(isvoid)\b/i,
         },
         {
-            token: TokenType.LetKeyword,
+            token: SyntaxKind.LetKeyword,
             regex: /^(let)\b/i,
         },
         {
-            token: TokenType.LoopKeyword,
+            token: SyntaxKind.LoopKeyword,
             regex: /^(loop)\b/i,
         },
         {
-            token: TokenType.PoolKeyword,
+            token: SyntaxKind.PoolKeyword,
             regex: /^(pool)\b/i,
         },
         {
-            token: TokenType.ThenKeyword,
+            token: SyntaxKind.ThenKeyword,
             regex: /^(then)\b/i,
         },
         {
-            token: TokenType.WhileKeyword,
+            token: SyntaxKind.WhileKeyword,
             regex: /^(while)\b/i,
         },
         {
-            token: TokenType.CaseKeyword,
+            token: SyntaxKind.CaseKeyword,
             regex: /^(case)\b/i,
         },
         {
-            token: TokenType.EsacKeyword,
+            token: SyntaxKind.EsacKeyword,
             regex: /^(esac)\b/i,
         },
         {
-            token: TokenType.NewKeyword,
+            token: SyntaxKind.NewKeyword,
             regex: /^(new)\b/i,
         },
         {
-            token: TokenType.OfKeyword,
+            token: SyntaxKind.OfKeyword,
             regex: /^(of)\b/i,
         },
         {
-            token: TokenType.NotKeyword,
+            token: SyntaxKind.NotKeyword,
             regex: /^(not)\b/i,
         },
         {
-            token: TokenType.Integer,
+            token: SyntaxKind.Integer,
             regex: /^([0-9]+)\b/,
         },
         {
-            token: TokenType.String,
+            token: SyntaxKind.String,
             matchFunction: (input) => {
 
                 if (input.indexOf('"Hello') === 0) {
@@ -181,134 +188,134 @@
             }
         },
         {
-            token: TokenType.ObjectIdentifier,
+            token: SyntaxKind.ObjectIdentifier,
             regex: /^([a-z][a-zA-Z0-9_]*)\b/,
         },
         {
-            token: TokenType.TypeIdentifier,
+            token: SyntaxKind.TypeIdentifier,
             regex: /^([A-Z][a-zA-Z0-9_]*)\b/,
         },
         {
-            token: TokenType.WhiteSpace,
+            token: SyntaxKind.WhiteSpace,
             regex: /^( +)/,
         },
         {
-            token: TokenType.CarriageReturn,
+            token: SyntaxKind.CarriageReturn,
             regex: /^(\r)/,
         },
         {
-            token: TokenType.NewLine,
+            token: SyntaxKind.NewLine,
             regex: /^(\n)/,
         },
         {
-            token: TokenType.Tab,
+            token: SyntaxKind.Tab,
             regex: /^(\t)/,
         },
 
         // currently doesn't allow nested (* ... *) comments
         {
-            token: TokenType.Comment,
+            token: SyntaxKind.Comment,
             regex: /^((?:--.*)|(?:\(\*(?:(?!\*\))[\s\S])*\*\)))/,
         },
 
         {
-            token: TokenType.DotOperator,
+            token: SyntaxKind.DotOperator,
             regex: /^(\.)/
         },
         {
-            token: TokenType.AtSignOperator,
+            token: SyntaxKind.AtSignOperator,
             regex: /^(\@)/
         },
         {
-            token: TokenType.TildeOperator,
+            token: SyntaxKind.TildeOperator,
             regex: /^(~)/
         },
         {
-            token: TokenType.MultiplationOperator,
+            token: SyntaxKind.MultiplationOperator,
             regex: /^(\*)/
         },
         {
-            token: TokenType.DivisionOperator,
+            token: SyntaxKind.DivisionOperator,
             regex: /^(\/)/
         },
         {
-            token: TokenType.AdditionOperator,
+            token: SyntaxKind.AdditionOperator,
             regex: /^(\+)/
         },
         {
-            token: TokenType.SubtrationOperator,
+            token: SyntaxKind.SubtrationOperator,
             regex: /^(-)/
         },
         {
-            token: TokenType.LessThanOrEqualsOperator,
+            token: SyntaxKind.LessThanOrEqualsOperator,
             regex: /^(<=)/
         },
         {
-            token: TokenType.LessThanOperator,
+            token: SyntaxKind.LessThanOperator,
             regex: /^(<)/
         },
         {
-            token: TokenType.EqualsOperator,
+            token: SyntaxKind.EqualsOperator,
             regex: /^(=)/
         },
         {
-            token: TokenType.AssignmentOperator,
+            token: SyntaxKind.AssignmentOperator,
             regex: /^(<-)/
         },
         {
-            token: TokenType.FatArrowOperator,
+            token: SyntaxKind.FatArrowOperator,
             regex: /^(=>)/
         },
 
         {
-            token: TokenType.OpenParenthesis,
+            token: SyntaxKind.OpenParenthesis,
             regex: /^(\()/
         },
         {
-            token: TokenType.ClosedParenthesis,
+            token: SyntaxKind.ClosedParenthesis,
             regex: /^(\))/
         },
         {
-            token: TokenType.OpenCurlyBracket,
+            token: SyntaxKind.OpenCurlyBracket,
             regex: /^(\{)/
         },
         {
-            token: TokenType.ClosedCurlyBracket,
+            token: SyntaxKind.ClosedCurlyBracket,
             regex: /^(\})/
         },
         {
-            token: TokenType.Colon,
+            token: SyntaxKind.Colon,
             regex: /^(:)/
         },
         {
-            token: TokenType.SemiColon,
+            token: SyntaxKind.SemiColon,
             regex: /^(;)/
         },
         {
-            token: TokenType.Comma,
+            token: SyntaxKind.Comma,
             regex: /^(,)/
         }
     ];
 
-    export function isKeyword(tokenType: TokenType) {
-        return (tokenType == TokenType.ClassKeyword
-            || tokenType == TokenType.ElseKeyword
-            || tokenType == TokenType.FalseKeyword
-            || tokenType == TokenType.FiKeyword
-            || tokenType == TokenType.IfKeyword
-            || tokenType == TokenType.InheritsKeyword
-            || tokenType == TokenType.IsvoidKeyword
-            || tokenType == TokenType.LetKeyword
-            || tokenType == TokenType.LoopKeyword
-            || tokenType == TokenType.PoolKeyword
-            || tokenType == TokenType.ThenKeyword
-            || tokenType == TokenType.WhileKeyword
-            || tokenType == TokenType.CaseKeyword
-            || tokenType == TokenType.EsacKeyword
-            || tokenType == TokenType.NewKeyword
-            || tokenType == TokenType.OfKeyword
-            || tokenType == TokenType.NotKeyword
-            || tokenType == TokenType.TrueKeyword);
+    export function isKeyword(tokenType: SyntaxKind) {
+        return (tokenType == SyntaxKind.ClassKeyword
+            || tokenType == SyntaxKind.ElseKeyword
+            || tokenType == SyntaxKind.FalseKeyword
+            || tokenType == SyntaxKind.FiKeyword
+            || tokenType == SyntaxKind.IfKeyword
+            || tokenType == SyntaxKind.InheritsKeyword
+            || tokenType == SyntaxKind.IsvoidKeyword
+            || tokenType == SyntaxKind.LetKeyword
+            || tokenType == SyntaxKind.LoopKeyword
+            || tokenType == SyntaxKind.PoolKeyword
+            || tokenType == SyntaxKind.ThenKeyword
+            || tokenType == SyntaxKind.WhileKeyword
+            || tokenType == SyntaxKind.CaseKeyword
+            || tokenType == SyntaxKind.EsacKeyword
+            || tokenType == SyntaxKind.NewKeyword
+            || tokenType == SyntaxKind.OfKeyword
+            || tokenType == SyntaxKind.NotKeyword
+            || tokenType == SyntaxKind.TrueKeyword);
     }
 
     function stringContainsUnescapedQuotes(input: string, ignoreFinalQuote: boolean = false): boolean {

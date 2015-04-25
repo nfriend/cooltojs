@@ -46,6 +46,21 @@ var CoolToJS;
 })(CoolToJS || (CoolToJS = {}));
 var CoolToJS;
 (function (CoolToJS) {
+    CoolToJS.DFA = [
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    ];
+})(CoolToJS || (CoolToJS = {}));
+var CoolToJS;
+(function (CoolToJS) {
     var LexicalAnalyzer = (function () {
         function LexicalAnalyzer() {
             var _this = this;
@@ -85,9 +100,6 @@ var CoolToJS;
                     }
                     if (longestMatch) {
                         // we successfully found a match
-                        if (longestMatch.match.indexOf("\"\\n\\tTo add") === 0) {
-                            console.log("\\n\\tTo add a number to");
-                        }
                         if (longestMatch.token === 24 /* NewLine */) {
                             currentLineNumber++;
                             currentColumnNumber = 1;
@@ -169,55 +181,61 @@ var CoolToJS;
 })(CoolToJS || (CoolToJS = {}));
 var CoolToJS;
 (function (CoolToJS) {
-    (function (TokenType) {
-        TokenType[TokenType["ClassKeyword"] = 0] = "ClassKeyword";
-        TokenType[TokenType["ElseKeyword"] = 1] = "ElseKeyword";
-        TokenType[TokenType["FalseKeyword"] = 2] = "FalseKeyword";
-        TokenType[TokenType["FiKeyword"] = 3] = "FiKeyword";
-        TokenType[TokenType["IfKeyword"] = 4] = "IfKeyword";
-        TokenType[TokenType["InheritsKeyword"] = 5] = "InheritsKeyword";
-        TokenType[TokenType["IsvoidKeyword"] = 6] = "IsvoidKeyword";
-        TokenType[TokenType["LetKeyword"] = 7] = "LetKeyword";
-        TokenType[TokenType["LoopKeyword"] = 8] = "LoopKeyword";
-        TokenType[TokenType["PoolKeyword"] = 9] = "PoolKeyword";
-        TokenType[TokenType["ThenKeyword"] = 10] = "ThenKeyword";
-        TokenType[TokenType["WhileKeyword"] = 11] = "WhileKeyword";
-        TokenType[TokenType["CaseKeyword"] = 12] = "CaseKeyword";
-        TokenType[TokenType["EsacKeyword"] = 13] = "EsacKeyword";
-        TokenType[TokenType["NewKeyword"] = 14] = "NewKeyword";
-        TokenType[TokenType["OfKeyword"] = 15] = "OfKeyword";
-        TokenType[TokenType["NotKeyword"] = 16] = "NotKeyword";
-        TokenType[TokenType["TrueKeyword"] = 17] = "TrueKeyword";
-        TokenType[TokenType["Integer"] = 18] = "Integer";
-        TokenType[TokenType["String"] = 19] = "String";
-        TokenType[TokenType["ObjectIdentifier"] = 20] = "ObjectIdentifier";
-        TokenType[TokenType["TypeIdentifier"] = 21] = "TypeIdentifier";
-        TokenType[TokenType["WhiteSpace"] = 22] = "WhiteSpace";
-        TokenType[TokenType["CarriageReturn"] = 23] = "CarriageReturn";
-        TokenType[TokenType["NewLine"] = 24] = "NewLine";
-        TokenType[TokenType["Tab"] = 25] = "Tab";
-        TokenType[TokenType["Comment"] = 26] = "Comment";
-        TokenType[TokenType["DotOperator"] = 27] = "DotOperator";
-        TokenType[TokenType["AtSignOperator"] = 28] = "AtSignOperator";
-        TokenType[TokenType["TildeOperator"] = 29] = "TildeOperator";
-        TokenType[TokenType["MultiplationOperator"] = 30] = "MultiplationOperator";
-        TokenType[TokenType["DivisionOperator"] = 31] = "DivisionOperator";
-        TokenType[TokenType["AdditionOperator"] = 32] = "AdditionOperator";
-        TokenType[TokenType["SubtrationOperator"] = 33] = "SubtrationOperator";
-        TokenType[TokenType["LessThanOrEqualsOperator"] = 34] = "LessThanOrEqualsOperator";
-        TokenType[TokenType["LessThanOperator"] = 35] = "LessThanOperator";
-        TokenType[TokenType["EqualsOperator"] = 36] = "EqualsOperator";
-        TokenType[TokenType["AssignmentOperator"] = 37] = "AssignmentOperator";
-        TokenType[TokenType["FatArrowOperator"] = 38] = "FatArrowOperator";
-        TokenType[TokenType["OpenParenthesis"] = 39] = "OpenParenthesis";
-        TokenType[TokenType["ClosedParenthesis"] = 40] = "ClosedParenthesis";
-        TokenType[TokenType["OpenCurlyBracket"] = 41] = "OpenCurlyBracket";
-        TokenType[TokenType["ClosedCurlyBracket"] = 42] = "ClosedCurlyBracket";
-        TokenType[TokenType["Colon"] = 43] = "Colon";
-        TokenType[TokenType["SemiColon"] = 44] = "SemiColon";
-        TokenType[TokenType["Comma"] = 45] = "Comma";
-    })(CoolToJS.TokenType || (CoolToJS.TokenType = {}));
-    var TokenType = CoolToJS.TokenType;
+    (function (SyntaxKind) {
+        SyntaxKind[SyntaxKind["ClassKeyword"] = 0] = "ClassKeyword";
+        SyntaxKind[SyntaxKind["ElseKeyword"] = 1] = "ElseKeyword";
+        SyntaxKind[SyntaxKind["FalseKeyword"] = 2] = "FalseKeyword";
+        SyntaxKind[SyntaxKind["FiKeyword"] = 3] = "FiKeyword";
+        SyntaxKind[SyntaxKind["IfKeyword"] = 4] = "IfKeyword";
+        SyntaxKind[SyntaxKind["InheritsKeyword"] = 5] = "InheritsKeyword";
+        SyntaxKind[SyntaxKind["IsvoidKeyword"] = 6] = "IsvoidKeyword";
+        SyntaxKind[SyntaxKind["LetKeyword"] = 7] = "LetKeyword";
+        SyntaxKind[SyntaxKind["LoopKeyword"] = 8] = "LoopKeyword";
+        SyntaxKind[SyntaxKind["PoolKeyword"] = 9] = "PoolKeyword";
+        SyntaxKind[SyntaxKind["ThenKeyword"] = 10] = "ThenKeyword";
+        SyntaxKind[SyntaxKind["WhileKeyword"] = 11] = "WhileKeyword";
+        SyntaxKind[SyntaxKind["CaseKeyword"] = 12] = "CaseKeyword";
+        SyntaxKind[SyntaxKind["EsacKeyword"] = 13] = "EsacKeyword";
+        SyntaxKind[SyntaxKind["NewKeyword"] = 14] = "NewKeyword";
+        SyntaxKind[SyntaxKind["OfKeyword"] = 15] = "OfKeyword";
+        SyntaxKind[SyntaxKind["NotKeyword"] = 16] = "NotKeyword";
+        SyntaxKind[SyntaxKind["TrueKeyword"] = 17] = "TrueKeyword";
+        SyntaxKind[SyntaxKind["Integer"] = 18] = "Integer";
+        SyntaxKind[SyntaxKind["String"] = 19] = "String";
+        SyntaxKind[SyntaxKind["ObjectIdentifier"] = 20] = "ObjectIdentifier";
+        SyntaxKind[SyntaxKind["TypeIdentifier"] = 21] = "TypeIdentifier";
+        SyntaxKind[SyntaxKind["WhiteSpace"] = 22] = "WhiteSpace";
+        SyntaxKind[SyntaxKind["CarriageReturn"] = 23] = "CarriageReturn";
+        SyntaxKind[SyntaxKind["NewLine"] = 24] = "NewLine";
+        SyntaxKind[SyntaxKind["Tab"] = 25] = "Tab";
+        SyntaxKind[SyntaxKind["Comment"] = 26] = "Comment";
+        SyntaxKind[SyntaxKind["DotOperator"] = 27] = "DotOperator";
+        SyntaxKind[SyntaxKind["AtSignOperator"] = 28] = "AtSignOperator";
+        SyntaxKind[SyntaxKind["TildeOperator"] = 29] = "TildeOperator";
+        SyntaxKind[SyntaxKind["MultiplationOperator"] = 30] = "MultiplationOperator";
+        SyntaxKind[SyntaxKind["DivisionOperator"] = 31] = "DivisionOperator";
+        SyntaxKind[SyntaxKind["AdditionOperator"] = 32] = "AdditionOperator";
+        SyntaxKind[SyntaxKind["SubtrationOperator"] = 33] = "SubtrationOperator";
+        SyntaxKind[SyntaxKind["LessThanOrEqualsOperator"] = 34] = "LessThanOrEqualsOperator";
+        SyntaxKind[SyntaxKind["LessThanOperator"] = 35] = "LessThanOperator";
+        SyntaxKind[SyntaxKind["EqualsOperator"] = 36] = "EqualsOperator";
+        SyntaxKind[SyntaxKind["AssignmentOperator"] = 37] = "AssignmentOperator";
+        SyntaxKind[SyntaxKind["FatArrowOperator"] = 38] = "FatArrowOperator";
+        SyntaxKind[SyntaxKind["OpenParenthesis"] = 39] = "OpenParenthesis";
+        SyntaxKind[SyntaxKind["ClosedParenthesis"] = 40] = "ClosedParenthesis";
+        SyntaxKind[SyntaxKind["OpenCurlyBracket"] = 41] = "OpenCurlyBracket";
+        SyntaxKind[SyntaxKind["ClosedCurlyBracket"] = 42] = "ClosedCurlyBracket";
+        SyntaxKind[SyntaxKind["Colon"] = 43] = "Colon";
+        SyntaxKind[SyntaxKind["SemiColon"] = 44] = "SemiColon";
+        SyntaxKind[SyntaxKind["Comma"] = 45] = "Comma";
+        // higher-level constructs, not used in lexical analysis
+        SyntaxKind[SyntaxKind["Program"] = 46] = "Program";
+        SyntaxKind[SyntaxKind["Class"] = 47] = "Class";
+        SyntaxKind[SyntaxKind["Feature"] = 48] = "Feature";
+        SyntaxKind[SyntaxKind["Formal"] = 49] = "Formal";
+        SyntaxKind[SyntaxKind["Expression"] = 50] = "Expression";
+    })(CoolToJS.SyntaxKind || (CoolToJS.SyntaxKind = {}));
+    var SyntaxKind = CoolToJS.SyntaxKind;
     // order signifies priority (keywords are listed first)
     CoolToJS.TokenLookup = [
         {

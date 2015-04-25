@@ -1,7 +1,7 @@
 ﻿module CoolToJS {
 
     export interface Token {
-        token: TokenType;
+        token: SyntaxKind;
         match: string;
         location: SourceLocation;
     }
@@ -54,14 +54,10 @@
                 if (longestMatch) {
                     // we successfully found a match
 
-                    if (longestMatch.match.indexOf("\"\\n\\tTo add") === 0) {
-                        console.log("\\n\\tTo add a number to");
-                    }
-
-                    if (longestMatch.token === TokenType.NewLine) {
+                    if (longestMatch.token === SyntaxKind.NewLine) {
                         currentLineNumber++;
                         currentColumnNumber = 1;
-                    } else if (longestMatch.token === TokenType.String || longestMatch.token === TokenType.Comment) {
+                    } else if (longestMatch.token === SyntaxKind.String || longestMatch.token === SyntaxKind.Comment) {
                         // strings and comments can also have newlines 
                         // in them, if they're multi-line
                         var lines = longestMatch.match.split('\n');
@@ -72,9 +68,9 @@
                             currentColumnNumber += longestMatch.match.length;
                         }
 
-                    } else if (longestMatch.token === TokenType.Tab) {
+                    } else if (longestMatch.token === SyntaxKind.Tab) {
                         currentColumnNumber += this.tabLength;
-                    } else if (longestMatch.token !== TokenType.CarriageReturn) {
+                    } else if (longestMatch.token !== SyntaxKind.CarriageReturn) {
                         // update the column counter
                         currentColumnNumber += longestMatch.match.length;
                     }

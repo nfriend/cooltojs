@@ -1,0 +1,86 @@
+﻿// used by Jison to generate the SLR(1) parse table
+// http://zaach.github.io/jison/try/usf/
+
+%token ClassKeyword ElseKeyword FalseKeyword FiKeyword IfKeyword InheritsKeyword
+%token IsvoidKeyword LetKeyword LoopKeyword PoolKeyword ThenKeyword WhileKeyword 
+%token CaseKeyword EsacKeyword NewKeyword OfKeyword NotKeyword TrueKeyword 
+
+%token Integer String ObjectIdentifier TypeIdentifier
+
+%start Program
+%%
+
+Program
+	: Class
+	| Class Program
+	;
+
+FeatureList
+	: Feature
+	| FeatureList
+	;
+
+Class
+	: Class TypeIdentifier InheritsKeyword TypeIdentifier '{' FeatureList '}'
+	| Class TypeIdentifier InheritsKeyword TypeIdentifier '{' '}'
+	| Class TypeIdentifier '{' FeatureList '}'
+	;
+
+FormalList
+	: Formal
+	| FormalList
+	;
+
+Feature
+	: ObjectIdentifier '(' FormalList ':' TypeIdentifier '{' Expression '}'
+	| ObjectIdentifier ':' TypeIdentifier '<-' Expression
+	;
+
+Formal
+	: ObjectIdentifier ':' TypeIdentifier
+	;
+
+ExpressionList
+	: Expression
+	| ExpressionList
+	;
+
+LocalVariableDeclarationList
+	: ObjectIdentifier ':' TypeIdentifier
+	| ObjectIdentifier ':' TypeIdentifier '<-' Expression
+	| ObjectIdentifier ':' TypeIdentifier ',' LocalVariableDeclarationList
+	;
+
+CaseOption
+	: ObjectIdentifier ':' TypeIdentifier '=>' Expression ';'
+	| ObjectIdentifier ':' TypeIdentifier '=>' Expression ';' CaseOption
+	;
+
+Expression
+	: ObjectIdentifier '<-' Expression
+	| Expression '.' '(' ExpressionList ')'
+	| Expression '@' TypeIdentifier '.' '(' ExpressionList ')'
+	| Identifier '(' ExpressionList ')'
+	| IfKeyword Expression ThenKeyword Expression ElseKeyword Expression FiKeyword
+	| WhileKeyword Expression LoopKeyword Expression PoolKeyword
+	| '{' ExpressionList '}'
+	| LetKeyword LocalVariableDeclaration InKeyword Expression
+	| CaseKeyword Expression OfKeyword CaseOption EsacKeyword
+	| newKeyword TypeIdentifier
+	| IsvoidKeyword Expression
+	| Expression '+' Expression
+	| Expression '-' Expression
+	| Expression '*' Expression
+	| Expression '/' Expression
+	| Expression '~' Expression
+	| Expression '<' Expression
+	| Expression '<=' Expression
+	| Expression '=' Expression
+	| NotKeyword Expression
+	| '(' Expression ')'
+	| ObjectIdentifier
+	| Integer
+	| String
+	| TrueKeyword
+	| FalseKeyword
+	;
