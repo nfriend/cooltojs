@@ -7,7 +7,18 @@
 
 %token Integer String ObjectIdentifier TypeIdentifier
 
+%left '<-'
+%left NotKeyword
+%left '<=' '<' '='
+%left '+' '-'
+%left '*' '/'
+%left IsvoidKeyword
+%left '~'
+%left '@'
+%left '.'
+
 %start Program
+
 %%
 
 Program
@@ -66,7 +77,7 @@ Expression
 	| '{' ExpressionList '}'
 	| LetKeyword LocalVariableDeclaration InKeyword Expression
 	| CaseKeyword Expression OfKeyword CaseOption EsacKeyword
-	| newKeyword TypeIdentifier
+	| NewKeyword TypeIdentifier
 	| IsvoidKeyword Expression
 	| Expression '+' Expression
 	| Expression '-' Expression

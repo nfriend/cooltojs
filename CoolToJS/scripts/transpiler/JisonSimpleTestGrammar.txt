@@ -1,0 +1,8 @@
+﻿%token int
+
+%start E
+
+%%
+
+E : T '+' E | T;
+T : int '*' T | int | '(' E ')';

@@ -1,4 +1,4 @@
-﻿module CoolToJS {
+﻿module CoolToJS.DontCompile {
     export enum SyntaxKind {
         ClassKeyword = 0,
         ElseKeyword = 1,

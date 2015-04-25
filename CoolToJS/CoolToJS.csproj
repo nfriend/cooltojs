@@ -47,6 +47,7 @@
     <Content Include="old-browser.html" />
     <Content Include="scripts\demo\CodeMirror-cool.js" />
     <Content Include="scripts\demo\demo.js" />
+    <Content Include="scripts\transpiler\JisonSimpleTestGrammar.txt" />
     <Content Include="scripts\transpiler\JisonBNFGrammar.txt" />
     <Content Include="styles\CodeMirror-cool-theme.css" />
     <Content Include="test.html" />
@@ -61,6 +62,7 @@
     <TypeScriptCompile Include="scripts\transpiler\LexicalAnalyzer.ts" />
     <TypeScriptCompile Include="scripts\transpiler\OutputInterfaces.ts" />
     <TypeScriptCompile Include="scripts\transpiler\Parser.ts" />
+    <TypeScriptCompile Include="scripts\transpiler\SimpleSyntaxKind.ts" />
     <TypeScriptCompile Include="scripts\transpiler\SyntaxKind.ts" />
     <TypeScriptCompile Include="scripts\transpiler\Transpiler.ts" />
   </ItemGroup>

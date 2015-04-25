@@ -100,11 +100,11 @@ var CoolToJS;
                     }
                     if (longestMatch) {
                         // we successfully found a match
-                        if (longestMatch.token === 24 /* NewLine */) {
+                        if (longestMatch.token === 102 /* NewLine */) {
                             currentLineNumber++;
                             currentColumnNumber = 1;
                         }
-                        else if (longestMatch.token === 19 /* String */ || longestMatch.token === 26 /* Comment */) {
+                        else if (longestMatch.token === 1000 /* String */ || longestMatch.token === 1001 /* Comment */) {
                             // strings and comments can also have newlines 
                             // in them, if they're multi-line
                             var lines = longestMatch.match.split('\n');
@@ -116,10 +116,10 @@ var CoolToJS;
                                 currentColumnNumber += longestMatch.match.length;
                             }
                         }
-                        else if (longestMatch.token === 25 /* Tab */) {
+                        else if (longestMatch.token === 103 /* Tab */) {
                             currentColumnNumber += _this.tabLength;
                         }
-                        else if (longestMatch.token !== 23 /* CarriageReturn */) {
+                        else if (longestMatch.token !== 101 /* CarriageReturn */) {
                             // update the column counter
                             currentColumnNumber += longestMatch.match.length;
                         }
@@ -168,12 +168,38 @@ var CoolToJS;
 (function (CoolToJS) {
     var Parser = (function () {
         function Parser() {
+            var _this = this;
             this.Parse = function (tokens) {
+                tokens.push({
+                    token: 0 /* End */,
+                    match: null,
+                    location: null
+                });
+                var stack = [], inputPointer = 0;
+                while (stack[0] !== 6 /* E */ && inputPointer !== tokens.length - 1) {
+                    var nextMove;
+                    for (var i = 0; i < stack.length; i++) {
+                        nextMove = _this.slr1ParseTable[stack[i]][0];
+                    }
+                }
                 return {
                     success: true,
                     parseTree: {}
                 };
             };
+            this.slr1ParseTable = [
+                [null, 's4', null, null, null, 's3', '1 ', '2 '],
+                ['a ', null, null, null, null, null, null, null],
+                ['r2', null, 'r2', null, 's5', null, null, null],
+                ['r4', null, 'r4', 's6', 'r4', null, null, null],
+                [null, 's4', null, null, null, 's3', '7 ', '2 '],
+                [null, 's4', null, null, null, 's3', '8 ', '2 '],
+                [null, 's4', null, null, null, 's3', null, '9 '],
+                [null, null, 's10', null, null, null, null, null],
+                ['r1', null, 'r1', null, null, null, null, null],
+                ['r3', null, 'r3', null, 'r3', null, null, null],
+                ['r5', null, 'r5', null, 'r5', null, null, null],
+            ];
         }
         return Parser;
     })();
@@ -182,297 +208,364 @@ var CoolToJS;
 var CoolToJS;
 (function (CoolToJS) {
     (function (SyntaxKind) {
-        SyntaxKind[SyntaxKind["ClassKeyword"] = 0] = "ClassKeyword";
-        SyntaxKind[SyntaxKind["ElseKeyword"] = 1] = "ElseKeyword";
-        SyntaxKind[SyntaxKind["FalseKeyword"] = 2] = "FalseKeyword";
-        SyntaxKind[SyntaxKind["FiKeyword"] = 3] = "FiKeyword";
-        SyntaxKind[SyntaxKind["IfKeyword"] = 4] = "IfKeyword";
-        SyntaxKind[SyntaxKind["InheritsKeyword"] = 5] = "InheritsKeyword";
-        SyntaxKind[SyntaxKind["IsvoidKeyword"] = 6] = "IsvoidKeyword";
-        SyntaxKind[SyntaxKind["LetKeyword"] = 7] = "LetKeyword";
-        SyntaxKind[SyntaxKind["LoopKeyword"] = 8] = "LoopKeyword";
-        SyntaxKind[SyntaxKind["PoolKeyword"] = 9] = "PoolKeyword";
-        SyntaxKind[SyntaxKind["ThenKeyword"] = 10] = "ThenKeyword";
-        SyntaxKind[SyntaxKind["WhileKeyword"] = 11] = "WhileKeyword";
-        SyntaxKind[SyntaxKind["CaseKeyword"] = 12] = "CaseKeyword";
-        SyntaxKind[SyntaxKind["EsacKeyword"] = 13] = "EsacKeyword";
-        SyntaxKind[SyntaxKind["NewKeyword"] = 14] = "NewKeyword";
-        SyntaxKind[SyntaxKind["OfKeyword"] = 15] = "OfKeyword";
-        SyntaxKind[SyntaxKind["NotKeyword"] = 16] = "NotKeyword";
-        SyntaxKind[SyntaxKind["TrueKeyword"] = 17] = "TrueKeyword";
-        SyntaxKind[SyntaxKind["Integer"] = 18] = "Integer";
-        SyntaxKind[SyntaxKind["String"] = 19] = "String";
-        SyntaxKind[SyntaxKind["ObjectIdentifier"] = 20] = "ObjectIdentifier";
-        SyntaxKind[SyntaxKind["TypeIdentifier"] = 21] = "TypeIdentifier";
-        SyntaxKind[SyntaxKind["WhiteSpace"] = 22] = "WhiteSpace";
-        SyntaxKind[SyntaxKind["CarriageReturn"] = 23] = "CarriageReturn";
-        SyntaxKind[SyntaxKind["NewLine"] = 24] = "NewLine";
-        SyntaxKind[SyntaxKind["Tab"] = 25] = "Tab";
-        SyntaxKind[SyntaxKind["Comment"] = 26] = "Comment";
-        SyntaxKind[SyntaxKind["DotOperator"] = 27] = "DotOperator";
-        SyntaxKind[SyntaxKind["AtSignOperator"] = 28] = "AtSignOperator";
-        SyntaxKind[SyntaxKind["TildeOperator"] = 29] = "TildeOperator";
-        SyntaxKind[SyntaxKind["MultiplationOperator"] = 30] = "MultiplationOperator";
-        SyntaxKind[SyntaxKind["DivisionOperator"] = 31] = "DivisionOperator";
-        SyntaxKind[SyntaxKind["AdditionOperator"] = 32] = "AdditionOperator";
-        SyntaxKind[SyntaxKind["SubtrationOperator"] = 33] = "SubtrationOperator";
-        SyntaxKind[SyntaxKind["LessThanOrEqualsOperator"] = 34] = "LessThanOrEqualsOperator";
-        SyntaxKind[SyntaxKind["LessThanOperator"] = 35] = "LessThanOperator";
-        SyntaxKind[SyntaxKind["EqualsOperator"] = 36] = "EqualsOperator";
-        SyntaxKind[SyntaxKind["AssignmentOperator"] = 37] = "AssignmentOperator";
-        SyntaxKind[SyntaxKind["FatArrowOperator"] = 38] = "FatArrowOperator";
-        SyntaxKind[SyntaxKind["OpenParenthesis"] = 39] = "OpenParenthesis";
-        SyntaxKind[SyntaxKind["ClosedParenthesis"] = 40] = "ClosedParenthesis";
-        SyntaxKind[SyntaxKind["OpenCurlyBracket"] = 41] = "OpenCurlyBracket";
-        SyntaxKind[SyntaxKind["ClosedCurlyBracket"] = 42] = "ClosedCurlyBracket";
-        SyntaxKind[SyntaxKind["Colon"] = 43] = "Colon";
-        SyntaxKind[SyntaxKind["SemiColon"] = 44] = "SemiColon";
-        SyntaxKind[SyntaxKind["Comma"] = 45] = "Comma";
-        // higher-level constructs, not used in lexical analysis
-        SyntaxKind[SyntaxKind["Program"] = 46] = "Program";
-        SyntaxKind[SyntaxKind["Class"] = 47] = "Class";
-        SyntaxKind[SyntaxKind["Feature"] = 48] = "Feature";
-        SyntaxKind[SyntaxKind["Formal"] = 49] = "Formal";
-        SyntaxKind[SyntaxKind["Expression"] = 50] = "Expression";
+        SyntaxKind[SyntaxKind["End"] = 0] = "End";
+        SyntaxKind[SyntaxKind["OpenParenthesis"] = 1] = "OpenParenthesis";
+        SyntaxKind[SyntaxKind["ClosedParenthesis"] = 2] = "ClosedParenthesis";
+        SyntaxKind[SyntaxKind["MultiplationOperator"] = 3] = "MultiplationOperator";
+        SyntaxKind[SyntaxKind["AdditionOperator"] = 4] = "AdditionOperator";
+        SyntaxKind[SyntaxKind["Integer"] = 5] = "Integer";
+        SyntaxKind[SyntaxKind["E"] = 6] = "E";
+        SyntaxKind[SyntaxKind["T"] = 7] = "T";
+        SyntaxKind[SyntaxKind["WhiteSpace"] = 100] = "WhiteSpace";
+        SyntaxKind[SyntaxKind["CarriageReturn"] = 101] = "CarriageReturn";
+        SyntaxKind[SyntaxKind["NewLine"] = 102] = "NewLine";
+        SyntaxKind[SyntaxKind["Tab"] = 103] = "Tab";
+        // not used in this grammar - only added here so we can compile
+        SyntaxKind[SyntaxKind["String"] = 1000] = "String";
+        SyntaxKind[SyntaxKind["Comment"] = 1001] = "Comment";
     })(CoolToJS.SyntaxKind || (CoolToJS.SyntaxKind = {}));
     var SyntaxKind = CoolToJS.SyntaxKind;
     // order signifies priority (keywords are listed first)
     CoolToJS.TokenLookup = [
         {
-            token: 0 /* ClassKeyword */,
-            regex: /^(class)\b/i,
-        },
-        {
-            token: 1 /* ElseKeyword */,
-            regex: /^(else)\b/i,
-        },
-        {
-            token: 2 /* FalseKeyword */,
-            regex: /^(f[aA][lL][sS][eE])\b/,
-        },
-        {
-            token: 17 /* TrueKeyword */,
-            regex: /^(t[rR][uU][eE])\b/,
-        },
-        {
-            token: 3 /* FiKeyword */,
-            regex: /^(fi)\b/i,
-        },
-        {
-            token: 4 /* IfKeyword */,
-            regex: /^(if)\b/i,
-        },
-        {
-            token: 5 /* InheritsKeyword */,
-            regex: /^(inherits)\b/i,
-        },
-        {
-            token: 6 /* IsvoidKeyword */,
-            regex: /^(isvoid)\b/i,
-        },
-        {
-            token: 7 /* LetKeyword */,
-            regex: /^(let)\b/i,
-        },
-        {
-            token: 8 /* LoopKeyword */,
-            regex: /^(loop)\b/i,
-        },
-        {
-            token: 9 /* PoolKeyword */,
-            regex: /^(pool)\b/i,
-        },
-        {
-            token: 10 /* ThenKeyword */,
-            regex: /^(then)\b/i,
-        },
-        {
-            token: 11 /* WhileKeyword */,
-            regex: /^(while)\b/i,
-        },
-        {
-            token: 12 /* CaseKeyword */,
-            regex: /^(case)\b/i,
-        },
-        {
-            token: 13 /* EsacKeyword */,
-            regex: /^(esac)\b/i,
-        },
-        {
-            token: 14 /* NewKeyword */,
-            regex: /^(new)\b/i,
-        },
-        {
-            token: 15 /* OfKeyword */,
-            regex: /^(of)\b/i,
-        },
-        {
-            token: 16 /* NotKeyword */,
-            regex: /^(not)\b/i,
-        },
-        {
-            token: 18 /* Integer */,
+            token: 5 /* Integer */,
             regex: /^([0-9]+)\b/,
         },
         {
-            token: 19 /* String */,
-            matchFunction: function (input) {
-                if (input.indexOf('"Hello') === 0) {
-                    console.log('sdfsd');
-                }
-                // for a single-line string
-                var singleLineMatch = /^("(?:[^\\]|\\.)*?")/.exec(input);
-                if (singleLineMatch !== null && typeof singleLineMatch[1] !== 'undefined') {
-                    return singleLineMatch[1];
-                }
-                // for a multi-line string
-                var fullMatch = null;
-                var firstLineMatch = /^(".*\\[\s]*\n)/.exec(input);
-                if (firstLineMatch !== null && typeof firstLineMatch[1] !== 'undefined') {
-                    if (stringContainsUnescapedQuotes(firstLineMatch[1])) {
-                        return null;
+            token: 3 /* MultiplationOperator */,
+            regex: /^(\*)/
+        },
+        {
+            token: 4 /* AdditionOperator */,
+            regex: /^(\+)/
+        },
+        {
+            token: 1 /* OpenParenthesis */,
+            regex: /^(\()/
+        },
+        {
+            token: 2 /* ClosedParenthesis */,
+            regex: /^(\))/
+        },
+        {
+            token: 100 /* WhiteSpace */,
+            regex: /^( +)/,
+        },
+        {
+            token: 101 /* CarriageReturn */,
+            regex: /^(\r)/,
+        },
+        {
+            token: 102 /* NewLine */,
+            regex: /^(\n)/,
+        },
+        {
+            token: 103 /* Tab */,
+            regex: /^(\t)/,
+        },
+    ];
+    function isKeyword(tokenType) {
+        return false;
+    }
+    CoolToJS.isKeyword = isKeyword;
+})(CoolToJS || (CoolToJS = {}));
+var CoolToJS;
+(function (CoolToJS) {
+    var DontCompile;
+    (function (DontCompile) {
+        (function (SyntaxKind) {
+            SyntaxKind[SyntaxKind["ClassKeyword"] = 0] = "ClassKeyword";
+            SyntaxKind[SyntaxKind["ElseKeyword"] = 1] = "ElseKeyword";
+            SyntaxKind[SyntaxKind["FalseKeyword"] = 2] = "FalseKeyword";
+            SyntaxKind[SyntaxKind["FiKeyword"] = 3] = "FiKeyword";
+            SyntaxKind[SyntaxKind["IfKeyword"] = 4] = "IfKeyword";
+            SyntaxKind[SyntaxKind["InheritsKeyword"] = 5] = "InheritsKeyword";
+            SyntaxKind[SyntaxKind["IsvoidKeyword"] = 6] = "IsvoidKeyword";
+            SyntaxKind[SyntaxKind["LetKeyword"] = 7] = "LetKeyword";
+            SyntaxKind[SyntaxKind["LoopKeyword"] = 8] = "LoopKeyword";
+            SyntaxKind[SyntaxKind["PoolKeyword"] = 9] = "PoolKeyword";
+            SyntaxKind[SyntaxKind["ThenKeyword"] = 10] = "ThenKeyword";
+            SyntaxKind[SyntaxKind["WhileKeyword"] = 11] = "WhileKeyword";
+            SyntaxKind[SyntaxKind["CaseKeyword"] = 12] = "CaseKeyword";
+            SyntaxKind[SyntaxKind["EsacKeyword"] = 13] = "EsacKeyword";
+            SyntaxKind[SyntaxKind["NewKeyword"] = 14] = "NewKeyword";
+            SyntaxKind[SyntaxKind["OfKeyword"] = 15] = "OfKeyword";
+            SyntaxKind[SyntaxKind["NotKeyword"] = 16] = "NotKeyword";
+            SyntaxKind[SyntaxKind["TrueKeyword"] = 17] = "TrueKeyword";
+            SyntaxKind[SyntaxKind["Integer"] = 18] = "Integer";
+            SyntaxKind[SyntaxKind["String"] = 19] = "String";
+            SyntaxKind[SyntaxKind["ObjectIdentifier"] = 20] = "ObjectIdentifier";
+            SyntaxKind[SyntaxKind["TypeIdentifier"] = 21] = "TypeIdentifier";
+            SyntaxKind[SyntaxKind["WhiteSpace"] = 22] = "WhiteSpace";
+            SyntaxKind[SyntaxKind["CarriageReturn"] = 23] = "CarriageReturn";
+            SyntaxKind[SyntaxKind["NewLine"] = 24] = "NewLine";
+            SyntaxKind[SyntaxKind["Tab"] = 25] = "Tab";
+            SyntaxKind[SyntaxKind["Comment"] = 26] = "Comment";
+            SyntaxKind[SyntaxKind["DotOperator"] = 27] = "DotOperator";
+            SyntaxKind[SyntaxKind["AtSignOperator"] = 28] = "AtSignOperator";
+            SyntaxKind[SyntaxKind["TildeOperator"] = 29] = "TildeOperator";
+            SyntaxKind[SyntaxKind["MultiplationOperator"] = 30] = "MultiplationOperator";
+            SyntaxKind[SyntaxKind["DivisionOperator"] = 31] = "DivisionOperator";
+            SyntaxKind[SyntaxKind["AdditionOperator"] = 32] = "AdditionOperator";
+            SyntaxKind[SyntaxKind["SubtrationOperator"] = 33] = "SubtrationOperator";
+            SyntaxKind[SyntaxKind["LessThanOrEqualsOperator"] = 34] = "LessThanOrEqualsOperator";
+            SyntaxKind[SyntaxKind["LessThanOperator"] = 35] = "LessThanOperator";
+            SyntaxKind[SyntaxKind["EqualsOperator"] = 36] = "EqualsOperator";
+            SyntaxKind[SyntaxKind["AssignmentOperator"] = 37] = "AssignmentOperator";
+            SyntaxKind[SyntaxKind["FatArrowOperator"] = 38] = "FatArrowOperator";
+            SyntaxKind[SyntaxKind["OpenParenthesis"] = 39] = "OpenParenthesis";
+            SyntaxKind[SyntaxKind["ClosedParenthesis"] = 40] = "ClosedParenthesis";
+            SyntaxKind[SyntaxKind["OpenCurlyBracket"] = 41] = "OpenCurlyBracket";
+            SyntaxKind[SyntaxKind["ClosedCurlyBracket"] = 42] = "ClosedCurlyBracket";
+            SyntaxKind[SyntaxKind["Colon"] = 43] = "Colon";
+            SyntaxKind[SyntaxKind["SemiColon"] = 44] = "SemiColon";
+            SyntaxKind[SyntaxKind["Comma"] = 45] = "Comma";
+            // higher-level constructs, not used in lexical analysis
+            SyntaxKind[SyntaxKind["Program"] = 46] = "Program";
+            SyntaxKind[SyntaxKind["Class"] = 47] = "Class";
+            SyntaxKind[SyntaxKind["Feature"] = 48] = "Feature";
+            SyntaxKind[SyntaxKind["Formal"] = 49] = "Formal";
+            SyntaxKind[SyntaxKind["Expression"] = 50] = "Expression";
+        })(DontCompile.SyntaxKind || (DontCompile.SyntaxKind = {}));
+        var SyntaxKind = DontCompile.SyntaxKind;
+        // order signifies priority (keywords are listed first)
+        DontCompile.TokenLookup = [
+            {
+                token: 0 /* ClassKeyword */,
+                regex: /^(class)\b/i,
+            },
+            {
+                token: 1 /* ElseKeyword */,
+                regex: /^(else)\b/i,
+            },
+            {
+                token: 2 /* FalseKeyword */,
+                regex: /^(f[aA][lL][sS][eE])\b/,
+            },
+            {
+                token: 17 /* TrueKeyword */,
+                regex: /^(t[rR][uU][eE])\b/,
+            },
+            {
+                token: 3 /* FiKeyword */,
+                regex: /^(fi)\b/i,
+            },
+            {
+                token: 4 /* IfKeyword */,
+                regex: /^(if)\b/i,
+            },
+            {
+                token: 5 /* InheritsKeyword */,
+                regex: /^(inherits)\b/i,
+            },
+            {
+                token: 6 /* IsvoidKeyword */,
+                regex: /^(isvoid)\b/i,
+            },
+            {
+                token: 7 /* LetKeyword */,
+                regex: /^(let)\b/i,
+            },
+            {
+                token: 8 /* LoopKeyword */,
+                regex: /^(loop)\b/i,
+            },
+            {
+                token: 9 /* PoolKeyword */,
+                regex: /^(pool)\b/i,
+            },
+            {
+                token: 10 /* ThenKeyword */,
+                regex: /^(then)\b/i,
+            },
+            {
+                token: 11 /* WhileKeyword */,
+                regex: /^(while)\b/i,
+            },
+            {
+                token: 12 /* CaseKeyword */,
+                regex: /^(case)\b/i,
+            },
+            {
+                token: 13 /* EsacKeyword */,
+                regex: /^(esac)\b/i,
+            },
+            {
+                token: 14 /* NewKeyword */,
+                regex: /^(new)\b/i,
+            },
+            {
+                token: 15 /* OfKeyword */,
+                regex: /^(of)\b/i,
+            },
+            {
+                token: 16 /* NotKeyword */,
+                regex: /^(not)\b/i,
+            },
+            {
+                token: 18 /* Integer */,
+                regex: /^([0-9]+)\b/,
+            },
+            {
+                token: 19 /* String */,
+                matchFunction: function (input) {
+                    if (input.indexOf('"Hello') === 0) {
+                        console.log('sdfsd');
                     }
-                    fullMatch = firstLineMatch[1];
-                    input = input.slice(firstLineMatch[1].length);
-                    var middleLineRegex = /^(.*\\[\s]*\n)/;
-                    var middleLineMatch = middleLineRegex.exec(input);
-                    while (middleLineMatch !== null && typeof middleLineMatch[1] !== 'undefined' && !(stringContainsUnescapedQuotes(middleLineMatch[1]))) {
-                        fullMatch += middleLineMatch[1];
-                        input = input.slice(middleLineMatch[1].length);
-                        middleLineMatch = middleLineRegex.exec(input);
+                    // for a single-line string
+                    var singleLineMatch = /^("(?:[^\\]|\\.)*?")/.exec(input);
+                    if (singleLineMatch !== null && typeof singleLineMatch[1] !== 'undefined') {
+                        return singleLineMatch[1];
                     }
-                    var lastLineMatch = /^(.*?[^\\]")/.exec(input);
-                    if (lastLineMatch !== null && lastLineMatch[1] !== 'undefined') {
-                        fullMatch += lastLineMatch[1];
-                        return fullMatch;
+                    // for a multi-line string
+                    var fullMatch = null;
+                    var firstLineMatch = /^(".*\\[\s]*\n)/.exec(input);
+                    if (firstLineMatch !== null && typeof firstLineMatch[1] !== 'undefined') {
+                        if (stringContainsUnescapedQuotes(firstLineMatch[1])) {
+                            return null;
+                        }
+                        fullMatch = firstLineMatch[1];
+                        input = input.slice(firstLineMatch[1].length);
+                        var middleLineRegex = /^(.*\\[\s]*\n)/;
+                        var middleLineMatch = middleLineRegex.exec(input);
+                        while (middleLineMatch !== null && typeof middleLineMatch[1] !== 'undefined' && !(stringContainsUnescapedQuotes(middleLineMatch[1]))) {
+                            fullMatch += middleLineMatch[1];
+                            input = input.slice(middleLineMatch[1].length);
+                            middleLineMatch = middleLineRegex.exec(input);
+                        }
+                        var lastLineMatch = /^(.*?[^\\]")/.exec(input);
+                        if (lastLineMatch !== null && lastLineMatch[1] !== 'undefined') {
+                            fullMatch += lastLineMatch[1];
+                            return fullMatch;
+                        }
+                        else {
+                            return null;
+                        }
                     }
                     else {
                         return null;
                     }
                 }
-                else {
-                    return null;
-                }
+            },
+            {
+                token: 20 /* ObjectIdentifier */,
+                regex: /^([a-z][a-zA-Z0-9_]*)\b/,
+            },
+            {
+                token: 21 /* TypeIdentifier */,
+                regex: /^([A-Z][a-zA-Z0-9_]*)\b/,
+            },
+            {
+                token: 22 /* WhiteSpace */,
+                regex: /^( +)/,
+            },
+            {
+                token: 23 /* CarriageReturn */,
+                regex: /^(\r)/,
+            },
+            {
+                token: 24 /* NewLine */,
+                regex: /^(\n)/,
+            },
+            {
+                token: 25 /* Tab */,
+                regex: /^(\t)/,
+            },
+            {
+                token: 26 /* Comment */,
+                regex: /^((?:--.*)|(?:\(\*(?:(?!\*\))[\s\S])*\*\)))/,
+            },
+            {
+                token: 27 /* DotOperator */,
+                regex: /^(\.)/
+            },
+            {
+                token: 28 /* AtSignOperator */,
+                regex: /^(\@)/
+            },
+            {
+                token: 29 /* TildeOperator */,
+                regex: /^(~)/
+            },
+            {
+                token: 30 /* MultiplationOperator */,
+                regex: /^(\*)/
+            },
+            {
+                token: 31 /* DivisionOperator */,
+                regex: /^(\/)/
+            },
+            {
+                token: 32 /* AdditionOperator */,
+                regex: /^(\+)/
+            },
+            {
+                token: 33 /* SubtrationOperator */,
+                regex: /^(-)/
+            },
+            {
+                token: 34 /* LessThanOrEqualsOperator */,
+                regex: /^(<=)/
+            },
+            {
+                token: 35 /* LessThanOperator */,
+                regex: /^(<)/
+            },
+            {
+                token: 36 /* EqualsOperator */,
+                regex: /^(=)/
+            },
+            {
+                token: 37 /* AssignmentOperator */,
+                regex: /^(<-)/
+            },
+            {
+                token: 38 /* FatArrowOperator */,
+                regex: /^(=>)/
+            },
+            {
+                token: 39 /* OpenParenthesis */,
+                regex: /^(\()/
+            },
+            {
+                token: 40 /* ClosedParenthesis */,
+                regex: /^(\))/
+            },
+            {
+                token: 41 /* OpenCurlyBracket */,
+                regex: /^(\{)/
+            },
+            {
+                token: 42 /* ClosedCurlyBracket */,
+                regex: /^(\})/
+            },
+            {
+                token: 43 /* Colon */,
+                regex: /^(:)/
+            },
+            {
+                token: 44 /* SemiColon */,
+                regex: /^(;)/
+            },
+            {
+                token: 45 /* Comma */,
+                regex: /^(,)/
             }
-        },
-        {
-            token: 20 /* ObjectIdentifier */,
-            regex: /^([a-z][a-zA-Z0-9_]*)\b/,
-        },
-        {
-            token: 21 /* TypeIdentifier */,
-            regex: /^([A-Z][a-zA-Z0-9_]*)\b/,
-        },
-        {
-            token: 22 /* WhiteSpace */,
-            regex: /^( +)/,
-        },
-        {
-            token: 23 /* CarriageReturn */,
-            regex: /^(\r)/,
-        },
-        {
-            token: 24 /* NewLine */,
-            regex: /^(\n)/,
-        },
-        {
-            token: 25 /* Tab */,
-            regex: /^(\t)/,
-        },
-        {
-            token: 26 /* Comment */,
-            regex: /^((?:--.*)|(?:\(\*(?:(?!\*\))[\s\S])*\*\)))/,
-        },
-        {
-            token: 27 /* DotOperator */,
-            regex: /^(\.)/
-        },
-        {
-            token: 28 /* AtSignOperator */,
-            regex: /^(\@)/
-        },
-        {
-            token: 29 /* TildeOperator */,
-            regex: /^(~)/
-        },
-        {
-            token: 30 /* MultiplationOperator */,
-            regex: /^(\*)/
-        },
-        {
-            token: 31 /* DivisionOperator */,
-            regex: /^(\/)/
-        },
-        {
-            token: 32 /* AdditionOperator */,
-            regex: /^(\+)/
-        },
-        {
-            token: 33 /* SubtrationOperator */,
-            regex: /^(-)/
-        },
-        {
-            token: 34 /* LessThanOrEqualsOperator */,
-            regex: /^(<=)/
-        },
-        {
-            token: 35 /* LessThanOperator */,
-            regex: /^(<)/
-        },
-        {
-            token: 36 /* EqualsOperator */,
-            regex: /^(=)/
-        },
-        {
-            token: 37 /* AssignmentOperator */,
-            regex: /^(<-)/
-        },
-        {
-            token: 38 /* FatArrowOperator */,
-            regex: /^(=>)/
-        },
-        {
-            token: 39 /* OpenParenthesis */,
-            regex: /^(\()/
-        },
-        {
-            token: 40 /* ClosedParenthesis */,
-            regex: /^(\))/
-        },
-        {
-            token: 41 /* OpenCurlyBracket */,
-            regex: /^(\{)/
-        },
-        {
-            token: 42 /* ClosedCurlyBracket */,
-            regex: /^(\})/
-        },
-        {
-            token: 43 /* Colon */,
-            regex: /^(:)/
-        },
-        {
-            token: 44 /* SemiColon */,
-            regex: /^(;)/
-        },
-        {
-            token: 45 /* Comma */,
-            regex: /^(,)/
+        ];
+        function isKeyword(tokenType) {
+            return (tokenType == 0 /* ClassKeyword */ || tokenType == 1 /* ElseKeyword */ || tokenType == 2 /* FalseKeyword */ || tokenType == 3 /* FiKeyword */ || tokenType == 4 /* IfKeyword */ || tokenType == 5 /* InheritsKeyword */ || tokenType == 6 /* IsvoidKeyword */ || tokenType == 7 /* LetKeyword */ || tokenType == 8 /* LoopKeyword */ || tokenType == 9 /* PoolKeyword */ || tokenType == 10 /* ThenKeyword */ || tokenType == 11 /* WhileKeyword */ || tokenType == 12 /* CaseKeyword */ || tokenType == 13 /* EsacKeyword */ || tokenType == 14 /* NewKeyword */ || tokenType == 15 /* OfKeyword */ || tokenType == 16 /* NotKeyword */ || tokenType == 17 /* TrueKeyword */);
         }
-    ];
-    function isKeyword(tokenType) {
-        return (tokenType == 0 /* ClassKeyword */ || tokenType == 1 /* ElseKeyword */ || tokenType == 2 /* FalseKeyword */ || tokenType == 3 /* FiKeyword */ || tokenType == 4 /* IfKeyword */ || tokenType == 5 /* InheritsKeyword */ || tokenType == 6 /* IsvoidKeyword */ || tokenType == 7 /* LetKeyword */ || tokenType == 8 /* LoopKeyword */ || tokenType == 9 /* PoolKeyword */ || tokenType == 10 /* ThenKeyword */ || tokenType == 11 /* WhileKeyword */ || tokenType == 12 /* CaseKeyword */ || tokenType == 13 /* EsacKeyword */ || tokenType == 14 /* NewKeyword */ || tokenType == 15 /* OfKeyword */ || tokenType == 16 /* NotKeyword */ || tokenType == 17 /* TrueKeyword */);
-    }
-    CoolToJS.isKeyword = isKeyword;
-    function stringContainsUnescapedQuotes(input, ignoreFinalQuote) {
-        if (ignoreFinalQuote === void 0) { ignoreFinalQuote = false; }
-        if (ignoreFinalQuote) {
-            return /[^\\]".+/.test(input);
+        DontCompile.isKeyword = isKeyword;
+        function stringContainsUnescapedQuotes(input, ignoreFinalQuote) {
+            if (ignoreFinalQuote === void 0) { ignoreFinalQuote = false; }
+            if (ignoreFinalQuote) {
+                return /[^\\]".+/.test(input);
+            }
+            else {
+                return /[^\\]"/.test(input);
+            }
         }
-        else {
-            return /[^\\]"/.test(input);
-        }
-    }
+    })(DontCompile = CoolToJS.DontCompile || (CoolToJS.DontCompile = {}));
 })(CoolToJS || (CoolToJS = {}));
 var CoolToJS;
 (function (CoolToJS) {

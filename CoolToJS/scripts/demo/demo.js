@@ -4,7 +4,7 @@
 
     //#region set up editors and the console
     var coolEditor = CodeMirror(document.getElementById('cool-editor'), {
-        value: CoolToJSDemo.CoolProgramSources[9].source,
+        value: CoolToJSDemo.CoolProgramSources[15].source,
         mode: 'cool',
         lineNumbers: true,
         indentUnit: 4,
@@ -197,7 +197,7 @@
         coolEditor.setValue(CoolToJSDemo.CoolProgramSources[$('#source-dropdown option:selected').val()].source);
     });
 
-    $('#source-dropdown option:eq(9)').attr('selected', 'selected');
+    $('#source-dropdown option:eq(15)').attr('selected', 'selected');
 
     // when the window is resized, set the heights of the various 
     // editors/consoles to take the height of one page, so that scrolling
