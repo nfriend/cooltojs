@@ -27,35 +27,75 @@
                 for (var i = 0; i < stack.length; i++) {
                     output.push(SyntaxKind[stack[i].syntaxKind]);
                 }
+                console.log('[' + output.join(', ') + ']');
                 return output;
             }
             // #endregion     
 
             while (!(stack.length === 1 && stack[0].syntaxKind === StartSyntaxKind && isAtEndOfInput())) {
+                var state: number = 0,
+                    tableEntry: ParseTableEntry;
 
-                var state: number = stack.length > 0 ? stack[0].state : 0,
-                    tableEntry: ParseTableEntry = slr1ParseTable[state][stack[i].syntaxKind];
+                for (var i = 0; i < stack.length; i++) {
+                    tableEntry = slr1ParseTable[state][stack[i].syntaxKind];
+                    state = tableEntry.nextState;
+                }
 
-                var nextTableEntry: ParseTableEntry = slr1ParseTable[state][tokens[inputPointer].token];
-                if (nextTableEntry === null || (nextTableEntry.action === Action.Accept && isAtEndOfInput()))
-                    nextTableEntry = slr1ParseTable[state][SyntaxKind.EndOfInput];
-                
-                if (nextTableEntry.action === Action.Shift) {
+                tableEntry = slr1ParseTable[state][tokens[inputPointer].token];
+
+                if (tableEntry === null || (tableEntry.action === Action.Accept && isAtEndOfInput())) {
+                    tableEntry = slr1ParseTable[state][SyntaxKind.EndOfInput];
+                }
+
+                // if tableEntry is STILL null, we have a parse error.
+                if (tableEntry === null) {
+                    // TODO: better error reporting
+                    var errorMessage = '';
+                    if (tokens[inputPointer].token === SyntaxKind.EndOfInput) {
+                        errorMessage = 'Line '
+                        + tokens[inputPointer].location.line
+                        + ', column '
+                        + tokens[inputPointer].location.column
+                        + ':\tParse error: unexpected end of input';
+                    } else {
+                        errorMessage = 'Line '
+                        + tokens[inputPointer].location.line
+                        + ', column '
+                        + tokens[inputPointer].location.column
+                        + ':\tParse error: unexpected token: "'
+                        + tokens[inputPointer].match
+                        + '"';
+                    }
+
+                    return {
+                        success: false,
+                        errorMessages: [{
+                            message: errorMessage,
+                            location: {
+                                line: tokens[inputPointer].location.line,
+                                column: tokens[inputPointer].location.column,
+                                length: tokens[inputPointer].match ? tokens[inputPointer].match.length : 1
+                            }
+                        }]
+                    };
+                }
+
+                if (tableEntry.action === Action.Shift) {
                     stack.push({
                         syntaxKind: tokens[inputPointer].token,
                         token: tokens[inputPointer],
                         parent: null,
                         children: [],
-                        state: state
+                        state: tableEntry.nextState
                     });
 
                     inputPointer++;
-                } else if (nextTableEntry.action === Action.Reduce) {
-                    var production = productions[nextTableEntry.productionIndex];
+                } else if (tableEntry.action === Action.Reduce) {
+                    var production = productions[tableEntry.productionIndex];
                     var removedItems = stack.splice(-1 * production.popCount, production.popCount);
                     var newStackItem = {
                         syntaxKind: production.reduceResult,
-                        state: state,
+                        state: null,
                         children: removedItems,
                         parent: null,
                     };
@@ -65,10 +105,30 @@
                     }
 
                     stack.push(newStackItem);
-                    inputPointer++;
                 } else {
-                    throw 'Do we ever get here?';
+                    // Parse error!
+                    var errorMessage = 'Line '
+                        + tokens[inputPointer].location.line
+                        + ', column '
+                        + tokens[inputPointer].location.column
+                        + ':\tParse error: expected end of program, but instead saw "'
+                        + tokens[inputPointer].match
+                        + '"';
+
+                    return {
+                        success: false,
+                        errorMessages: [{
+                            message: errorMessage,
+                            location: {
+                                line: tokens[inputPointer].location.line,
+                                column: tokens[inputPointer].location.column,
+                                length: tokens[inputPointer].match ? tokens[inputPointer].match.length : 1
+                            }
+                        }]
+                    };
                 }
+
+                printStack();
             }
 
             return {

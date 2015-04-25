@@ -136,9 +136,9 @@ var CoolToJS;
                         currentColumnNumber += length;
                     }
                 }
-                for (var i = 0; i < tokens.length; i++) {
-                    console.log(CoolToJS.SyntaxKind[tokens[i].token] + ': "' + tokens[i].match + '", line: ' + tokens[i].location.line + ', column: ' + tokens[i].location.column);
-                }
+                //for (var i = 0; i < tokens.length; i++) {
+                //    console.log(SyntaxKind[tokens[i].token] + ': "' + tokens[i].match + '", line: ' + tokens[i].location.line + ', column: ' + tokens[i].location.column);
+                //}
                 // put an EndOfInput on the end of the token array
                 tokens.push({
                     token: 0 /* EndOfInput */,
@@ -177,29 +177,57 @@ var CoolToJS;
                     for (var i = 0; i < stack.length; i++) {
                         output.push(CoolToJS.SyntaxKind[stack[i].syntaxKind]);
                     }
+                    console.log('[' + output.join(', ') + ']');
                     return output;
                 };
                 while (!(stack.length === 1 && stack[0].syntaxKind === CoolToJS.StartSyntaxKind && isAtEndOfInput())) {
-                    var state = stack.length > 0 ? stack[0].state : 0, tableEntry = CoolToJS.slr1ParseTable[state][stack[i].syntaxKind];
-                    var nextTableEntry = CoolToJS.slr1ParseTable[state][tokens[inputPointer].token];
-                    if (nextTableEntry === null || (nextTableEntry.action === 2 /* Accept */ && isAtEndOfInput()))
-                        nextTableEntry = CoolToJS.slr1ParseTable[state][0 /* EndOfInput */];
-                    if (nextTableEntry.action === 0 /* Shift */) {
+                    var state = 0, tableEntry;
+                    for (var i = 0; i < stack.length; i++) {
+                        tableEntry = CoolToJS.slr1ParseTable[state][stack[i].syntaxKind];
+                        state = tableEntry.nextState;
+                    }
+                    tableEntry = CoolToJS.slr1ParseTable[state][tokens[inputPointer].token];
+                    if (tableEntry === null || (tableEntry.action === 2 /* Accept */ && isAtEndOfInput())) {
+                        tableEntry = CoolToJS.slr1ParseTable[state][0 /* EndOfInput */];
+                    }
+                    // if tableEntry is STILL null, we have a parse error.
+                    if (tableEntry === null) {
+                        // TODO: better error reporting
+                        var errorMessage = '';
+                        if (tokens[inputPointer].token === 0 /* EndOfInput */) {
+                            errorMessage = 'Line ' + tokens[inputPointer].location.line + ', column ' + tokens[inputPointer].location.column + ':\tParse error: unexpected end of input';
+                        }
+                        else {
+                            errorMessage = 'Line ' + tokens[inputPointer].location.line + ', column ' + tokens[inputPointer].location.column + ':\tParse error: unexpected token: "' + tokens[inputPointer].match + '"';
+                        }
+                        return {
+                            success: false,
+                            errorMessages: [{
+                                message: errorMessage,
+                                location: {
+                                    line: tokens[inputPointer].location.line,
+                                    column: tokens[inputPointer].location.column,
+                                    length: tokens[inputPointer].match ? tokens[inputPointer].match.length : 1
+                                }
+                            }]
+                        };
+                    }
+                    if (tableEntry.action === 0 /* Shift */) {
                         stack.push({
                             syntaxKind: tokens[inputPointer].token,
                             token: tokens[inputPointer],
                             parent: null,
                             children: [],
-                            state: state
+                            state: tableEntry.nextState
                         });
                         inputPointer++;
                     }
-                    else if (nextTableEntry.action === 1 /* Reduce */) {
-                        var production = CoolToJS.productions[nextTableEntry.productionIndex];
+                    else if (tableEntry.action === 1 /* Reduce */) {
+                        var production = CoolToJS.productions[tableEntry.productionIndex];
                         var removedItems = stack.splice(-1 * production.popCount, production.popCount);
                         var newStackItem = {
                             syntaxKind: production.reduceResult,
-                            state: state,
+                            state: null,
                             children: removedItems,
                             parent: null,
                         };
@@ -207,11 +235,23 @@ var CoolToJS;
                             newStackItem.children[i].parent = newStackItem;
                         }
                         stack.push(newStackItem);
-                        inputPointer++;
                     }
                     else {
-                        throw 'Do we ever get here?';
+                        // Parse error!
+                        var errorMessage = 'Line ' + tokens[inputPointer].location.line + ', column ' + tokens[inputPointer].location.column + ':\tParse error: expected end of program, but instead saw "' + tokens[inputPointer].match + '"';
+                        return {
+                            success: false,
+                            errorMessages: [{
+                                message: errorMessage,
+                                location: {
+                                    line: tokens[inputPointer].location.line,
+                                    column: tokens[inputPointer].location.column,
+                                    length: tokens[inputPointer].match ? tokens[inputPointer].match.length : 1
+                                }
+                            }]
+                        };
                     }
+                    printStack();
                 }
                 return {
                     success: true,
@@ -247,13 +287,13 @@ var CoolToJS;
         [null, { action: 0 /* Shift */, nextState: 2 }, null, null, null, { action: 0 /* Shift */, nextState: 3 }, { action: 3 /* None */, nextState: 1 }],
         [{ action: 2 /* Accept */ }, null, null, { action: 0 /* Shift */, nextState: 5 }, { action: 0 /* Shift */, nextState: 4 }, null, null],
         [null, { action: 0 /* Shift */, nextState: 2 }, null, null, null, { action: 0 /* Shift */, nextState: 3 }, { action: 3 /* None */, nextState: 6 }],
-        [{ action: 1 /* Reduce */, nextState: 4 }, null, { action: 1 /* Reduce */, nextState: 4 }, { action: 0 /* Shift */, nextState: 4 }, { action: 1 /* Reduce */, nextState: 4 }, null, null],
+        [{ action: 1 /* Reduce */, productionIndex: 4 }, null, { action: 1 /* Reduce */, productionIndex: 4 }, { action: 0 /* Shift */, nextState: 4 }, { action: 1 /* Reduce */, productionIndex: 4 }, null, null],
         [null, { action: 0 /* Shift */, nextState: 2 }, null, null, null, { action: 0 /* Shift */, nextState: 3 }, { action: 0 /* Shift */, nextState: 7 }],
         [null, { action: 0 /* Shift */, nextState: 2 }, null, null, null, { action: 0 /* Shift */, nextState: 3 }, { action: 3 /* None */, nextState: 8 }],
         [null, null, { action: 0 /* Shift */, nextState: 9 }, { action: 0 /* Shift */, nextState: 5 }, { action: 0 /* Shift */, nextState: 4 }, null, null],
-        [{ action: 1 /* Reduce */, nextState: 1 }, null, { action: 1 /* Reduce */, nextState: 1 }, { action: 0 /* Shift */, nextState: 5 }, { action: 1 /* Reduce */, nextState: 1 }, null, null],
-        [{ action: 1 /* Reduce */, nextState: 2 }, null, { action: 1 /* Reduce */, nextState: 2 }, { action: 1 /* Reduce */, nextState: 2 }, { action: 1 /* Reduce */, nextState: 2 }, null, null],
-        [{ action: 1 /* Reduce */, nextState: 3 }, null, { action: 1 /* Reduce */, nextState: 3 }, { action: 1 /* Reduce */, nextState: 3 }, { action: 1 /* Reduce */, nextState: 3 }, null, null],
+        [{ action: 1 /* Reduce */, productionIndex: 1 }, null, { action: 1 /* Reduce */, productionIndex: 1 }, { action: 0 /* Shift */, nextState: 5 }, { action: 1 /* Reduce */, productionIndex: 1 }, null, null],
+        [{ action: 1 /* Reduce */, productionIndex: 2 }, null, { action: 1 /* Reduce */, productionIndex: 2 }, { action: 1 /* Reduce */, productionIndex: 2 }, { action: 1 /* Reduce */, productionIndex: 2 }, null, null],
+        [{ action: 1 /* Reduce */, productionIndex: 3 }, null, { action: 1 /* Reduce */, productionIndex: 3 }, { action: 1 /* Reduce */, productionIndex: 3 }, { action: 1 /* Reduce */, productionIndex: 3 }, null, null],
     ];
     CoolToJS.slr1ParseTableOld = [
         [null, 's2', null, null, null, 's3', '1 '],
