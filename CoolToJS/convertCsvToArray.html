@@ -1,0 +1,110 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Convert CSV to Parse Table Array</title>
+    <link href="lib/bootstrap-3.3.4-dist/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+    <style>
+        textarea {
+            width: 100%;
+            height: 150px;
+            font-family: monospace;
+        }
+
+        h1 {
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid" style="padding: 45px;">
+        <div class="row">
+            <h1>Conversion Utility</h1>
+            <hr />
+            <p>This is a utility for convert a CSV representation of a parse table into a format we can use in the parser.</p>
+            <p>This is only used for development and is not a part of the final transpiler.</p>
+            <hr />
+            <b>Parse table:</b>
+            <textarea id="input"></textarea>
+            <br />
+            <br />
+            <button id="convert-button" class="btn btn-default">Convert</button>
+            <br />
+            <br />
+            <textarea id="output"></textarea>
+            <br />
+            <hr />
+            <b>Productions:</b>
+            <textarea id="productions-input"></textarea>
+            <br />
+            <br />
+            <button id="productions-convert-button" class="btn btn-default">Convert</button>
+            <br />
+            <br />
+            <textarea id="productions-output"></textarea>
+        </div>
+    </div>
+
+    <script src="lib/jquery/jquery-2.1.3.min.js"></script>
+
+    <script>
+        $('#convert-button').click(function () {
+            var input = $('#input').val();
+            var output = '\texport var slr1ParseTable: Array<Array<ParseTableEntry>> = [\n'
+
+            var lines = input.split(/\n/);
+            for (var i = 0; i < lines.length; i++) {
+                output += '\t\t/* state ' + i + ' */[';
+
+                var cells = lines[i].split(/,/);
+                for (var j = 0; j < cells.length; j++) {
+                    if (cells[j] === '') {
+                        output += 'null';
+                    } else if (cells[j][0] === 's') {
+                        output += '{ action: Action.Shift, nextState: ' + cells[j].slice(1) + ' }';
+                    } else if (cells[j][0] === 'r') {
+                        output += '{ action: Action.Reduce, productionIndex: ' + cells[j].slice(1) + ' }';
+                    } else if (cells[j][0] === 'a') {
+                        output += '{ action: Action.Accept }';
+                    } else if (/^[0-9]+$/.test(cells[j][0])) {
+                        output += '{ action: Action.None, nextState: ' + cells[j] + ' }';
+                    }
+
+                    if (j !== cells.length - 1) {
+                        output += ', ';
+                    } else {
+                        output += ']';
+                    }
+                }
+
+                if (i !== lines.length - 1) {
+                    output += ',\n';
+                } else {
+                    output += '\n\t];';
+                }
+            }
+            $('#output').html(output);
+        });
+
+        $('#productions-convert-button').click(function () {
+            var productionsInput = $('#productions-input').val();
+            var output = '\texport var productions: Array<{ popCount: number; reduceResult: SyntaxKind }> = [\n';
+
+            var lines = productionsInput.split(/\n/);
+            for (var i = 0; i < lines.length; i++) {
+                output += '\t\t// ' + i + ': ' + lines[i] + '\n';
+                result = lines[i].split(/->/)[0].trim();
+                popcount = lines[i].split(/->/)[1].split(/\s+/).length - 1;
+
+                if (i === 0) {
+                    output += '\t\t{ popCount: ' + popcount + ', reduceResult: null },\n\n'
+                } else {
+                    output += '\t\t{ popCount: ' + popcount + ', reduceResult: SyntaxKind.' + result + ' },\n\n'
+                }
+            }
+            output += '\t];';
+            $('#productions-output').html(output);
+        });
+    </script>
+    
+</body>
+</html>

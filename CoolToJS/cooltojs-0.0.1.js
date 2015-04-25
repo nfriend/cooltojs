@@ -238,6 +238,7 @@ var CoolToJS;
                     }
                     else {
                         // Parse error!
+                        // TODO: does this always mean "unexpected end of program"?
                         var errorMessage = 'Line ' + tokens[inputPointer].location.line + ', column ' + tokens[inputPointer].location.column + ':\tParse error: expected end of program, but instead saw "' + tokens[inputPointer].match + '"';
                         return {
                             success: false,
@@ -295,6 +296,18 @@ var CoolToJS;
         [{ action: 1 /* Reduce */, productionIndex: 2 }, null, { action: 1 /* Reduce */, productionIndex: 2 }, { action: 1 /* Reduce */, productionIndex: 2 }, { action: 1 /* Reduce */, productionIndex: 2 }, null, null],
         [{ action: 1 /* Reduce */, productionIndex: 3 }, null, { action: 1 /* Reduce */, productionIndex: 3 }, { action: 1 /* Reduce */, productionIndex: 3 }, { action: 1 /* Reduce */, productionIndex: 3 }, null, null],
     ];
+    CoolToJS.slr1ParseTable = [
+        [null, { action: 0 /* Shift */, nextState: 2 }, null, null, null, { action: 0 /* Shift */, nextState: 3 }, { action: 3 /* None */, nextState: 1 }],
+        [{ action: 2 /* Accept */ }, null, null, { action: 0 /* Shift */, nextState: 5 }, { action: 0 /* Shift */, nextState: 4 }, null, null],
+        [null, { action: 0 /* Shift */, nextState: 2 }, null, null, null, { action: 0 /* Shift */, nextState: 3 }, { action: 3 /* None */, nextState: 6 }],
+        [{ action: 1 /* Reduce */, productionIndex: 4 }, null, { action: 1 /* Reduce */, productionIndex: 4 }, { action: 1 /* Reduce */, productionIndex: 4 }, { action: 1 /* Reduce */, productionIndex: 4 }, null, null],
+        [null, { action: 0 /* Shift */, nextState: 2 }, null, null, null, { action: 0 /* Shift */, nextState: 3 }, { action: 3 /* None */, nextState: 7 }],
+        [null, { action: 0 /* Shift */, nextState: 2 }, null, null, null, { action: 0 /* Shift */, nextState: 3 }, { action: 3 /* None */, nextState: 8 }],
+        [null, null, { action: 0 /* Shift */, nextState: 9 }, { action: 0 /* Shift */, nextState: 5 }, { action: 0 /* Shift */, nextState: 4 }, null, null],
+        [{ action: 1 /* Reduce */, productionIndex: 1 }, null, { action: 1 /* Reduce */, productionIndex: 1 }, { action: 0 /* Shift */, nextState: 5 }, { action: 1 /* Reduce */, productionIndex: 1 }, null, null],
+        [{ action: 1 /* Reduce */, productionIndex: 2 }, null, { action: 1 /* Reduce */, productionIndex: 2 }, { action: 1 /* Reduce */, productionIndex: 2 }, { action: 1 /* Reduce */, productionIndex: 2 }, null, null],
+        [{ action: 1 /* Reduce */, productionIndex: 3 }, null, { action: 1 /* Reduce */, productionIndex: 3 }, { action: 1 /* Reduce */, productionIndex: 3 }, { action: 1 /* Reduce */, productionIndex: 3 }, null, null]
+    ];
     CoolToJS.slr1ParseTableOld = [
         [null, 's2', null, null, null, 's3', '1 '],
         ['a ', null, null, 's5', 's4', null, null],
@@ -306,6 +319,13 @@ var CoolToJS;
         ['r1', null, 'r1', 's5', 'r1', null, null],
         ['r2', null, 'r2', 'r2', 'r2', null, null],
         ['r3', null, 'r3', 'r3', 'r3', null, null],
+    ];
+    CoolToJS.productions = [
+        { popCount: 2, reduceResult: null },
+        { popCount: 3, reduceResult: 6 /* E */ },
+        { popCount: 3, reduceResult: 6 /* E */ },
+        { popCount: 3, reduceResult: 6 /* E */ },
+        { popCount: 1, reduceResult: 6 /* E */ },
     ];
     CoolToJS.productions = [
         { popCount: 2, reduceResult: null },

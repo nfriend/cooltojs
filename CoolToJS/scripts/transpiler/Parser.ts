@@ -107,6 +107,7 @@
                     stack.push(newStackItem);
                 } else {
                     // Parse error!
+                    // TODO: does this always mean "unexpected end of program"?
                     var errorMessage = 'Line '
                         + tokens[inputPointer].location.line
                         + ', column '

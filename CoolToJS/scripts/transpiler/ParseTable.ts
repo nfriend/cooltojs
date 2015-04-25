@@ -23,6 +23,19 @@
             /* state 9 */[{ action: Action.Reduce, productionIndex: 3 }, null, { action: Action.Reduce, productionIndex: 3 }, { action: Action.Reduce, productionIndex: 3 }, { action: Action.Reduce, productionIndex: 3 }, null, null],
     ];
 
+    export var slr1ParseTable: Array<Array<ParseTableEntry>> = [
+		/* state 0 */[null, { action: Action.Shift, nextState: 2 }, null, null, null, { action: Action.Shift, nextState: 3 }, { action: Action.None, nextState: 1 }],
+		/* state 1 */[{ action: Action.Accept }, null, null, { action: Action.Shift, nextState: 5 }, { action: Action.Shift, nextState: 4 }, null, null],
+		/* state 2 */[null, { action: Action.Shift, nextState: 2 }, null, null, null, { action: Action.Shift, nextState: 3 }, { action: Action.None, nextState: 6 }],
+		/* state 3 */[{ action: Action.Reduce, productionIndex: 4 }, null, { action: Action.Reduce, productionIndex: 4 }, { action: Action.Reduce, productionIndex: 4 }, { action: Action.Reduce, productionIndex: 4 }, null, null],
+		/* state 4 */[null, { action: Action.Shift, nextState: 2 }, null, null, null, { action: Action.Shift, nextState: 3 }, { action: Action.None, nextState: 7 }],
+		/* state 5 */[null, { action: Action.Shift, nextState: 2 }, null, null, null, { action: Action.Shift, nextState: 3 }, { action: Action.None, nextState: 8 }],
+		/* state 6 */[null, null, { action: Action.Shift, nextState: 9 }, { action: Action.Shift, nextState: 5 }, { action: Action.Shift, nextState: 4 }, null, null],
+		/* state 7 */[{ action: Action.Reduce, productionIndex: 1 }, null, { action: Action.Reduce, productionIndex: 1 }, { action: Action.Shift, nextState: 5 }, { action: Action.Reduce, productionIndex: 1 }, null, null],
+		/* state 8 */[{ action: Action.Reduce, productionIndex: 2 }, null, { action: Action.Reduce, productionIndex: 2 }, { action: Action.Reduce, productionIndex: 2 }, { action: Action.Reduce, productionIndex: 2 }, null, null],
+		/* state 9 */[{ action: Action.Reduce, productionIndex: 3 }, null, { action: Action.Reduce, productionIndex: 3 }, { action: Action.Reduce, productionIndex: 3 }, { action: Action.Reduce, productionIndex: 3 }, null, null]
+    ];
+
     export var slr1ParseTableOld: Array<Array<string>> = [
             //            end   (     )     *     +     int   E     
             /* state 0 */[null, 's2', null, null, null, 's3', '1 '],
@@ -52,5 +65,23 @@
 
         // 4: E -> int
         { popCount: 1, reduceResult: SyntaxKind.E },
+    ];
+
+    export var productions: Array<{ popCount: number; reduceResult: SyntaxKind }> = [
+        // 0: $accept -> E $end
+        { popCount: 2, reduceResult: null },
+
+        // 1: E -> E + E
+        { popCount: 3, reduceResult: SyntaxKind.E },
+
+        // 2: E -> E * E
+        { popCount: 3, reduceResult: SyntaxKind.E },
+
+        // 3: E -> ( E )
+        { popCount: 3, reduceResult: SyntaxKind.E },
+
+        // 4: E -> int
+        { popCount: 1, reduceResult: SyntaxKind.E },
+
     ];
 } 

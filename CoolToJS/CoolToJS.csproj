@@ -51,6 +51,7 @@
     <Content Include="scripts\transpiler\JisonBNFGrammar.txt" />
     <Content Include="styles\CodeMirror-cool-theme.css" />
     <Content Include="test.html" />
+    <Content Include="convertCsvToArray.html" />
     <Content Include="web.config">
       <SubType>Designer</SubType>
     </Content>
