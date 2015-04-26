@@ -7,6 +7,7 @@
 
 %token Integer String ObjectIdentifier TypeIdentifier
 
+%left Expression
 %left '<-'
 %left NotKeyword
 %left '<=' '<' '='
@@ -58,7 +59,7 @@ ExpressionList
 	| Expression ',' ExpressionList
 	;
 
-ExpressionSeries
+ExpressionSeries 
 	: Expression ';'
 	| Expression ';' ExpressionSeries
 	;
@@ -85,6 +86,7 @@ Expression
 	| ObjectIdentifier '(' ExpressionList ')'
 	| IfKeyword Expression ThenKeyword Expression ElseKeyword Expression FiKeyword
 	| WhileKeyword Expression LoopKeyword Expression PoolKeyword
+	| '{' Expression '}'
 	| '{' ExpressionSeries '}'
 	| LetKeyword LocalVariableDeclarationList InKeyword Expression
 	| CaseKeyword Expression OfKeyword CaseOption EsacKeyword

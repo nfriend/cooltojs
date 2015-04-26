@@ -7,21 +7,23 @@
         children: Array<SyntaxTree>;
     }
 
-    interface SyntaxTreeWithState extends SyntaxTree {
-        state: number;
-    }
-
     export class Parser {
         public Parse = (tokens: Array<Token>): ParserOutput => {
-            var stack: Array<SyntaxTreeWithState> = [],
+            var stack: Array<SyntaxTree> = [],
                 inputPointer: number = 0,
                 isAtEndOfInput = () => {
                     return inputPointer === tokens.length - 1;
-                }
+                },
+                hasWarnedAboutAmbiguousEntry = false,
+                ambiguousErrorMessage = 'Warning!  Ambiguous shift/reduce detected in parse table.  Automatically took shift option.  '
+                    + 'To remove abiguity and ensure proper parsing, ensure all "let" blocks surround their contents in curly brackets.';
 
+            // remove any characters we don't care about while parsing
             tokens = this.cleanseTokenArray(tokens);
 
             // #region for debugging
+            
+            // prints the current stack to the console
             var printStack = () => {
                 var output = [];
                 for (var i = 0; i < stack.length; i++) {
@@ -32,19 +34,47 @@
             }
             // #endregion     
 
+            // keep looping until the only item on the stack is the start symbol and we have no more input to read
             while (!(stack.length === 1 && stack[0].syntaxKind === StartSyntaxKind && isAtEndOfInput())) {
                 var state: number = 0,
-                    tableEntry: ParseTableEntry;
+                    tableEntry: ParseTableEntry|ParseTableEntry[];
 
                 for (var i = 0; i < stack.length; i++) {
                     tableEntry = slr1ParseTable[state][stack[i].syntaxKind];
-                    state = tableEntry.nextState;
+
+                    // ambiguous entries appear as Arrays.
+                    if (tableEntry instanceof Array) {
+                        tableEntry = tableEntry[0];
+                        if (!hasWarnedAboutAmbiguousEntry) {
+                            console.log(ambiguousErrorMessage)
+                            hasWarnedAboutAmbiguousEntry = true;
+                        }
+                    }
+                    state = (<ParseTableEntry>tableEntry).nextState;
                 }
 
                 tableEntry = slr1ParseTable[state][tokens[inputPointer].token];
+                if (tableEntry instanceof Array) {
+                    tableEntry = tableEntry[0];
 
-                if (tableEntry === null || (tableEntry.action === Action.Accept && isAtEndOfInput())) {
+                    // ambiguous entries appear as Arrays.
+                    if (!hasWarnedAboutAmbiguousEntry) {
+                        console.log(ambiguousErrorMessage)
+                        hasWarnedAboutAmbiguousEntry = true;
+                    }
+                }
+
+                if (tableEntry === null || ((<ParseTableEntry>tableEntry).action === Action.Accept && isAtEndOfInput())) {
                     tableEntry = slr1ParseTable[state][SyntaxKind.EndOfInput];
+                    if (tableEntry instanceof Array) {
+                        tableEntry = tableEntry[0];
+
+                        // ambiguous entries appear as Arrays.
+                        if (!hasWarnedAboutAmbiguousEntry) {
+                            console.log(ambiguousErrorMessage)
+                            hasWarnedAboutAmbiguousEntry = true;
+                        }
+                    }
                 }
 
                 // if tableEntry is STILL null, we have a parse error.
@@ -80,26 +110,25 @@
                     };
                 }
 
-                if (tableEntry.action === Action.Shift) {
+                if ((<ParseTableEntry>tableEntry).action === Action.Shift) {
                     stack.push({
                         syntaxKind: tokens[inputPointer].token,
                         token: tokens[inputPointer],
                         parent: null,
                         children: [],
-                        state: tableEntry.nextState
                     });
 
                     inputPointer++;
-                } else if (tableEntry.action === Action.Reduce) {
-                    var production = productions[tableEntry.productionIndex];
+                } else if ((<ParseTableEntry>tableEntry).action === Action.Reduce) {
+                    var production = productions[(<ParseTableEntry>tableEntry).productionIndex];
                     var removedItems = stack.splice(-1 * production.popCount, production.popCount);
                     var newStackItem = {
                         syntaxKind: production.reduceResult,
-                        state: null,
                         children: removedItems,
                         parent: null,
                     };
 
+                    // set the new item as the parent of the removed items
                     for (var i = 0; i < newStackItem.children.length; i++) {
                         newStackItem.children[i].parent = newStackItem;
                     }
@@ -129,8 +158,10 @@
                     };
                 }
 
-                printStack();
+                //printStack();
             }
+
+            //this.printSyntaxTree(stack[0]);
 
             return {
                 success: true,
@@ -155,6 +186,22 @@
             }
 
             return cleanArray;
+        }
+
+        private printSyntaxTree(syntaxTree: SyntaxTree, indent: string = '', last: boolean = true) {
+            var stringToWrite = indent;
+            if (last) {
+                stringToWrite += '\\-';
+                indent += '  ';
+            } else {
+                stringToWrite += '|-';
+                indent += '| ';
+            }
+            console.log(stringToWrite + SyntaxKind[syntaxTree.syntaxKind]);
+
+            for (var i = 0; i < syntaxTree.children.length; i++) {
+                this.printSyntaxTree(syntaxTree.children[i], indent, i === syntaxTree.children.length - 1);
+            }
         }
     }
 }
