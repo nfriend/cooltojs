@@ -1,0 +1,64 @@
+﻿<!DOCTYPE html>
+
+<html lang="en">
+<head prefix="og: http://ogp.me/ns#">
+    <meta charset="utf-8" />
+    <title>CoolToJS: Parser</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="lib/bootstrap-3.3.4-dist/css/bootstrap.min.css" type="text/css" />
+    <link href='http://fonts.googleapis.com/css?family=Roboto:400,700,400italic' rel='stylesheet' type='text/css'>
+
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="CoolToJS: Parser Parser">
+    <meta property="og:description" content="A visualization of the CoolToJS parser output">
+    <meta property="og:image" content="http://nathanfriend.io/cooltojs/img/coolToJsLogo.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="256">
+    <meta property="og:image:height" content="256">
+
+    <meta name="description" content="A visualization of the CoolToJS parser output">
+
+    <!--[if lt IE 9]><script type="text/javascript">
+        window.location = "old-browser.html";
+    </script><![endif]-->
+
+    <style type="text/css">
+        html, body {
+            overflow: hidden;
+        }
+
+        .node circle {
+            cursor: pointer;
+            fill: #fff;
+            stroke: steelblue;
+            stroke-width: 1.5px;
+        }
+
+        .node text {
+            font-size: 11px;
+        }
+
+        path.link {
+            fill: none;
+            stroke: #ccc;
+            stroke-width: 1.5px;
+        }
+    </style>
+
+
+
+</head>
+<body>
+    <div id="body">
+        <div id="footer">
+            d3.layout.tree
+            <div class="hint">click or option-click to expand or collapse</div>
+        </div>
+    </div>
+
+    <script type="text/javascript" src="d3.min.js"></script>
+    <script type="text/javascript" src="parserdemo.js"></script>
+</body>
+</html>

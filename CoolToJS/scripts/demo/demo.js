@@ -2,7 +2,10 @@
 (function (CoolToJSDemo) {
     'use strict';
 
-    var programIndexToUse = 8;
+    // TODO: clean this up.  This is getting a little unruly.
+    s
+    var programIndexToUse = 8,
+        liveErrorChecking = true;
 
     //#region set up editors and the console
     var coolEditor = CodeMirror(document.getElementById('cool-editor'), {
@@ -16,7 +19,9 @@
         }
     });
 
-    function addUnderlineToCoolEditor(line, column, length) {
+    function addUnderlineToCoolEditor(line, column, length, errorLevel) {
+
+        errorLevel = errorLevel || 'error';
 
         length = typeof length === 'undefined' ? 1 : length;
 
@@ -26,7 +31,11 @@
             nbspString += nbsp;
         }
 
-        var elementToAdd = $('<div class="red-squiggly-underline">' + nbspString + '</div>')[0];
+        if (errorLevel === 'error') {
+            var elementToAdd = $('<div class="squiggly-underline red-squiggly-underline">' + nbspString + '</div>')[0];
+        } else if (errorLevel === 'warning') {
+            var elementToAdd = $('<div class="squiggly-underline green-squiggly-underline">' + nbspString + '</div>')[0];
+        }
         coolEditor.addWidget({
             line: line,
             ch: column
@@ -42,7 +51,56 @@
         underlineElements.length = 0;
     }
 
-    coolEditor.on('change', removeAllUnderlinesFromCoolEditor);
+    function checkForErrors() {
+        var transpilerOutput = CoolToJS.Transpile({
+            coolProgramSources: coolEditor.getValue()
+        });
+
+        if (transpilerOutput.errorMessages && transpilerOutput.errorMessages.length > 0) {
+            for (var i = 0; i < transpilerOutput.errorMessages.length; i++) {
+                addUnderlineToCoolEditor(transpilerOutput.errorMessages[i].location.line - 1,
+                                         transpilerOutput.errorMessages[i].location.column - 1,
+                                         transpilerOutput.errorMessages[i].location.length);
+            }
+        }
+
+        if (transpilerOutput.warningMessages && transpilerOutput.warningMessages.length > 0) {
+            for (var i = 0; i < transpilerOutput.warningMessages.length; i++) {
+                addUnderlineToCoolEditor(transpilerOutput.warningMessages[i].location.line - 1,
+                                         transpilerOutput.warningMessages[i].location.column - 1,
+                                         transpilerOutput.warningMessages[i].location.length,
+                                         'warning');
+            }
+        }
+
+        // throttle or turn off live checking if compile times are taking a while
+        if (transpilerOutput.elapsedTime > 100) {
+            errorCheckerTimerDuration = 1000;
+        } else if (transpilerOutput.elapsedTime > 500) {
+            liveErrorChecking = false;
+        }
+    }
+
+    var errorCheckerTimer,
+        errorCheckerTimerDuration = 200;
+    coolEditor.on('change', function () {
+        removeAllUnderlinesFromCoolEditor();
+
+        if (liveErrorChecking) {
+            if (!errorCheckerTimer) {
+                errorCheckerTimer = setTimeout(function () {
+                    checkForErrors();
+                    errorCheckerTimer = null;
+                }, errorCheckerTimerDuration);
+            } else {
+                clearTimeout(errorCheckerTimer);
+                errorCheckerTimer = setTimeout(function () {
+                    checkForErrors();
+                    errorCheckerTimer = null;
+                }, errorCheckerTimerDuration);
+            }
+        }
+    });
 
     var generatedJavaScriptEditor = CodeMirror(document.getElementById('generated-javascript'), {
         mode: 'javascript',
@@ -141,28 +199,42 @@
             in_int: in_int
         });
 
-        if (transpilerOutput.success) {
-            generatedJavaScriptEditor.setValue(transpilerOutput.generatedJavaScript);
-        } else {
+        var editorOutput = ''
 
-            // display the error messages as comments in the JavaScript editor 
-            if (transpilerOutput.errorMessages) {
-                var errorComments = '/*\n\nThe following errors occured while transpiling:\n\n';
-                for (var i = 0; i < transpilerOutput.errorMessages.length; i++) {
-                    errorComments += '• ' + transpilerOutput.errorMessages[i].message + '\n';
+        // display the error messages as comments in the JavaScript editor 
+        if (transpilerOutput.errorMessages && transpilerOutput.errorMessages.length > 0) {
+            var editorOutput = '/*\n\nThe following errors occured while transpiling:\n\n';
+            for (var i = 0; i < transpilerOutput.errorMessages.length; i++) {
+                editorOutput += '• ' + transpilerOutput.errorMessages[i].message + '\n';
 
-                    // underline the error in the Cool editor
-                    addUnderlineToCoolEditor(transpilerOutput.errorMessages[i].location.line - 1,
-                                             transpilerOutput.errorMessages[i].location.column - 1,
-                                             transpilerOutput.errorMessages[i].location.length);
-                }
-                errorComments += '\n*/';
-            } else {
-                var errorComments = '/* An unknown error occured while transpiling */';
+                // underline the error in the Cool editor
+                addUnderlineToCoolEditor(transpilerOutput.errorMessages[i].location.line - 1,
+                                         transpilerOutput.errorMessages[i].location.column - 1,
+                                         transpilerOutput.errorMessages[i].location.length);
             }
-
-            generatedJavaScriptEditor.setValue(errorComments);
+            editorOutput += '\n*/\n\n';
         }
+
+        // display the transpiler warnings as comments in the JavaScript editor 
+        if (transpilerOutput.warningMessages && transpilerOutput.warningMessages.length > 0) {
+            var editorOutput = '/*\n\nThe following warnings occured while transpiling:\n\n';
+            for (var i = 0; i < transpilerOutput.warningMessages.length; i++) {
+                editorOutput += '• ' + transpilerOutput.warningMessages[i].message + '\n';
+
+                // underline the error in the Cool editor
+                addUnderlineToCoolEditor(transpilerOutput.warningMessages[i].location.line - 1,
+                                         transpilerOutput.warningMessages[i].location.column - 1,
+                                         transpilerOutput.warningMessages[i].location.length,
+                                         'warning');
+            }
+            editorOutput += '\n*/\n\n';
+        }
+
+        if (transpilerOutput.success) {
+            editorOutput += transpilerOutput.generatedJavaScript;
+        }
+
+        generatedJavaScriptEditor.setValue(editorOutput);
     }
 
     $('#play-button').click(run);

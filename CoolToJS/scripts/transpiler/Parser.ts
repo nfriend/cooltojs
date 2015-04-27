@@ -8,15 +8,49 @@
     }
 
     export class Parser {
-        public Parse = (tokens: Array<Token>): ParserOutput => {
-            var stack: Array<SyntaxTree> = [],
+        public Parse = (lexerOutput: LexicalAnalyzerOutput): ParserOutput => {
+            var tokens = lexerOutput.tokens,
+                warnings: Array<WarningMessage> = lexerOutput.warningMessages || [],
+                stack: Array<SyntaxTree> = [],
                 inputPointer: number = 0,
                 isAtEndOfInput = () => {
                     return inputPointer === tokens.length - 1;
                 },
-                hasWarnedAboutAmbiguousEntry = false,
-                ambiguousErrorMessage = 'Warning!  Ambiguous shift/reduce detected in parse table.  Automatically took shift option.  '
-                    + 'To remove abiguity and ensure proper parsing, ensure all "let" blocks surround their contents in curly brackets.';
+
+                // records which tokens we've already added warnings for, 
+                // to avoid duplicate warnings
+                alreadyWarnedTokens: Array<Token> = [],
+                recordAmbiguousParseWarning = () => {
+
+                    var warningToken;
+                    for (var i = inputPointer; i >= 0; i--) {
+                        if (tokens[i].token === SyntaxKind.LetKeyword) {
+                            warningToken = tokens[i];
+                            break;
+                        }
+                    }
+
+                    warningToken = warningToken || tokens[inputPointer];
+
+                    if (alreadyWarnedTokens.indexOf(warningToken) !== -1) {
+                        return;
+                    }
+
+                    var warningMessage = 'Line ' + warningToken.location.line + ', column ' + warningToken.location.column + ':\t'
+                        + 'Ambiguous shift/reduce detected in parse table.  Automatically took shift option. '
+                        + 'To remove abiguity and ensure proper parsing, ensure all "let" blocks surround their contents in curly brackets.'
+
+                    warnings.push({
+                        message: warningMessage,
+                        location: {
+                            line: warningToken.location.line,
+                            column: warningToken.location.column,
+                            length: warningToken.match ? warningToken.match.length : 1
+                        }
+                    });
+
+                    alreadyWarnedTokens.push(warningToken);
+                }
 
             // remove any characters we don't care about while parsing
             tokens = this.cleanseTokenArray(tokens);
@@ -45,10 +79,7 @@
                     // ambiguous entries appear as Arrays.
                     if (tableEntry instanceof Array) {
                         tableEntry = tableEntry[0];
-                        if (!hasWarnedAboutAmbiguousEntry) {
-                            console.log(ambiguousErrorMessage)
-                            hasWarnedAboutAmbiguousEntry = true;
-                        }
+                        recordAmbiguousParseWarning();
                     }
                     state = (<ParseTableEntry>tableEntry).nextState;
                 }
@@ -56,24 +87,14 @@
                 tableEntry = slr1ParseTable[state][tokens[inputPointer].token];
                 if (tableEntry instanceof Array) {
                     tableEntry = tableEntry[0];
-
-                    // ambiguous entries appear as Arrays.
-                    if (!hasWarnedAboutAmbiguousEntry) {
-                        console.log(ambiguousErrorMessage)
-                        hasWarnedAboutAmbiguousEntry = true;
-                    }
+                    recordAmbiguousParseWarning();
                 }
 
                 if (tableEntry === null || ((<ParseTableEntry>tableEntry).action === Action.Accept && isAtEndOfInput())) {
                     tableEntry = slr1ParseTable[state][SyntaxKind.EndOfInput];
                     if (tableEntry instanceof Array) {
                         tableEntry = tableEntry[0];
-
-                        // ambiguous entries appear as Arrays.
-                        if (!hasWarnedAboutAmbiguousEntry) {
-                            console.log(ambiguousErrorMessage)
-                            hasWarnedAboutAmbiguousEntry = true;
-                        }
+                        recordAmbiguousParseWarning();
                     }
                 }
 
@@ -165,9 +186,9 @@
 
             return {
                 success: true,
-                syntaxTree: stack[0]
+                syntaxTree: stack[0],
+                warningMessages: warnings
             }
-
         }
 
         // returns a copy of the provided array with whitespace,

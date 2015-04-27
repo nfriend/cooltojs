@@ -153,7 +153,7 @@ var CoolToJS;
                 return {
                     success: errorMessages.length === 0,
                     tokens: tokens,
-                    errorMessages: errorMessages
+                    errorMessages: errorMessages,
                 };
             };
         }
@@ -166,10 +166,35 @@ var CoolToJS;
     var Parser = (function () {
         function Parser() {
             var _this = this;
-            this.Parse = function (tokens) {
-                var stack = [], inputPointer = 0, isAtEndOfInput = function () {
+            this.Parse = function (lexerOutput) {
+                var tokens = lexerOutput.tokens, warnings = lexerOutput.warningMessages || [], stack = [], inputPointer = 0, isAtEndOfInput = function () {
                     return inputPointer === tokens.length - 1;
-                }, hasWarnedAboutAmbiguousEntry = false, ambiguousErrorMessage = 'Warning!  Ambiguous shift/reduce detected in parse table.  Automatically took shift option.  ' + 'To remove abiguity and ensure proper parsing, ensure all "let" blocks surround their contents in curly brackets.';
+                }, 
+                // records which tokens we've already added warnings for, 
+                // to avoid duplicate warnings
+                alreadyWarnedTokens = [], recordAmbiguousParseWarning = function () {
+                    var warningToken;
+                    for (var i = inputPointer; i >= 0; i--) {
+                        if (tokens[i].token === 28 /* LetKeyword */) {
+                            warningToken = tokens[i];
+                            break;
+                        }
+                    }
+                    warningToken = warningToken || tokens[inputPointer];
+                    if (alreadyWarnedTokens.indexOf(warningToken) !== -1) {
+                        return;
+                    }
+                    var warningMessage = 'Line ' + warningToken.location.line + ', column ' + warningToken.location.column + ':\t' + 'Ambiguous shift/reduce detected in parse table.  Automatically took shift option. ' + 'To remove abiguity and ensure proper parsing, ensure all "let" blocks surround their contents in curly brackets.';
+                    warnings.push({
+                        message: warningMessage,
+                        location: {
+                            line: warningToken.location.line,
+                            column: warningToken.location.column,
+                            length: warningToken.match ? warningToken.match.length : 1
+                        }
+                    });
+                    alreadyWarnedTokens.push(warningToken);
+                };
                 // remove any characters we don't care about while parsing
                 tokens = _this.cleanseTokenArray(tokens);
                 // #region for debugging
@@ -189,31 +214,20 @@ var CoolToJS;
                         // ambiguous entries appear as Arrays.
                         if (tableEntry instanceof Array) {
                             tableEntry = tableEntry[0];
-                            if (!hasWarnedAboutAmbiguousEntry) {
-                                console.log(ambiguousErrorMessage);
-                                hasWarnedAboutAmbiguousEntry = true;
-                            }
+                            recordAmbiguousParseWarning();
                         }
                         state = tableEntry.nextState;
                     }
                     tableEntry = CoolToJS.slr1ParseTable[state][tokens[inputPointer].token];
                     if (tableEntry instanceof Array) {
                         tableEntry = tableEntry[0];
-                        // ambiguous entries appear as Arrays.
-                        if (!hasWarnedAboutAmbiguousEntry) {
-                            console.log(ambiguousErrorMessage);
-                            hasWarnedAboutAmbiguousEntry = true;
-                        }
+                        recordAmbiguousParseWarning();
                     }
                     if (tableEntry === null || (tableEntry.action === 2 /* Accept */ && isAtEndOfInput())) {
                         tableEntry = CoolToJS.slr1ParseTable[state][0 /* EndOfInput */];
                         if (tableEntry instanceof Array) {
                             tableEntry = tableEntry[0];
-                            // ambiguous entries appear as Arrays.
-                            if (!hasWarnedAboutAmbiguousEntry) {
-                                console.log(ambiguousErrorMessage);
-                                hasWarnedAboutAmbiguousEntry = true;
-                            }
+                            recordAmbiguousParseWarning();
                         }
                     }
                     // if tableEntry is STILL null, we have a parse error.
@@ -280,7 +294,8 @@ var CoolToJS;
                 //this.printSyntaxTree(stack[0]);
                 return {
                     success: true,
-                    syntaxTree: stack[0]
+                    syntaxTree: stack[0],
+                    warningMessages: warnings
                 };
             };
         }
@@ -930,6 +945,7 @@ _in_string(function(input) {\n\
 });\n\
 ';
     function Transpile(transpilerOptions) {
+        var startTime = Date.now();
         var coolProgramSources = transpilerOptions.coolProgramSources;
         if (typeof coolProgramSources === 'string') {
             var concatenatedCoolProgram = coolProgramSources;
@@ -972,20 +988,25 @@ _in_string(function(input) {\n\
         if (!lexicalAnalyzerOutput.success) {
             return {
                 success: false,
-                errorMessages: lexicalAnalyzerOutput.errorMessages
+                errorMessages: lexicalAnalyzerOutput.errorMessages,
+                elapsedTime: Date.now() - startTime
             };
         }
         var parser = new CoolToJS.Parser();
-        var parserOutput = parser.Parse(lexicalAnalyzerOutput.tokens);
+        var parserOutput = parser.Parse(lexicalAnalyzerOutput);
         if (!parserOutput.success) {
             return {
                 success: false,
-                errorMessages: parserOutput.errorMessages
+                errorMessages: parserOutput.errorMessages,
+                warningMessages: parserOutput.warningMessages,
+                elapsedTime: Date.now() - startTime
             };
         }
         return {
             success: true,
-            generatedJavaScript: generatedJavaScriptExample
+            generatedJavaScript: generatedJavaScriptExample,
+            warningMessages: parserOutput.warningMessages,
+            elapsedTime: Date.now() - startTime
         };
     }
     CoolToJS.Transpile = Transpile;

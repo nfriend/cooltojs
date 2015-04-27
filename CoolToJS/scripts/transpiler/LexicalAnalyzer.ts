@@ -136,7 +136,7 @@
             return {
                 success: errorMessages.length === 0,
                 tokens: tokens,
-                errorMessages: errorMessages
+                errorMessages: errorMessages,
             };
         }
     }

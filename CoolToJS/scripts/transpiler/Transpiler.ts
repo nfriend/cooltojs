@@ -38,6 +38,7 @@ _in_string(function(input) {\n\
 ';
 
     export function Transpile(transpilerOptions: TranspilerOptions): TranspilerOutput {
+        var startTime = Date.now();
         var coolProgramSources: string|string[] = transpilerOptions.coolProgramSources;
         if (typeof coolProgramSources === 'string') {
             var concatenatedCoolProgram = coolProgramSources;
@@ -79,23 +80,28 @@ _in_string(function(input) {\n\
         if (!lexicalAnalyzerOutput.success) {
             return {
                 success: false,
-                errorMessages: lexicalAnalyzerOutput.errorMessages
+                errorMessages: lexicalAnalyzerOutput.errorMessages,
+                elapsedTime: Date.now() - startTime
             };
         }
 
         var parser = new Parser();
-        var parserOutput = parser.Parse(lexicalAnalyzerOutput.tokens);
+        var parserOutput = parser.Parse(lexicalAnalyzerOutput);
 
         if (!parserOutput.success) {
             return {
                 success: false,
-                errorMessages: parserOutput.errorMessages
+                errorMessages: parserOutput.errorMessages,
+                warningMessages: parserOutput.warningMessages,
+                elapsedTime: Date.now() - startTime
             };
         }
 
         return {
             success: true,
-            generatedJavaScript: generatedJavaScriptExample
+            generatedJavaScript: generatedJavaScriptExample,
+            warningMessages: parserOutput.warningMessages,
+            elapsedTime: Date.now() - startTime
         };
     }
 }
