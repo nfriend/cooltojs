@@ -3,9 +3,11 @@
     'use strict';
 
     // TODO: clean this up.  This is getting a little unruly.
-    s
+
     var programIndexToUse = 8,
         liveErrorChecking = true;
+
+    $('[data-toggle="tooltip"]').tooltip();
 
     //#region set up editors and the console
     var coolEditor = CodeMirror(document.getElementById('cool-editor'), {
