@@ -86,7 +86,6 @@ Expression
 	| ObjectIdentifier '(' ExpressionList ')'
 	| IfKeyword Expression ThenKeyword Expression ElseKeyword Expression FiKeyword
 	| WhileKeyword Expression LoopKeyword Expression PoolKeyword
-	| '{' Expression '}'
 	| '{' ExpressionSeries '}'
 	| LetKeyword LocalVariableDeclarationList InKeyword Expression
 	| CaseKeyword Expression OfKeyword CaseOption EsacKeyword
