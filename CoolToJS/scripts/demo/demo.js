@@ -4,7 +4,7 @@
 
     // TODO: clean this up.  This is getting a little unruly.
 
-    var programIndexToUse = 8,
+    var programIndexToUse = 9,
         liveErrorChecking = true;
 
     $('[data-toggle="tooltip"]').tooltip();

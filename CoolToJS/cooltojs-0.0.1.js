@@ -1,5 +1,28 @@
 var CoolToJS;
 (function (CoolToJS) {
+    var AST;
+    (function (AST) {
+        'use strict';
+        (function (NodeType) {
+            NodeType[NodeType["Program"] = 0] = "Program";
+            NodeType[NodeType["Class"] = 1] = "Class";
+            NodeType[NodeType["Property"] = 2] = "Property";
+            NodeType[NodeType["Method"] = 3] = "Method";
+            NodeType[NodeType["Expression"] = 4] = "Expression";
+            NodeType[NodeType["BlockExpression"] = 5] = "BlockExpression";
+        })(AST.NodeType || (AST.NodeType = {}));
+        var NodeType = AST.NodeType;
+        var Node = (function () {
+            function Node() {
+                this.children = [];
+            }
+            return Node;
+        })();
+        AST.Node = Node;
+    })(AST = CoolToJS.AST || (CoolToJS.AST = {}));
+})(CoolToJS || (CoolToJS = {}));
+var CoolToJS;
+(function (CoolToJS) {
     // finds all Cool program sources referenced in 
     // <script type="text/cool"> elements and returns 
     // them asynchonously via the completedCallback
