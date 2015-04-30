@@ -1,4 +1,7 @@
 ﻿module CoolToJS {
+
+    // the number values of these enums are the values used in the
+    // slr(1) parse table.  Use caution when changing these values.
     export enum SyntaxKind {
         EndOfInput = 0,
         OpenParenthesis = 1,
@@ -63,8 +66,6 @@
         NewLine = 56,
         Tab = 57,
         Comment = 58,
-
-        // higher-level constructs, not used in lexical analysis
     }
 
     export var StartSyntaxKind: SyntaxKind = SyntaxKind.Program;
