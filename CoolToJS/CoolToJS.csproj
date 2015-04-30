@@ -58,6 +58,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="scripts\demo\cool-program-sources.js" />
+    <TypeScriptCompile Include="scripts\transpiler\AbstractSyntaxTreeConverter.ts" />
     <TypeScriptCompile Include="scripts\transpiler\AbstractSyntaxTree.ts" />
     <TypeScriptCompile Include="scripts\transpiler\cooltojs.ts" />
     <TypeScriptCompile Include="scripts\transpiler\ParseTable.ts" />
@@ -67,6 +68,7 @@
     <TypeScriptCompile Include="scripts\transpiler\SimpleSyntaxKind.ts" />
     <TypeScriptCompile Include="scripts\transpiler\SyntaxKind.ts" />
     <TypeScriptCompile Include="scripts\transpiler\Transpiler.ts" />
+    <TypeScriptCompile Include="scripts\transpiler\utility\Utility.ts" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="styles\cooltojs.css" />

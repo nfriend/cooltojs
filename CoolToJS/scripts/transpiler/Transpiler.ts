@@ -97,6 +97,9 @@ _in_string(function(input) {\n\
             };
         }
 
+        var astConverter = new AST.AbstractSyntaxTreeConverter();
+        var ast = astConverter.Convert(parserOutput.syntaxTree);
+
         return {
             success: true,
             generatedJavaScript: generatedJavaScriptExample,
