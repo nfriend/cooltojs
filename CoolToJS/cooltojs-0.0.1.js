@@ -55,6 +55,9 @@ var CoolToJS;
                 var _this = this;
                 this.Convert = function (syntaxTree) {
                     var convertedNode;
+                    // use a shallow copy of the provided tree so we
+                    // don't alter the original
+                    syntaxTree = CoolToJS.Utility.ShallowCopySyntaxTree(syntaxTree);
                     if (_this.isRecursiveSyntaxKind(syntaxTree.syntaxKind)) {
                         _this.flattenRecursion(syntaxTree);
                     }
@@ -1108,6 +1111,20 @@ var CoolToJS;
             }
         }
         Utility.PrintSyntaxTree = PrintSyntaxTree;
+        function ShallowCopySyntaxTree(syntaxTree, parentTree) {
+            if (parentTree === void 0) { parentTree = null; }
+            var newTree = {
+                syntaxKind: syntaxTree.syntaxKind,
+                token: syntaxTree.token,
+                children: [],
+                parent: parentTree
+            };
+            for (var i = 0; i < syntaxTree.children.length; i++) {
+                newTree.children.push(ShallowCopySyntaxTree(syntaxTree.children[i], newTree));
+            }
+            return newTree;
+        }
+        Utility.ShallowCopySyntaxTree = ShallowCopySyntaxTree;
     })(Utility = CoolToJS.Utility || (CoolToJS.Utility = {}));
 })(CoolToJS || (CoolToJS = {}));
 //# sourceMappingURL=cooltojs-0.0.1.js.map

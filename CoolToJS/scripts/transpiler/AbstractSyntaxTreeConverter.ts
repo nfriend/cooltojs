@@ -5,6 +5,10 @@
         Convert = (syntaxTree: SyntaxTree): AST.Node => {
             var convertedNode: Node;
 
+            // use a shallow copy of the provided tree so we
+            // don't alter the original
+            syntaxTree = Utility.ShallowCopySyntaxTree(syntaxTree);
+
             if (this.isRecursiveSyntaxKind(syntaxTree.syntaxKind)) {
                 this.flattenRecursion(syntaxTree);
             }
