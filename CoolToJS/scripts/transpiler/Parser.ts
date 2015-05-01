@@ -182,7 +182,7 @@
                 //printStack();
             }
 
-            //Utility.PrintSyntaxTree(stack[0]);
+            Utility.PrintSyntaxTree(stack[0]);
 
             return {
                 success: true,

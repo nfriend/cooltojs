@@ -30,4 +30,8 @@
 
         return newTree;
     }
+
+    export function isNullUndefinedOrWhitespace(s: string): boolean {
+        return typeof s === 'undefined' || s === null || !/\S/.test(s);
+    }
 } 

@@ -31,6 +31,16 @@ var CoolToJS;
             function ProgramNode() {
                 _super.call(this, 0 /* Program */);
             }
+            Object.defineProperty(ProgramNode.prototype, "classList", {
+                get: function () {
+                    return this.children;
+                },
+                set: function (classList) {
+                    this.children = classList;
+                },
+                enumerable: true,
+                configurable: true
+            });
             return ProgramNode;
         })(Node);
         AST.ProgramNode = ProgramNode;
@@ -40,9 +50,24 @@ var CoolToJS;
                 this.className = className;
                 _super.call(this, 1 /* Class */);
             }
+            Object.defineProperty(ClassNode.prototype, "isSubClass", {
+                get: function () {
+                    return CoolToJS.Utility.isNullUndefinedOrWhitespace(this.superClassName);
+                },
+                enumerable: true,
+                configurable: true
+            });
             return ClassNode;
         })(Node);
         AST.ClassNode = ClassNode;
+        var MethodNode = (function (_super) {
+            __extends(MethodNode, _super);
+            function MethodNode() {
+                _super.call(this, 3 /* Method */);
+            }
+            return MethodNode;
+        })(Node);
+        AST.MethodNode = MethodNode;
     })(AST = CoolToJS.AST || (CoolToJS.AST = {}));
 })(CoolToJS || (CoolToJS = {}));
 var CoolToJS;
@@ -65,14 +90,34 @@ var CoolToJS;
                         convertedNode = new AST.ProgramNode();
                         for (var i = 0; i < syntaxTree.children.length; i++) {
                             if (syntaxTree.children[i].syntaxKind === 44 /* Class */) {
-                                var classNode = _this.Convert(syntaxTree.children[i]);
-                                classNode.parent = convertedNode;
-                                convertedNode.children.push(classNode);
+                                var childClassNode = _this.Convert(syntaxTree.children[i]);
+                                childClassNode.parent = convertedNode;
+                                convertedNode.children.push(childClassNode);
                             }
                         }
                     }
                     else if (syntaxTree.syntaxKind === 44 /* Class */) {
-                        convertedNode = new AST.ClassNode(syntaxTree.children[1].token.match);
+                        var classNode = new AST.ClassNode(syntaxTree.children[1].token.match);
+                        if (syntaxTree.children[2].syntaxKind === 25 /* InheritsKeyword */) {
+                            classNode.superClassName = syntaxTree.children[3].token.match;
+                        }
+                        for (var i = 0; i < syntaxTree.children.length; i++) {
+                            if (syntaxTree.children[i].syntaxKind === 49 /* FeatureList */) {
+                                for (var j = 0; j < syntaxTree.children[i].children.length; j++) {
+                                    if (syntaxTree.children[i].children[j].syntaxKind === 48 /* Feature */) {
+                                        var childFeatureNode = _this.Convert(syntaxTree.children[i].children[j]);
+                                        childFeatureNode.parent = classNode;
+                                        classNode.children.push(childFeatureNode);
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                        convertedNode = classNode;
+                    }
+                    else if (syntaxTree.syntaxKind === 48 /* Feature */) {
+                        //TODO
+                        convertedNode = new AST.MethodNode();
                     }
                     return convertedNode;
                 };
@@ -386,7 +431,7 @@ var CoolToJS;
                         };
                     }
                 }
-                //Utility.PrintSyntaxTree(stack[0]);
+                CoolToJS.Utility.PrintSyntaxTree(stack[0]);
                 return {
                     success: true,
                     syntaxTree: stack[0],
@@ -1125,6 +1170,10 @@ var CoolToJS;
             return newTree;
         }
         Utility.ShallowCopySyntaxTree = ShallowCopySyntaxTree;
+        function isNullUndefinedOrWhitespace(s) {
+            return typeof s === 'undefined' || s === null || !/\S/.test(s);
+        }
+        Utility.isNullUndefinedOrWhitespace = isNullUndefinedOrWhitespace;
     })(Utility = CoolToJS.Utility || (CoolToJS.Utility = {}));
 })(CoolToJS || (CoolToJS = {}));
 //# sourceMappingURL=cooltojs-0.0.1.js.map
