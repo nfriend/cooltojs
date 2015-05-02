@@ -100,6 +100,8 @@ _in_string(function(input) {\n\
         var astConverter = new AST.AbstractSyntaxTreeConverter();
         var ast = astConverter.Convert(parserOutput.syntaxTree);
 
+        //console.log(Utility.stringify(ast));
+
         return {
             success: true,
             generatedJavaScript: generatedJavaScriptExample,

@@ -1337,7 +1337,7 @@ var CoolToJS;
                         };
                     }
                 }
-                CoolToJS.Utility.PrintSyntaxTree(stack[0]);
+                //Utility.PrintSyntaxTree(stack[0]);
                 return {
                     success: true,
                     syntaxTree: stack[0],
@@ -1823,6 +1823,7 @@ _in_string(function(input) {\n\
         }
         var astConverter = new CoolToJS.AST.AbstractSyntaxTreeConverter();
         var ast = astConverter.Convert(parserOutput.syntaxTree);
+        //console.log(Utility.stringify(ast));
         return {
             success: true,
             generatedJavaScript: generatedJavaScriptExample,
@@ -1873,6 +1874,24 @@ var CoolToJS;
             return typeof s === 'undefined' || s === null || !/\S/.test(s);
         }
         Utility.isNullUndefinedOrWhitespace = isNullUndefinedOrWhitespace;
+        // from http://stackoverflow.com/a/11616993/1063392
+        function stringify(ast) {
+            var cache = [];
+            var returnVal = JSON.stringify(ast, function (key, value) {
+                if (typeof value === 'object' && value !== null) {
+                    if (cache.indexOf(value) !== -1) {
+                        // Circular reference found, discard key
+                        return;
+                    }
+                    // Store value in our collection
+                    cache.push(value);
+                }
+                return value;
+            }, 2);
+            cache = null; // Enable garbage collection
+            return returnVal;
+        }
+        Utility.stringify = stringify;
     })(Utility = CoolToJS.Utility || (CoolToJS.Utility = {}));
 })(CoolToJS || (CoolToJS = {}));
 //# sourceMappingURL=cooltojs-0.0.1.js.map
