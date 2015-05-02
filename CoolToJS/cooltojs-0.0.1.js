@@ -1470,10 +1470,18 @@ var CoolToJS;
                     var methodsToAddToScope = [];
                     while (superClass) {
                         superClass.classNode.methodList.forEach(function (methodNode) {
-                            methodsToAddToScope.push({
-                                identifierName: methodNode.methodName,
-                                identifierType: methodNode.returnTypeName
+                            var newMethodScopeItem = {
+                                methodName: methodNode.methodName,
+                                methodReturnType: methodNode.returnTypeName,
+                                methodParameters: []
+                            };
+                            methodNode.parameters.forEach(function (param) {
+                                newMethodScopeItem.methodParameters.push({
+                                    parameterName: param.parameterName,
+                                    parameterType: param.parameterTypeName
+                                });
                             });
+                            methodsToAddToScope.push(newMethodScopeItem);
                         });
                         superClass = superClass.parent;
                     }
@@ -1489,10 +1497,19 @@ var CoolToJS;
                             duplicateMethods.push(classNode.methodList[i]);
                         }
                         else {
-                            typeEnvironment.methodScope.push({
-                                identifierName: classNode.methodList[i].methodName,
-                                identifierType: classNode.methodList[i].returnTypeName
+                            // add valid methods to the current methodScope
+                            var newMethodScopeItem = {
+                                methodName: classNode.methodList[i].methodName,
+                                methodReturnType: classNode.methodList[i].returnTypeName,
+                                methodParameters: []
+                            };
+                            classNode.methodList[i].parameters.forEach(function (param) {
+                                newMethodScopeItem.methodParameters.push({
+                                    parameterName: param.parameterName,
+                                    parameterType: param.parameterTypeName
+                                });
                             });
+                            typeEnvironment.methodScope.push(newMethodScopeItem);
                         }
                     }
                     duplicateMethods.forEach(function (methodNode) {
@@ -1535,10 +1552,10 @@ var CoolToJS;
                 else if (ast.type === 4 /* AssignmentExpression */) {
                     var assignmentExpressionNode = ast;
                     for (var i = typeEnvironment.variableScope.length - 1; i >= 0; i--) {
-                        if (typeEnvironment.variableScope[i].identifierName === assignmentExpressionNode.identifierName) {
+                        if (typeEnvironment.variableScope[i].variableName === assignmentExpressionNode.identifierName) {
                             var expressionType = _this.analyze(assignmentExpressionNode.assignmentExpression, typeEnvironment, errorMessages, warningMessages);
-                            if (!_this.isAssignableFrom(typeEnvironment.variableScope[i].identifierType, expressionType)) {
-                                _this.addTypeError(typeEnvironment.variableScope[i].identifierType, expressionType, assignmentExpressionNode.token.location, errorMessages);
+                            if (!_this.isAssignableFrom(typeEnvironment.variableScope[i].variableType, expressionType)) {
+                                _this.addTypeError(typeEnvironment.variableScope[i].variableType, expressionType, assignmentExpressionNode.token.location, errorMessages);
                             }
                             return expressionType;
                         }
@@ -1565,8 +1582,14 @@ var CoolToJS;
                         throw 'MethodCallExpressionNode should not have both isCallToParent = true AND isCallToSelf = true';
                     }
                     for (var i = typeEnvironment.methodScope.length - 1; i >= 0; i--) {
-                        if (typeEnvironment.methodScope[i].identifierName === methodCallExpressionNode.methodName) {
-                            return typeEnvironment.methodScope[i].identifierType;
+                        if (typeEnvironment.methodScope[i].methodName === methodCallExpressionNode.methodName) {
+                            if (typeEnvironment.methodScope[i].methodParameters.length !== methodCallExpressionNode.parameterExpressionList.length) {
+                                errorMessages.push({
+                                    location: methodCallExpressionNode.token.location,
+                                    message: ('Method "' + methodCallExpressionNode.methodName + '" takes exactly ' + typeEnvironment.methodScope[i].methodParameters.length + ' parameter' + (typeEnvironment.methodScope[i].methodParameters.length === 1 ? '' : 's') + '. ' + methodCallExpressionNode.parameterExpressionList.length + ' parameter' + (methodCallExpressionNode.parameterExpressionList.length === 1 ? '' : 's') + ' were provided.')
+                                });
+                            }
+                            return typeEnvironment.methodScope[i].methodReturnType;
                         }
                     }
                     errorMessages.push({
@@ -1588,8 +1611,8 @@ var CoolToJS;
                     // add the new variables to the scope
                     letExpressionNode.localVariableDeclarations.forEach(function (varDeclarationNode) {
                         typeEnvironment.variableScope.push({
-                            identifierName: varDeclarationNode.identifierName,
-                            identifierType: varDeclarationNode.typeName
+                            variableName: varDeclarationNode.identifierName,
+                            variableType: varDeclarationNode.typeName
                         });
                     });
                     var returnType = _this.analyze(letExpressionNode.letBodyExpression, typeEnvironment, errorMessages, warningMessages);
@@ -1604,8 +1627,8 @@ var CoolToJS;
                 else if (ast.type === 18 /* ObjectIdentifierExpression */) {
                     var objectIdExpressionNode = ast;
                     for (var i = typeEnvironment.variableScope.length - 1; i >= 0; i--) {
-                        if (typeEnvironment.variableScope[i].identifierName === objectIdExpressionNode.objectIdentifierName) {
-                            return typeEnvironment.variableScope[i].identifierType;
+                        if (typeEnvironment.variableScope[i].variableName === objectIdExpressionNode.objectIdentifierName) {
+                            return typeEnvironment.variableScope[i].variableType;
                         }
                     }
                     errorMessages.push({

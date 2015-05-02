@@ -94,13 +94,24 @@
 
                 // add this class's superclass's methods to the methodscope
                 var superClass = this.findTypeHeirarchy(classNode.className).parent;
-                var methodsToAddToScope: Array <ScopeItem> = [];
+                var methodsToAddToScope: Array<MethodScope> = [];
                 while (superClass) {
                     superClass.classNode.methodList.forEach(methodNode => {
-                        methodsToAddToScope.push({
-                            identifierName: methodNode.methodName,
-                            identifierType: methodNode.returnTypeName
+
+                        var newMethodScopeItem: MethodScope = {
+                            methodName: methodNode.methodName,
+                            methodReturnType: methodNode.returnTypeName,
+                            methodParameters: []
+                        };
+
+                        methodNode.parameters.forEach(param => {
+                            newMethodScopeItem.methodParameters.push({
+                                parameterName: param.parameterName,
+                                parameterType: param.parameterTypeName
+                            });
                         });
+
+                        methodsToAddToScope.push(newMethodScopeItem);
                     });
                     superClass = superClass.parent;
                 }
@@ -115,10 +126,22 @@
                     if (classNode.methodList.map(c => { return c.methodName }).slice(0, i).indexOf(classNode.methodList[i].methodName) !== -1) {
                         duplicateMethods.push(classNode.methodList[i]);
                     } else {
-                        typeEnvironment.methodScope.push({
-                            identifierName: classNode.methodList[i].methodName,
-                            identifierType: classNode.methodList[i].returnTypeName
-                        })
+                        // add valid methods to the current methodScope
+
+                        var newMethodScopeItem: MethodScope = {
+                            methodName: classNode.methodList[i].methodName,
+                            methodReturnType: classNode.methodList[i].returnTypeName,
+                            methodParameters: []
+                        };
+
+                        classNode.methodList[i].parameters.forEach(param => {
+                            newMethodScopeItem.methodParameters.push({
+                                parameterName: param.parameterName,
+                                parameterType: param.parameterTypeName
+                            });
+                        });
+
+                        typeEnvironment.methodScope.push(newMethodScopeItem);
                     }
                 }
 
@@ -169,11 +192,11 @@
             else if (ast.type === NodeType.AssignmentExpression) {
                 var assignmentExpressionNode = <AssignmentExpressionNode>ast;
                 for (var i = typeEnvironment.variableScope.length - 1; i >= 0; i--) {
-                    if (typeEnvironment.variableScope[i].identifierName === assignmentExpressionNode.identifierName) {
+                    if (typeEnvironment.variableScope[i].variableName === assignmentExpressionNode.identifierName) {
                         var expressionType = this.analyze(assignmentExpressionNode.assignmentExpression, typeEnvironment, errorMessages, warningMessages);
 
-                        if (!this.isAssignableFrom(typeEnvironment.variableScope[i].identifierType, expressionType)) {
-                            this.addTypeError(typeEnvironment.variableScope[i].identifierType, expressionType, assignmentExpressionNode.token.location, errorMessages);
+                        if (!this.isAssignableFrom(typeEnvironment.variableScope[i].variableType, expressionType)) {
+                            this.addTypeError(typeEnvironment.variableScope[i].variableType, expressionType, assignmentExpressionNode.token.location, errorMessages);
                         }
 
                         return expressionType;
@@ -204,8 +227,21 @@
                 }
 
                 for (var i = typeEnvironment.methodScope.length - 1; i >= 0; i--) {
-                    if (typeEnvironment.methodScope[i].identifierName === methodCallExpressionNode.methodName) {
-                        return typeEnvironment.methodScope[i].identifierType;
+                    if (typeEnvironment.methodScope[i].methodName === methodCallExpressionNode.methodName) {
+
+                        if (typeEnvironment.methodScope[i].methodParameters.length !== methodCallExpressionNode.parameterExpressionList.length) {
+                            errorMessages.push({
+                                location: methodCallExpressionNode.token.location,
+                                message: ('Method "' + methodCallExpressionNode.methodName + '" takes exactly '
+                                    + typeEnvironment.methodScope[i].methodParameters.length + ' parameter'
+                                    + (typeEnvironment.methodScope[i].methodParameters.length === 1 ? '' : 's')
+                                    + '. ' + methodCallExpressionNode.parameterExpressionList.length + ' parameter'
+                                    + (methodCallExpressionNode.parameterExpressionList.length === 1 ? '' : 's')
+                                    + ' were provided.')
+                            });
+                        }
+
+                        return typeEnvironment.methodScope[i].methodReturnType;
                     }
                 }
 
@@ -234,8 +270,8 @@
                 // add the new variables to the scope
                 letExpressionNode.localVariableDeclarations.forEach(varDeclarationNode => {
                     typeEnvironment.variableScope.push({
-                        identifierName: varDeclarationNode.identifierName,
-                        identifierType: varDeclarationNode.typeName
+                        variableName: varDeclarationNode.identifierName,
+                        variableType: varDeclarationNode.typeName
                     });
                 });
                 var returnType = this.analyze(letExpressionNode.letBodyExpression, typeEnvironment, errorMessages, warningMessages);
@@ -259,8 +295,8 @@
                 var objectIdExpressionNode = <ObjectIdentifierExpressionNode>ast;
 
                 for (var i = typeEnvironment.variableScope.length - 1; i >= 0; i--) {
-                    if (typeEnvironment.variableScope[i].identifierName === objectIdExpressionNode.objectIdentifierName) {
-                        return typeEnvironment.variableScope[i].identifierType;
+                    if (typeEnvironment.variableScope[i].variableName === objectIdExpressionNode.objectIdentifierName) {
+                        return typeEnvironment.variableScope[i].variableType;
                     }
                 }
 
@@ -504,12 +540,21 @@
 
     interface TypeEnvironment {
         currentClassType: string;
-        variableScope: Array<ScopeItem>;
-        methodScope: Array<ScopeItem>;
+        variableScope: Array<VariableScope>;
+        methodScope: Array<MethodScope>;
     }
 
-    interface ScopeItem {
-        identifierName: string;
-        identifierType: string
+    interface VariableScope {
+        variableName: string;
+        variableType: string
+    }
+
+    interface MethodScope {
+        methodName: string;
+        methodReturnType: string;
+        methodParameters: Array<{
+            parameterName: string;
+            parameterType: string;
+        }>;
     }
 }
