@@ -1465,6 +1465,21 @@ var CoolToJS;
                     var classNode = ast;
                     typeEnvironment.currentClassType = classNode.className;
                     typeEnvironment.methodScope = [];
+                    // add this class's superclass's methods to the methodscope
+                    var superClass = _this.findTypeHeirarchy(classNode.className).parent;
+                    var methodsToAddToScope = [];
+                    while (superClass) {
+                        superClass.classNode.methodList.forEach(function (methodNode) {
+                            methodsToAddToScope.push({
+                                identifierName: methodNode.methodName,
+                                identifierType: methodNode.returnTypeName
+                            });
+                        });
+                        superClass = superClass.parent;
+                    }
+                    // add them to the methodscope in reverse order so the most basic methods
+                    // appear on the bottom of the stack
+                    typeEnvironment.methodScope = typeEnvironment.methodScope.concat(methodsToAddToScope.reverse());
                     // ensure that all method names are unique
                     var duplicateMethods = [];
                     for (var i = 0; i < classNode.methodList.length; i++) {
@@ -1623,8 +1638,9 @@ var CoolToJS;
                 }
                 else {
                     for (var i = 0; i < typeHeirachy.children.length; i++) {
-                        if (findTypeHeirarchy(typeHeirachy.children[i])) {
-                            return typeHeirachy.children[i];
+                        var findTypeResult = findTypeHeirarchy(typeHeirachy.children[i]);
+                        if (findTypeResult) {
+                            return findTypeResult;
                         }
                     }
                 }
@@ -1643,6 +1659,10 @@ var CoolToJS;
                 return true;
             }
             if (type1Name === this.unknownType || type2Name === this.unknownType) {
+                return true;
+            }
+            //temporary
+            if (type1Name === 'SELF_TYPE' || type2Name === 'SELF_TYPE') {
                 return true;
             }
             var typeHeirarchy2 = this.findTypeHeirarchy(type2Name);
@@ -1671,16 +1691,16 @@ var CoolToJS;
             var abortMethodNode = new CoolToJS.MethodNode();
             abortMethodNode.methodName = 'abort';
             abortMethodNode.returnTypeName = 'Object';
-            objectClass.methodList.push(abortMethodNode);
+            objectClass.children.push(abortMethodNode);
             var typeNameMethodNode = new CoolToJS.MethodNode();
             typeNameMethodNode.methodName = 'type_name';
             typeNameMethodNode.returnTypeName = 'String';
-            objectClass.methodList.push(typeNameMethodNode);
+            objectClass.children.push(typeNameMethodNode);
             var copyMethodNode = new CoolToJS.MethodNode();
             copyMethodNode.methodName = 'copy';
             copyMethodNode.returnTypeName = 'SELF_TYPE';
-            objectClass.methodList.push(copyMethodNode);
-            programNode.classList.push(objectClass);
+            objectClass.children.push(copyMethodNode);
+            programNode.children.push(objectClass);
             // IO Class
             var ioClass = new CoolToJS.ClassNode('IO');
             var outStringMethodNode = new CoolToJS.MethodNode();
@@ -1690,7 +1710,7 @@ var CoolToJS;
                 parameterName: 'x',
                 parameterTypeName: 'String'
             });
-            ioClass.methodList.push(outStringMethodNode);
+            ioClass.children.push(outStringMethodNode);
             var outIntMethodNode = new CoolToJS.MethodNode();
             outIntMethodNode.methodName = 'out_int';
             outIntMethodNode.returnTypeName = 'SELF_TYPE';
@@ -1698,25 +1718,25 @@ var CoolToJS;
                 parameterName: 'x',
                 parameterTypeName: 'Int'
             });
-            ioClass.methodList.push(outIntMethodNode);
+            ioClass.children.push(outIntMethodNode);
             var inStringMethodNode = new CoolToJS.MethodNode();
             inStringMethodNode.methodName = 'in_string';
             inStringMethodNode.returnTypeName = 'String';
-            ioClass.methodList.push(inStringMethodNode);
+            ioClass.children.push(inStringMethodNode);
             var inIntMethodNode = new CoolToJS.MethodNode();
             inIntMethodNode.methodName = 'in_int';
             inIntMethodNode.returnTypeName = 'Int';
-            ioClass.methodList.push(inIntMethodNode);
-            programNode.classList.push(ioClass);
+            ioClass.children.push(inIntMethodNode);
+            programNode.children.push(ioClass);
             // Int
             var intClass = new CoolToJS.ClassNode('Int');
-            programNode.classList.push(intClass);
+            programNode.children.push(intClass);
             // String
             var stringClass = new CoolToJS.ClassNode('String');
             var lengthMethodNode = new CoolToJS.MethodNode();
             lengthMethodNode.methodName = 'length';
             lengthMethodNode.returnTypeName = 'String';
-            stringClass.methodList.push(lengthMethodNode);
+            stringClass.children.push(lengthMethodNode);
             var concatMethodNode = new CoolToJS.MethodNode();
             concatMethodNode.methodName = 'concat';
             concatMethodNode.returnTypeName = 'String';
@@ -1724,7 +1744,7 @@ var CoolToJS;
                 parameterName: 's',
                 parameterTypeName: 'String'
             });
-            stringClass.methodList.push(concatMethodNode);
+            stringClass.children.push(concatMethodNode);
             var substrMethodNode = new CoolToJS.MethodNode();
             substrMethodNode.methodName = 'substr';
             substrMethodNode.returnTypeName = 'String';
@@ -1736,11 +1756,11 @@ var CoolToJS;
                 parameterName: 'l',
                 parameterTypeName: 'Int'
             });
-            stringClass.methodList.push(substrMethodNode);
-            programNode.classList.push(stringClass);
+            stringClass.children.push(substrMethodNode);
+            programNode.children.push(stringClass);
             // Bool
             var boolClass = new CoolToJS.ClassNode('Bool');
-            programNode.classList.push(boolClass);
+            programNode.children.push(boolClass);
         };
         // constructs a heirarchy of all referenced classes
         // to allow for future inheritance checking
@@ -1750,7 +1770,7 @@ var CoolToJS;
             var allTypes = programNode.classList.map(function (c) {
                 return {
                     parentName: c.superClassName || 'Object',
-                    typeHeirarchy: new TypeHeirarchy(c.className)
+                    typeHeirarchy: new TypeHeirarchy(c)
                 };
             });
             // assemble a tree out of the list of TypeHierarchy's from above
@@ -1772,10 +1792,17 @@ var CoolToJS;
     })();
     CoolToJS.SemanticAnalyzer = SemanticAnalyzer;
     var TypeHeirarchy = (function () {
-        function TypeHeirarchy(typeName) {
+        function TypeHeirarchy(classNode) {
             this.children = [];
-            this.typeName = typeName;
+            this.classNode = classNode;
         }
+        Object.defineProperty(TypeHeirarchy.prototype, "typeName", {
+            get: function () {
+                return this.classNode.className;
+            },
+            enumerable: true,
+            configurable: true
+        });
         return TypeHeirarchy;
     })();
 })(CoolToJS || (CoolToJS = {}));

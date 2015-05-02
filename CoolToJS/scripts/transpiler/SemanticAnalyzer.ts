@@ -92,6 +92,23 @@
                 typeEnvironment.currentClassType = classNode.className;
                 typeEnvironment.methodScope = [];
 
+                // add this class's superclass's methods to the methodscope
+                var superClass = this.findTypeHeirarchy(classNode.className).parent;
+                var methodsToAddToScope: Array <ScopeItem> = [];
+                while (superClass) {
+                    superClass.classNode.methodList.forEach(methodNode => {
+                        methodsToAddToScope.push({
+                            identifierName: methodNode.methodName,
+                            identifierType: methodNode.returnTypeName
+                        });
+                    });
+                    superClass = superClass.parent;
+                }
+
+                // add them to the methodscope in reverse order so the most basic methods
+                // appear on the bottom of the stack
+                typeEnvironment.methodScope = typeEnvironment.methodScope.concat(methodsToAddToScope.reverse());
+
                 // ensure that all method names are unique
                 var duplicateMethods: Array<MethodNode> = [];
                 for (var i = 0; i < classNode.methodList.length; i++) {
@@ -284,8 +301,9 @@
                     return typeHeirachy;
                 } else {
                     for (var i = 0; i < typeHeirachy.children.length; i++) {
-                        if (findTypeHeirarchy(typeHeirachy.children[i])) {
-                            return typeHeirachy.children[i];
+                        var findTypeResult = findTypeHeirarchy(typeHeirachy.children[i])
+                        if (findTypeResult) {
+                            return findTypeResult;
                         }
                     }
                 }
@@ -308,6 +326,11 @@
             }
 
             if (type1Name === this.unknownType || type2Name === this.unknownType) {
+                return true;
+            }
+
+            //temporary
+            if (type1Name === 'SELF_TYPE' || type2Name === 'SELF_TYPE') {
                 return true;
             }
 
@@ -343,19 +366,19 @@
             var abortMethodNode = new MethodNode();
             abortMethodNode.methodName = 'abort';
             abortMethodNode.returnTypeName = 'Object'
-            objectClass.methodList.push(abortMethodNode);
+            objectClass.children.push(abortMethodNode);
 
             var typeNameMethodNode = new MethodNode();
             typeNameMethodNode.methodName = 'type_name';
             typeNameMethodNode.returnTypeName = 'String'
-            objectClass.methodList.push(typeNameMethodNode);
+            objectClass.children.push(typeNameMethodNode);
 
             var copyMethodNode = new MethodNode();
             copyMethodNode.methodName = 'copy';
             copyMethodNode.returnTypeName = 'SELF_TYPE'
-            objectClass.methodList.push(copyMethodNode);
+            objectClass.children.push(copyMethodNode);
 
-            programNode.classList.push(objectClass);
+            programNode.children.push(objectClass);
 
             // IO Class
             var ioClass = new ClassNode('IO');
@@ -367,7 +390,7 @@
                 parameterName: 'x',
                 parameterTypeName: 'String'
             });
-            ioClass.methodList.push(outStringMethodNode);
+            ioClass.children.push(outStringMethodNode);
 
             var outIntMethodNode = new MethodNode();
             outIntMethodNode.methodName = 'out_int';
@@ -376,23 +399,23 @@
                 parameterName: 'x',
                 parameterTypeName: 'Int'
             });
-            ioClass.methodList.push(outIntMethodNode);
+            ioClass.children.push(outIntMethodNode);
 
             var inStringMethodNode = new MethodNode();
             inStringMethodNode.methodName = 'in_string';
             inStringMethodNode.returnTypeName = 'String';
-            ioClass.methodList.push(inStringMethodNode);
+            ioClass.children.push(inStringMethodNode);
 
             var inIntMethodNode = new MethodNode();
             inIntMethodNode.methodName = 'in_int';
             inIntMethodNode.returnTypeName = 'Int';
-            ioClass.methodList.push(inIntMethodNode);
+            ioClass.children.push(inIntMethodNode);
 
-            programNode.classList.push(ioClass);
+            programNode.children.push(ioClass);
 
             // Int
             var intClass = new ClassNode('Int');
-            programNode.classList.push(intClass);
+            programNode.children.push(intClass);
 
             // String
             var stringClass = new ClassNode('String');
@@ -400,7 +423,7 @@
             var lengthMethodNode = new MethodNode();
             lengthMethodNode.methodName = 'length';
             lengthMethodNode.returnTypeName = 'String';
-            stringClass.methodList.push(lengthMethodNode);
+            stringClass.children.push(lengthMethodNode);
 
             var concatMethodNode = new MethodNode();
             concatMethodNode.methodName = 'concat';
@@ -409,7 +432,7 @@
                 parameterName: 's',
                 parameterTypeName: 'String'
             });
-            stringClass.methodList.push(concatMethodNode);
+            stringClass.children.push(concatMethodNode);
 
             var substrMethodNode = new MethodNode();
             substrMethodNode.methodName = 'substr';
@@ -422,13 +445,13 @@
                 parameterName: 'l',
                 parameterTypeName: 'Int'
             });
-            stringClass.methodList.push(substrMethodNode);
+            stringClass.children.push(substrMethodNode);
 
-            programNode.classList.push(stringClass);
+            programNode.children.push(stringClass);
 
             // Bool
             var boolClass = new ClassNode('Bool');
-            programNode.classList.push(boolClass);
+            programNode.children.push(boolClass);
         }
 
         private inheritanceGraph: TypeHeirarchy;
@@ -443,7 +466,7 @@
             var allTypes = programNode.classList.map((c) => {
                 return {
                     parentName: c.superClassName || 'Object',
-                    typeHeirarchy: new TypeHeirarchy(c.className)
+                    typeHeirarchy: new TypeHeirarchy(c)
                 };
             });
 
@@ -466,10 +489,15 @@
     }
 
     class TypeHeirarchy {
-        constructor(typeName?: string) {
-            this.typeName = typeName;
+        constructor(classNode: ClassNode) {
+            this.classNode = classNode;
         }
-        typeName: string;
+
+        get typeName(): string {
+            return this.classNode.className;
+        }
+
+        classNode: ClassNode;
         parent: TypeHeirarchy;
         children: Array<TypeHeirarchy> = [];
     }
