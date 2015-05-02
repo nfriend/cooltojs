@@ -115,7 +115,7 @@
                 if (syntaxTree.children[1] && syntaxTree.children[1].syntaxKind === SyntaxKind.AssignmentOperator) {
                     var assignmentExprNode = new AssignmentExpressionNode();
                     assignmentExprNode.identifierName = syntaxTree.children[0].token.match;
-
+                    
                     var assignmentExpression = this.Convert(syntaxTree.children[2]);
                     assignmentExpression.parent = assignmentExprNode;
                     assignmentExprNode.children.push(assignmentExpression);
@@ -301,18 +301,25 @@
                     switch (syntaxTree.children[1].syntaxKind) {
                         case SyntaxKind.AdditionOperator:
                             binaryOperationExprNode.operationType = BinaryOperationType.Addition;
+                            break;
                         case SyntaxKind.SubtractionOperator:
                             binaryOperationExprNode.operationType = BinaryOperationType.Subtraction;
+                            break;
                         case SyntaxKind.MultiplationOperator:
                             binaryOperationExprNode.operationType = BinaryOperationType.Multiplication;
+                            break;
                         case SyntaxKind.DivisionOperator:
                             binaryOperationExprNode.operationType = BinaryOperationType.Division;
+                            break;
                         case SyntaxKind.LessThanOperator:
                             binaryOperationExprNode.operationType = BinaryOperationType.LessThan;
+                            break;
                         case SyntaxKind.LessThanOrEqualsOperator:
                             binaryOperationExprNode.operationType = BinaryOperationType.LessThanOrEqualTo;
+                            break;
                         case SyntaxKind.EqualsOperator:
                             binaryOperationExprNode.operationType = BinaryOperationType.Comparison;
+                            break;
                         default:
                             throw 'Unknown BinaryOperationType';
                     }
@@ -325,7 +332,7 @@
                     binaryOperationExprNode.children[0] = operand1Node;
                     binaryOperationExprNode.children[1] = operand2Node;
 
-                    convertedNode = isVoidExpressionNode;
+                    convertedNode = binaryOperationExprNode;
                 }
 
                 /* UNARY OPERATION EXPRESSION */
