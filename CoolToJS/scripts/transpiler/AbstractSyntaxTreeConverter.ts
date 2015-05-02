@@ -130,6 +130,7 @@
                 if (syntaxTree.children[1] && syntaxTree.children[1].syntaxKind === SyntaxKind.AssignmentOperator) {
                     var assignmentExprNode = new AssignmentExpressionNode();
                     assignmentExprNode.identifierName = syntaxTree.children[0].token.match;
+                    assignmentExprNode.token = syntaxTree.children[0].token;
                     
                     var assignmentExpression = this.convert(syntaxTree.children[2]);
                     assignmentExpression.parent = assignmentExprNode;
@@ -393,6 +394,7 @@
                 else if (syntaxTree.children[0].syntaxKind === SyntaxKind.ObjectIdentifier && syntaxTree.children.length === 1) {
                     var objIdentExprNode = new ObjectIdentifierExpressionNode();
                     objIdentExprNode.objectIdentifierName = syntaxTree.children[0].token.match;
+                    objIdentExprNode.token = syntaxTree.children[0].token;
                     convertedNode = objIdentExprNode;
                 }
 

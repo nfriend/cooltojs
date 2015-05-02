@@ -145,6 +145,10 @@
         propertyName: string;
         typeName: string;
 
+        get hasInitializer(): boolean {
+            return typeof this.propertyInitializerExpression !== 'undefined'
+        }
+
         get propertyInitializerExpression(): ExpressionNode {
             return <ExpressionNode>this.children[0];
         }

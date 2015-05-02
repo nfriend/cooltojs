@@ -154,6 +154,13 @@ var CoolToJS;
         function PropertyNode() {
             _super.call(this, 2 /* Property */);
         }
+        Object.defineProperty(PropertyNode.prototype, "hasInitializer", {
+            get: function () {
+                return typeof this.propertyInitializerExpression !== 'undefined';
+            },
+            enumerable: true,
+            configurable: true
+        });
         Object.defineProperty(PropertyNode.prototype, "propertyInitializerExpression", {
             get: function () {
                 return this.children[0];
@@ -601,6 +608,7 @@ var CoolToJS;
                     if (syntaxTree.children[1] && syntaxTree.children[1].syntaxKind === 12 /* AssignmentOperator */) {
                         var assignmentExprNode = new CoolToJS.AssignmentExpressionNode();
                         assignmentExprNode.identifierName = syntaxTree.children[0].token.match;
+                        assignmentExprNode.token = syntaxTree.children[0].token;
                         var assignmentExpression = _this.convert(syntaxTree.children[2]);
                         assignmentExpression.parent = assignmentExprNode;
                         assignmentExprNode.children.push(assignmentExpression);
@@ -799,6 +807,7 @@ var CoolToJS;
                     else if (syntaxTree.children[0].syntaxKind === 32 /* ObjectIdentifier */ && syntaxTree.children.length === 1) {
                         var objIdentExprNode = new CoolToJS.ObjectIdentifierExpressionNode();
                         objIdentExprNode.objectIdentifierName = syntaxTree.children[0].token.match;
+                        objIdentExprNode.token = syntaxTree.children[0].token;
                         convertedNode = objIdentExprNode;
                     }
                     else if (syntaxTree.children[0].syntaxKind === 26 /* Integer */) {
@@ -1376,17 +1385,20 @@ var CoolToJS;
             this.Analyze = function (astConvertOutput) {
                 var errorMessages = astConvertOutput.errorMessages || [];
                 var warningMessages = astConvertOutput.warningMessages || [];
-                _this.analyze(astConvertOutput.abstractSyntaxTree, errorMessages, warningMessages);
+                _this.analyze(astConvertOutput.abstractSyntaxTree, [], errorMessages, warningMessages);
                 return {
                     success: errorMessages.length === 0,
                     errorMessages: errorMessages,
                     warningMessages: warningMessages
                 };
             };
-            this.analyze = function (ast, errorMessages, warningMessages) {
+            // analyzes the current node and returns the inferred type name (if applicable)
+            this.analyze = function (ast, scope, errorMessages, warningMessages) {
                 /* PROGRAM */
                 if (ast.type === 0 /* Program */) {
                     var programNode = ast;
+                    _this.addBuiltinObjects(programNode);
+                    _this.buildInheritanceGraph(programNode);
                     // ensure that exactly 1 Main class is defined and that all class names are unique
                     var mainClass;
                     var duplicateClasses = [];
@@ -1435,10 +1447,13 @@ var CoolToJS;
                             });
                         }
                     }
+                    ast.children.forEach(function (node) {
+                        _this.analyze(node, scope, errorMessages, warningMessages);
+                    });
                 }
                 else if (ast.type === 1 /* Class */) {
                     var classNode = ast;
-                    // ensure that exactly all method names are unique
+                    // ensure that all method names are unique
                     var duplicateMethods = [];
                     for (var i = 0; i < classNode.methodList.length; i++) {
                         if (classNode.methodList.map(function (c) {
@@ -1453,7 +1468,7 @@ var CoolToJS;
                             message: 'Method "' + methodNode.methodName + '" is multiply defined in class "' + classNode.className + '"'
                         });
                     });
-                    // ensure that exactly all property names are unique
+                    // ensure that all property names are unique
                     var duplicateProperties = [];
                     for (var i = 0; i < classNode.propertyList.length; i++) {
                         if (classNode.propertyList.map(function (c) {
@@ -1468,15 +1483,257 @@ var CoolToJS;
                             message: 'Property "' + propertyNode.propertyName + '" is multiply defined in class "' + classNode.className + '"'
                         });
                     });
+                    ast.children.forEach(function (node) {
+                        _this.analyze(node, scope, errorMessages, warningMessages);
+                    });
                 }
-                ast.children.forEach(function (node) {
-                    _this.analyze(node, errorMessages, warningMessages);
-                });
+                else if (ast.type === 2 /* Property */) {
+                    var propertyNode = ast;
+                    if (propertyNode.hasInitializer) {
+                        var initializerType = _this.analyze(propertyNode.propertyInitializerExpression, scope, errorMessages, warningMessages);
+                        if (!_this.isAssignableFrom(propertyNode.typeName, initializerType)) {
+                            _this.addTypeError(propertyNode.typeName, initializerType, propertyNode.token.location, errorMessages);
+                        }
+                    }
+                }
+                else if (ast.type === 3 /* Method */) {
+                    return null;
+                }
+                else if (ast.type === 4 /* AssignmentExpression */) {
+                    var assignmentExpressionNode = ast;
+                    for (var i = scope.length - 1; i >= 0; i--) {
+                        if (scope[i].variableName === assignmentExpressionNode.identifierName) {
+                            var expressionType = _this.analyze(assignmentExpressionNode.assignmentExpression, scope, errorMessages, warningMessages);
+                            if (!_this.isAssignableFrom(scope[i].variableType, expressionType)) {
+                                _this.addTypeError(scope[i].variableType, expressionType, assignmentExpressionNode.token.location, errorMessages);
+                            }
+                            return expressionType;
+                        }
+                    }
+                    errorMessages.push({
+                        location: assignmentExpressionNode.token.location,
+                        message: 'Assignment to undeclared variable "' + assignmentExpressionNode.identifierName + '"'
+                    });
+                    return _this.unknownType;
+                }
+                else if (ast.type === 8 /* BlockExpression */) {
+                    var blockExpressionNode = ast;
+                    var returnType;
+                    blockExpressionNode.expressionList.forEach(function (expressionNode) {
+                        returnType = _this.analyze(expressionNode, scope, errorMessages, warningMessages);
+                    });
+                    return returnType;
+                }
+                else if (ast.type === 9 /* LetExpression */) {
+                    var letExpressionNode = ast;
+                    // add the new variables to the scope
+                    letExpressionNode.localVariableDeclarations.forEach(function (varDeclarationNode) {
+                        scope.push({
+                            variableName: varDeclarationNode.identifierName,
+                            variableType: varDeclarationNode.typeName
+                        });
+                    });
+                    var returnType = _this.analyze(letExpressionNode.letBodyExpression, scope, errorMessages, warningMessages);
+                    // remove the added variables from the scope
+                    scope.splice(scope.length - letExpressionNode.localVariableDeclarations.length, letExpressionNode.localVariableDeclarations.length);
+                    return returnType;
+                }
+                else if (ast.type === 13 /* NewExpression */) {
+                    var newExpressionNode = ast;
+                    return newExpressionNode.typeName;
+                }
+                else if (ast.type === 18 /* ObjectIdentifierExpression */) {
+                    var objectIdExpressionNode = ast;
+                    for (var i = scope.length - 1; i >= 0; i--) {
+                        if (scope[i].variableName === objectIdExpressionNode.objectIdentifierName) {
+                            return scope[i].variableType;
+                        }
+                    }
+                    errorMessages.push({
+                        location: objectIdExpressionNode.token.location,
+                        message: 'Undeclared variable "' + objectIdExpressionNode.objectIdentifierName + '"'
+                    });
+                    return _this.unknownType;
+                }
+                else if (ast.type === 19 /* IntegerLiteralExpression */) {
+                    return 'Int';
+                }
+                else if (ast.type === 20 /* StringLiteralExpression */) {
+                    return 'String';
+                }
+                else if (ast.type === 21 /* TrueKeywordExpression */ || ast.type === 22 /* FalseKeywordExpression */) {
+                    return 'Bool';
+                }
+                else
+                    return _this.unknownType;
             };
+            this.unknownType = '$UnknownType$';
         }
+        SemanticAnalyzer.prototype.typeExists = function (typeName) {
+            return this.findTypeHeirarchy(typeName) !== null;
+        };
+        SemanticAnalyzer.prototype.findTypeHeirarchy = function (typeName) {
+            var findTypeHeirarchy = function (typeHeirachy) {
+                if (typeHeirachy.typeName === typeName) {
+                    return typeHeirachy;
+                }
+                else {
+                    for (var i = 0; i < typeHeirachy.children.length; i++) {
+                        if (findTypeHeirarchy(typeHeirachy.children[i])) {
+                            return typeHeirachy.children[i];
+                        }
+                    }
+                }
+                return null;
+            };
+            return findTypeHeirarchy(this.inheritanceGraph);
+        };
+        // determines whether one class either inherits or is another
+        // examples:
+        // isAssignableFrom('BaseClass', 'SubClass') => true
+        // isAssignableFrom('SubClass', 'BaseClass') => false
+        // isAssignableFrom('SubClass', 'SubClass') => true
+        SemanticAnalyzer.prototype.isAssignableFrom = function (type1Name, type2Name) {
+            // shortcut for performance
+            if (type1Name === type2Name) {
+                return true;
+            }
+            if (type1Name === this.unknownType || type2Name === this.unknownType) {
+                return true;
+            }
+            var typeHeirarchy2 = this.findTypeHeirarchy(type2Name);
+            if (typeHeirarchy2) {
+                while (typeHeirarchy2 != null) {
+                    if (typeHeirarchy2.typeName === type1Name) {
+                        return true;
+                    }
+                    typeHeirarchy2 = typeHeirarchy2.parent;
+                }
+                return false;
+            }
+            throw 'Type "' + type2Name + '" does not exist!';
+        };
+        SemanticAnalyzer.prototype.addTypeError = function (type1Name, type2Name, location, errorMessages) {
+            errorMessages.push({
+                location: location,
+                message: 'Type "' + type2Name + '" is not assignable to type "' + type1Name + '"'
+            });
+        };
+        // adds the implied classes (Object, IO, Integer, etc.)
+        // to our program node's class list
+        SemanticAnalyzer.prototype.addBuiltinObjects = function (programNode) {
+            // Object class
+            var objectClass = new CoolToJS.ClassNode('Object');
+            var abortMethodNode = new CoolToJS.MethodNode();
+            abortMethodNode.methodName = 'abort';
+            abortMethodNode.returnTypeName = 'Object';
+            objectClass.methodList.push(abortMethodNode);
+            var typeNameMethodNode = new CoolToJS.MethodNode();
+            typeNameMethodNode.methodName = 'type_name';
+            typeNameMethodNode.returnTypeName = 'String';
+            objectClass.methodList.push(typeNameMethodNode);
+            var copyMethodNode = new CoolToJS.MethodNode();
+            copyMethodNode.methodName = 'copy';
+            copyMethodNode.returnTypeName = 'SELF_TYPE';
+            objectClass.methodList.push(copyMethodNode);
+            programNode.classList.push(objectClass);
+            // IO Class
+            var ioClass = new CoolToJS.ClassNode('IO');
+            var outStringMethodNode = new CoolToJS.MethodNode();
+            outStringMethodNode.methodName = 'out_string';
+            outStringMethodNode.returnTypeName = 'SELF_TYPE';
+            outStringMethodNode.parameters.push({
+                parameterName: 'x',
+                parameterTypeName: 'String'
+            });
+            ioClass.methodList.push(outStringMethodNode);
+            var outIntMethodNode = new CoolToJS.MethodNode();
+            outIntMethodNode.methodName = 'out_int';
+            outIntMethodNode.returnTypeName = 'SELF_TYPE';
+            outIntMethodNode.parameters.push({
+                parameterName: 'x',
+                parameterTypeName: 'Int'
+            });
+            ioClass.methodList.push(outIntMethodNode);
+            var inStringMethodNode = new CoolToJS.MethodNode();
+            inStringMethodNode.methodName = 'in_string';
+            inStringMethodNode.returnTypeName = 'String';
+            ioClass.methodList.push(inStringMethodNode);
+            var inIntMethodNode = new CoolToJS.MethodNode();
+            inIntMethodNode.methodName = 'in_int';
+            inIntMethodNode.returnTypeName = 'Int';
+            ioClass.methodList.push(inIntMethodNode);
+            programNode.classList.push(ioClass);
+            // Int
+            var intClass = new CoolToJS.ClassNode('Int');
+            programNode.classList.push(intClass);
+            // String
+            var stringClass = new CoolToJS.ClassNode('String');
+            var lengthMethodNode = new CoolToJS.MethodNode();
+            lengthMethodNode.methodName = 'length';
+            lengthMethodNode.returnTypeName = 'String';
+            stringClass.methodList.push(lengthMethodNode);
+            var concatMethodNode = new CoolToJS.MethodNode();
+            concatMethodNode.methodName = 'concat';
+            concatMethodNode.returnTypeName = 'String';
+            concatMethodNode.parameters.push({
+                parameterName: 's',
+                parameterTypeName: 'String'
+            });
+            stringClass.methodList.push(concatMethodNode);
+            var substrMethodNode = new CoolToJS.MethodNode();
+            substrMethodNode.methodName = 'substr';
+            substrMethodNode.returnTypeName = 'String';
+            substrMethodNode.parameters.push({
+                parameterName: 'i',
+                parameterTypeName: 'Int'
+            });
+            substrMethodNode.parameters.push({
+                parameterName: 'l',
+                parameterTypeName: 'Int'
+            });
+            stringClass.methodList.push(substrMethodNode);
+            programNode.classList.push(stringClass);
+            // Bool
+            var boolClass = new CoolToJS.ClassNode('Bool');
+            programNode.classList.push(boolClass);
+        };
+        // constructs a heirarchy of all referenced classes
+        // to allow for future inheritance checking
+        SemanticAnalyzer.prototype.buildInheritanceGraph = function (programNode) {
+            var _this = this;
+            // create TypeHierarchy objects for every class defined in this program
+            var allTypes = programNode.classList.map(function (c) {
+                return {
+                    parentName: c.superClassName || 'Object',
+                    typeHeirarchy: new TypeHeirarchy(c.className)
+                };
+            });
+            // assemble a tree out of the list of TypeHierarchy's from above
+            allTypes.forEach(function (typeAndParent, i) {
+                if (typeAndParent.typeHeirarchy.typeName === 'Object') {
+                    _this.inheritanceGraph = typeAndParent.typeHeirarchy;
+                }
+                for (var j = 0; j < allTypes.length; j++) {
+                    if (j === i)
+                        continue;
+                    if (typeAndParent.parentName === allTypes[j].typeHeirarchy.typeName) {
+                        typeAndParent.typeHeirarchy.parent = allTypes[j].typeHeirarchy;
+                        allTypes[j].typeHeirarchy.children.push(typeAndParent.typeHeirarchy);
+                    }
+                }
+            });
+        };
         return SemanticAnalyzer;
     })();
     CoolToJS.SemanticAnalyzer = SemanticAnalyzer;
+    var TypeHeirarchy = (function () {
+        function TypeHeirarchy(typeName) {
+            this.children = [];
+            this.typeName = typeName;
+        }
+        return TypeHeirarchy;
+    })();
 })(CoolToJS || (CoolToJS = {}));
 var CoolToJS;
 (function (CoolToJS) {
