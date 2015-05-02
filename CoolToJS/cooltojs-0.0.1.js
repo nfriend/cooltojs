@@ -20,19 +20,36 @@ var CoolToJS;
             NodeType[NodeType["WhileExpression"] = 7] = "WhileExpression";
             NodeType[NodeType["BlockExpression"] = 8] = "BlockExpression";
             NodeType[NodeType["LetExpression"] = 9] = "LetExpression";
-            NodeType[NodeType["CaseExpression"] = 10] = "CaseExpression";
-            NodeType[NodeType["NewExpression"] = 11] = "NewExpression";
-            NodeType[NodeType["IsvoidExpression"] = 12] = "IsvoidExpression";
-            NodeType[NodeType["BinaryOperationExpression"] = 13] = "BinaryOperationExpression";
-            NodeType[NodeType["UnaryOperationExpression"] = 14] = "UnaryOperationExpression";
-            NodeType[NodeType["ParantheticalExpression"] = 15] = "ParantheticalExpression";
-            NodeType[NodeType["ObjectIdentifierExpression"] = 16] = "ObjectIdentifierExpression";
-            NodeType[NodeType["IntegerLiteralExpression"] = 17] = "IntegerLiteralExpression";
-            NodeType[NodeType["StringLiteralExpression"] = 18] = "StringLiteralExpression";
-            NodeType[NodeType["TrueKeywordExpression"] = 19] = "TrueKeywordExpression";
-            NodeType[NodeType["FalseKeywordExpression"] = 20] = "FalseKeywordExpression";
+            NodeType[NodeType["LocalVariableDeclaration"] = 10] = "LocalVariableDeclaration";
+            NodeType[NodeType["CaseExpression"] = 11] = "CaseExpression";
+            NodeType[NodeType["CaseOption"] = 12] = "CaseOption";
+            NodeType[NodeType["NewExpression"] = 13] = "NewExpression";
+            NodeType[NodeType["IsvoidExpression"] = 14] = "IsvoidExpression";
+            NodeType[NodeType["BinaryOperationExpression"] = 15] = "BinaryOperationExpression";
+            NodeType[NodeType["UnaryOperationExpression"] = 16] = "UnaryOperationExpression";
+            NodeType[NodeType["ParantheticalExpression"] = 17] = "ParantheticalExpression";
+            NodeType[NodeType["ObjectIdentifierExpression"] = 18] = "ObjectIdentifierExpression";
+            NodeType[NodeType["IntegerLiteralExpression"] = 19] = "IntegerLiteralExpression";
+            NodeType[NodeType["StringLiteralExpression"] = 20] = "StringLiteralExpression";
+            NodeType[NodeType["TrueKeywordExpression"] = 21] = "TrueKeywordExpression";
+            NodeType[NodeType["FalseKeywordExpression"] = 22] = "FalseKeywordExpression";
         })(AST.NodeType || (AST.NodeType = {}));
         var NodeType = AST.NodeType;
+        (function (BinaryOperationType) {
+            BinaryOperationType[BinaryOperationType["Addition"] = 0] = "Addition";
+            BinaryOperationType[BinaryOperationType["Subtraction"] = 1] = "Subtraction";
+            BinaryOperationType[BinaryOperationType["Division"] = 2] = "Division";
+            BinaryOperationType[BinaryOperationType["Multiplication"] = 3] = "Multiplication";
+            BinaryOperationType[BinaryOperationType["LessThan"] = 4] = "LessThan";
+            BinaryOperationType[BinaryOperationType["LessThanOrEqualTo"] = 4] = "LessThanOrEqualTo";
+            BinaryOperationType[BinaryOperationType["Comparison"] = 4] = "Comparison";
+        })(AST.BinaryOperationType || (AST.BinaryOperationType = {}));
+        var BinaryOperationType = AST.BinaryOperationType;
+        (function (UnaryOperationType) {
+            UnaryOperationType[UnaryOperationType["Complement"] = 0] = "Complement";
+            UnaryOperationType[UnaryOperationType["Not"] = 1] = "Not";
+        })(AST.UnaryOperationType || (AST.UnaryOperationType = {}));
+        var UnaryOperationType = AST.UnaryOperationType;
         var Node = (function () {
             function Node(type) {
                 this.type = type;
@@ -284,6 +301,189 @@ var CoolToJS;
             return BlockExpressionNode;
         })(ExpressionNode);
         AST.BlockExpressionNode = BlockExpressionNode;
+        var LetExpressionNode = (function (_super) {
+            __extends(LetExpressionNode, _super);
+            function LetExpressionNode() {
+                _super.call(this, 9 /* LetExpression */);
+                this.localVariableDeclarations = [];
+            }
+            Object.defineProperty(LetExpressionNode.prototype, "letBodyExpression", {
+                get: function () {
+                    return this.children[0];
+                },
+                set: function (bodyExpression) {
+                    this.children[0] = bodyExpression;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            return LetExpressionNode;
+        })(ExpressionNode);
+        AST.LetExpressionNode = LetExpressionNode;
+        var LocalVariableDeclarationNode = (function (_super) {
+            __extends(LocalVariableDeclarationNode, _super);
+            function LocalVariableDeclarationNode() {
+                _super.call(this, 10 /* LocalVariableDeclaration */);
+            }
+            return LocalVariableDeclarationNode;
+        })(Node);
+        AST.LocalVariableDeclarationNode = LocalVariableDeclarationNode;
+        var CaseExpressionNode = (function (_super) {
+            __extends(CaseExpressionNode, _super);
+            function CaseExpressionNode() {
+                _super.call(this, 11 /* CaseExpression */);
+            }
+            Object.defineProperty(CaseExpressionNode.prototype, "caseOptionList", {
+                get: function () {
+                    return this.children;
+                },
+                set: function (optionsList) {
+                    throw 'Setter for CaseExpressionNode.caseOptionList not yet implemented';
+                },
+                enumerable: true,
+                configurable: true
+            });
+            return CaseExpressionNode;
+        })(ExpressionNode);
+        AST.CaseExpressionNode = CaseExpressionNode;
+        var CaseOptionNode = (function (_super) {
+            __extends(CaseOptionNode, _super);
+            function CaseOptionNode() {
+                _super.call(this, 12 /* CaseOption */);
+            }
+            return CaseOptionNode;
+        })(Node);
+        AST.CaseOptionNode = CaseOptionNode;
+        var NewExpressionNode = (function (_super) {
+            __extends(NewExpressionNode, _super);
+            function NewExpressionNode() {
+                _super.call(this, 13 /* NewExpression */);
+            }
+            return NewExpressionNode;
+        })(ExpressionNode);
+        AST.NewExpressionNode = NewExpressionNode;
+        var IsVoidExpressionNode = (function (_super) {
+            __extends(IsVoidExpressionNode, _super);
+            function IsVoidExpressionNode() {
+                _super.call(this, 14 /* IsvoidExpression */);
+            }
+            Object.defineProperty(IsVoidExpressionNode.prototype, "isVoidCondition", {
+                get: function () {
+                    return this.children[0];
+                },
+                set: function (condition) {
+                    this.children[0] = condition;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            return IsVoidExpressionNode;
+        })(ExpressionNode);
+        AST.IsVoidExpressionNode = IsVoidExpressionNode;
+        var BinaryOperationExpressionNode = (function (_super) {
+            __extends(BinaryOperationExpressionNode, _super);
+            function BinaryOperationExpressionNode() {
+                _super.call(this, 15 /* BinaryOperationExpression */);
+            }
+            Object.defineProperty(BinaryOperationExpressionNode.prototype, "operand1", {
+                get: function () {
+                    return this.children[0];
+                },
+                set: function (operand) {
+                    this.children[0] = operand;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(BinaryOperationExpressionNode.prototype, "operand2", {
+                get: function () {
+                    return this.children[1];
+                },
+                set: function (operand) {
+                    this.children[1] = operand;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            return BinaryOperationExpressionNode;
+        })(ExpressionNode);
+        AST.BinaryOperationExpressionNode = BinaryOperationExpressionNode;
+        var UnaryOperationExpressionNode = (function (_super) {
+            __extends(UnaryOperationExpressionNode, _super);
+            function UnaryOperationExpressionNode() {
+                _super.call(this, 16 /* UnaryOperationExpression */);
+            }
+            Object.defineProperty(UnaryOperationExpressionNode.prototype, "operand", {
+                get: function () {
+                    return this.children[0];
+                },
+                set: function (operand) {
+                    this.children[0] = operand;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            return UnaryOperationExpressionNode;
+        })(ExpressionNode);
+        AST.UnaryOperationExpressionNode = UnaryOperationExpressionNode;
+        var ParantheticalExpressionNode = (function (_super) {
+            __extends(ParantheticalExpressionNode, _super);
+            function ParantheticalExpressionNode() {
+                _super.call(this, 17 /* ParantheticalExpression */);
+            }
+            Object.defineProperty(ParantheticalExpressionNode.prototype, "innerExpression", {
+                get: function () {
+                    return this.children[0];
+                },
+                set: function (inner) {
+                    this.children[0] = inner;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            return ParantheticalExpressionNode;
+        })(ExpressionNode);
+        AST.ParantheticalExpressionNode = ParantheticalExpressionNode;
+        var ObjectIdentifierExpressionNode = (function (_super) {
+            __extends(ObjectIdentifierExpressionNode, _super);
+            function ObjectIdentifierExpressionNode() {
+                _super.call(this, 18 /* ObjectIdentifierExpression */);
+            }
+            return ObjectIdentifierExpressionNode;
+        })(ExpressionNode);
+        AST.ObjectIdentifierExpressionNode = ObjectIdentifierExpressionNode;
+        var IntegerLiteralExpressionNode = (function (_super) {
+            __extends(IntegerLiteralExpressionNode, _super);
+            function IntegerLiteralExpressionNode() {
+                _super.call(this, 19 /* IntegerLiteralExpression */);
+            }
+            return IntegerLiteralExpressionNode;
+        })(ExpressionNode);
+        AST.IntegerLiteralExpressionNode = IntegerLiteralExpressionNode;
+        var StringLiteralExpressionNode = (function (_super) {
+            __extends(StringLiteralExpressionNode, _super);
+            function StringLiteralExpressionNode() {
+                _super.call(this, 20 /* StringLiteralExpression */);
+            }
+            return StringLiteralExpressionNode;
+        })(ExpressionNode);
+        AST.StringLiteralExpressionNode = StringLiteralExpressionNode;
+        var TrueKeywordExpressionNode = (function (_super) {
+            __extends(TrueKeywordExpressionNode, _super);
+            function TrueKeywordExpressionNode() {
+                _super.call(this, 21 /* TrueKeywordExpression */);
+            }
+            return TrueKeywordExpressionNode;
+        })(ExpressionNode);
+        AST.TrueKeywordExpressionNode = TrueKeywordExpressionNode;
+        var FalseKeywordExpressionNode = (function (_super) {
+            __extends(FalseKeywordExpressionNode, _super);
+            function FalseKeywordExpressionNode() {
+                _super.call(this, 22 /* FalseKeywordExpression */);
+            }
+            return FalseKeywordExpressionNode;
+        })(ExpressionNode);
+        AST.FalseKeywordExpressionNode = FalseKeywordExpressionNode;
     })(AST = CoolToJS.AST || (CoolToJS.AST = {}));
 })(CoolToJS || (CoolToJS = {}));
 var CoolToJS;
@@ -446,8 +646,141 @@ var CoolToJS;
                         }
                         else if (syntaxTree.children[0].syntaxKind === 40 /* OpenCurlyBracket */) {
                             var blockExpressionNode = new AST.BlockExpressionNode();
+                            _this.flattenRecursion(syntaxTree.children[1]);
+                            for (var i = 0; i < syntaxTree.children[1].children.length; i++) {
+                                if (syntaxTree.children[1].children[i].syntaxKind === 45 /* Expression */) {
+                                    var childExpressionNode = _this.Convert(syntaxTree.children[1].children[i]);
+                                    childExpressionNode.parent = blockExpressionNode;
+                                    blockExpressionNode.children.push(childExpressionNode);
+                                }
+                            }
                             convertedNode = blockExpressionNode;
                         }
+                        else if (syntaxTree.children[0].syntaxKind === 28 /* LetKeyword */) {
+                            var letExpressionNode = new AST.LetExpressionNode();
+                            _this.flattenRecursion(syntaxTree.children[1]);
+                            for (var i = 0; i < syntaxTree.children[1].children.length; i++) {
+                                var localVarDeclaration = _this.Convert(syntaxTree.children[1].children[i]);
+                                localVarDeclaration.parent = letExpressionNode;
+                                letExpressionNode.localVariableDeclarations.push(localVarDeclaration);
+                            }
+                            var expressionBodyNode = _this.Convert(syntaxTree.children[3]);
+                            expressionBodyNode.parent = letExpressionNode;
+                            letExpressionNode.children.push(expressionBodyNode);
+                            convertedNode = letExpressionNode;
+                        }
+                        else if (syntaxTree.children[0].syntaxKind === 17 /* CaseKeyword */) {
+                            var caseExpressionNode = new AST.CaseExpressionNode();
+                            _this.flattenRecursion(syntaxTree.children[3]);
+                            for (var i = 0; i < syntaxTree.children[3].children.length; i++) {
+                                var caseOptionNode = _this.Convert(syntaxTree.children[3].children[i]);
+                                caseOptionNode.parent = caseExpressionNode;
+                                caseExpressionNode.caseOptionList.push(caseOptionNode);
+                            }
+                            var caseConditionNode = _this.Convert(syntaxTree.children[1]);
+                            caseConditionNode.parent = caseExpressionNode;
+                            caseExpressionNode.condition = caseConditionNode;
+                            convertedNode = caseExpressionNode;
+                        }
+                        else if (syntaxTree.children[0].syntaxKind === 30 /* NewKeyword */) {
+                            var newExpressionNode = new AST.NewExpressionNode();
+                            newExpressionNode.typeName = syntaxTree.children[1].token.match;
+                            convertedNode = newExpressionNode;
+                        }
+                        else if (syntaxTree.children[0].syntaxKind === 27 /* IsvoidKeyword */) {
+                            var isVoidExpressionNode = new AST.IsVoidExpressionNode();
+                            var isVoidConditionNode = _this.Convert(syntaxTree.children[1]);
+                            isVoidExpressionNode.parent = isVoidExpressionNode;
+                            isVoidExpressionNode.children[0] = isVoidConditionNode;
+                            convertedNode = isVoidExpressionNode;
+                        }
+                        else if (_this.isBinaryOperator(syntaxTree.children[1])) {
+                            var binaryOperationExprNode = new AST.BinaryOperationExpressionNode();
+                            switch (syntaxTree.children[1].syntaxKind) {
+                                case 4 /* AdditionOperator */:
+                                    binaryOperationExprNode.operationType = 0 /* Addition */;
+                                case 6 /* SubtractionOperator */:
+                                    binaryOperationExprNode.operationType = 1 /* Subtraction */;
+                                case 3 /* MultiplationOperator */:
+                                    binaryOperationExprNode.operationType = 3 /* Multiplication */;
+                                case 8 /* DivisionOperator */:
+                                    binaryOperationExprNode.operationType = 2 /* Division */;
+                                case 11 /* LessThanOperator */:
+                                    binaryOperationExprNode.operationType = 4 /* LessThan */;
+                                case 13 /* LessThanOrEqualsOperator */:
+                                    binaryOperationExprNode.operationType = 4 /* LessThanOrEqualTo */;
+                                case 14 /* EqualsOperator */:
+                                    binaryOperationExprNode.operationType = 4 /* Comparison */;
+                                default:
+                                    throw 'Unknown BinaryOperationType';
+                            }
+                            var operand1Node = _this.Convert(syntaxTree.children[0]);
+                            operand1Node.parent = binaryOperationExprNode;
+                            var operand2Node = _this.Convert(syntaxTree.children[0]);
+                            operand2Node.parent = binaryOperationExprNode;
+                            binaryOperationExprNode.children[0] = operand1Node;
+                            binaryOperationExprNode.children[1] = operand2Node;
+                            convertedNode = isVoidExpressionNode;
+                        }
+                        else if (syntaxTree.children[0].syntaxKind === 42 /* TildeOperator */) {
+                            var unaryOperationExprNode = new AST.UnaryOperationExpressionNode();
+                            var operandNode = _this.Convert(syntaxTree.children[1]);
+                            operandNode.parent = unaryOperationExprNode;
+                            unaryOperationExprNode.children[0] = operandNode;
+                            convertedNode = unaryOperationExprNode;
+                        }
+                        else if (syntaxTree.children[0].syntaxKind === 42 /* TildeOperator */ || syntaxTree.children[0].syntaxKind === 31 /* NotKeyword */) {
+                            var unaryOperationExprNode = new AST.UnaryOperationExpressionNode();
+                            if (syntaxTree.children[0].syntaxKind === 42 /* TildeOperator */) {
+                                unaryOperationExprNode.operationType = 0 /* Complement */;
+                            }
+                            else if (syntaxTree.children[0].syntaxKind === 31 /* NotKeyword */) {
+                                unaryOperationExprNode.operationType = 1 /* Not */;
+                            }
+                            else {
+                                throw 'Unknown UnaryOperationType';
+                            }
+                            var operandNode = _this.Convert(syntaxTree.children[1]);
+                            operandNode.parent = unaryOperationExprNode;
+                            unaryOperationExprNode.children[0] = operandNode;
+                            convertedNode = unaryOperationExprNode;
+                        }
+                        else if (syntaxTree.children[0].syntaxKind === 1 /* OpenParenthesis */) {
+                            var parExprNod = new AST.ParantheticalExpressionNode();
+                            var innerExprNode = _this.Convert(syntaxTree.children[1]);
+                            innerExprNode.parent = parExprNod;
+                            parExprNod.children[0] = innerExprNode;
+                            convertedNode = parExprNod;
+                        }
+                        else if (syntaxTree.children[0].syntaxKind === 32 /* ObjectIdentifier */ && syntaxTree.children.length === 1) {
+                            var objIdentExprNode = new AST.ObjectIdentifierExpressionNode();
+                            objIdentExprNode.objectIdentifierName = syntaxTree.children[0].token.match;
+                            convertedNode = objIdentExprNode;
+                        }
+                        else if (syntaxTree.children[0].syntaxKind === 26 /* Integer */) {
+                            var intLiteralExprNode = new AST.IntegerLiteralExpressionNode();
+                            intLiteralExprNode.value = parseInt(syntaxTree.children[0].token.match, 10);
+                            convertedNode = intLiteralExprNode;
+                        }
+                        else if (syntaxTree.children[0].syntaxKind === 35 /* String */) {
+                            var intLiteralExprNode = new AST.IntegerLiteralExpressionNode();
+                            intLiteralExprNode.value = parseInt(syntaxTree.children[0].token.match, 10);
+                            convertedNode = intLiteralExprNode;
+                        }
+                        else if (syntaxTree.children[0].syntaxKind === 37 /* TrueKeyword */) {
+                            var intLiteralExprNode = new AST.IntegerLiteralExpressionNode();
+                            intLiteralExprNode.value = parseInt(syntaxTree.children[0].token.match, 10);
+                            convertedNode = intLiteralExprNode;
+                        }
+                        else if (syntaxTree.children[0].syntaxKind === 21 /* FalseKeyword */) {
+                            var intLiteralExprNode = new AST.IntegerLiteralExpressionNode();
+                            intLiteralExprNode.value = parseInt(syntaxTree.children[0].token.match, 10);
+                            convertedNode = intLiteralExprNode;
+                        }
+                    }
+                    else if (syntaxTree.syntaxKind === 52 /* LocalVariableDeclarationList */) {
+                    }
+                    else if (syntaxTree.syntaxKind === 43 /* CaseOption */) {
                     }
                     else {
                         throw 'Unknown syntaxTree kind!';
@@ -462,6 +795,9 @@ var CoolToJS;
                         syntaxTree.children.splice.apply(syntaxTree.children, [i, 1].concat(syntaxTree.children[i].children));
                     }
                 }
+            };
+            AbstractSyntaxTreeConverter.prototype.isBinaryOperator = function (syntaxTree) {
+                return (syntaxTree.syntaxKind === 4 /* AdditionOperator */ || syntaxTree.syntaxKind === 6 /* SubtractionOperator */ || syntaxTree.syntaxKind === 3 /* MultiplationOperator */ || syntaxTree.syntaxKind === 8 /* DivisionOperator */ || syntaxTree.syntaxKind === 11 /* LessThanOperator */ || syntaxTree.syntaxKind === 13 /* LessThanOrEqualsOperator */ || syntaxTree.syntaxKind === 14 /* EqualsOperator */);
             };
             return AbstractSyntaxTreeConverter;
         })();

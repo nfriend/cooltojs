@@ -218,7 +218,168 @@
 
                 /* LET EXPRESSION */
                 else if (syntaxTree.children[0].syntaxKind === SyntaxKind.LetKeyword) {
+                    var letExpressionNode = new LetExpressionNode();
+
+                    this.flattenRecursion(syntaxTree.children[1]);
+                    for (var i = 0; i < syntaxTree.children[1].children.length; i++) {
+                        var localVarDeclaration = this.Convert(syntaxTree.children[1].children[i]);
+                        localVarDeclaration.parent = letExpressionNode;
+                        letExpressionNode.localVariableDeclarations.push(localVarDeclaration);
+                    }
+
+                    var expressionBodyNode = this.Convert(syntaxTree.children[3]);
+                    expressionBodyNode.parent = letExpressionNode;
+                    letExpressionNode.children.push(expressionBodyNode);
+
+                    convertedNode = letExpressionNode;
                 }
+
+                /* CASE EXPRESSION */
+                else if (syntaxTree.children[0].syntaxKind === SyntaxKind.CaseKeyword) {
+                    var caseExpressionNode = new CaseExpressionNode();
+                    this.flattenRecursion(syntaxTree.children[3]);
+                    for (var i = 0; i < syntaxTree.children[3].children.length; i++) {
+                        var caseOptionNode = this.Convert(syntaxTree.children[3].children[i]);
+                        caseOptionNode.parent = caseExpressionNode;
+                        caseExpressionNode.caseOptionList.push(caseOptionNode);
+                    }
+
+                    var caseConditionNode = this.Convert(syntaxTree.children[1]);
+                    caseConditionNode.parent = caseExpressionNode;
+                    caseExpressionNode.condition = caseConditionNode;
+
+                    convertedNode = caseExpressionNode;
+                }
+
+                /* NEW EXPRESSION */
+                else if (syntaxTree.children[0].syntaxKind === SyntaxKind.NewKeyword) {
+                    var newExpressionNode = new NewExpressionNode();
+                    newExpressionNode.typeName = syntaxTree.children[1].token.match;
+                    convertedNode = newExpressionNode;
+                }
+
+                /* ISVOID EXPRESSION */
+                else if (syntaxTree.children[0].syntaxKind === SyntaxKind.IsvoidKeyword) {
+                    var isVoidExpressionNode = new IsVoidExpressionNode();
+                    var isVoidConditionNode = this.Convert(syntaxTree.children[1]);
+                    isVoidExpressionNode.parent = isVoidExpressionNode;
+                    isVoidExpressionNode.children[0] = isVoidConditionNode;
+                    convertedNode = isVoidExpressionNode;
+                }
+
+                /* BINARY OPERATION EXPRESSION */
+                else if (this.isBinaryOperator(syntaxTree.children[1])) {
+                    var binaryOperationExprNode = new BinaryOperationExpressionNode();
+
+                    switch (syntaxTree.children[1].syntaxKind) {
+                        case SyntaxKind.AdditionOperator:
+                            binaryOperationExprNode.operationType = BinaryOperationType.Addition;
+                        case SyntaxKind.SubtractionOperator:
+                            binaryOperationExprNode.operationType = BinaryOperationType.Subtraction;
+                        case SyntaxKind.MultiplationOperator:
+                            binaryOperationExprNode.operationType = BinaryOperationType.Multiplication;
+                        case SyntaxKind.DivisionOperator:
+                            binaryOperationExprNode.operationType = BinaryOperationType.Division;
+                        case SyntaxKind.LessThanOperator:
+                            binaryOperationExprNode.operationType = BinaryOperationType.LessThan;
+                        case SyntaxKind.LessThanOrEqualsOperator:
+                            binaryOperationExprNode.operationType = BinaryOperationType.LessThanOrEqualTo;
+                        case SyntaxKind.EqualsOperator:
+                            binaryOperationExprNode.operationType = BinaryOperationType.Comparison;
+                        default:
+                            throw 'Unknown BinaryOperationType';
+                    }
+
+                    var operand1Node = this.Convert(syntaxTree.children[0]);
+                    operand1Node.parent = binaryOperationExprNode;
+                    var operand2Node = this.Convert(syntaxTree.children[0]);
+                    operand2Node.parent = binaryOperationExprNode;
+
+                    binaryOperationExprNode.children[0] = operand1Node;
+                    binaryOperationExprNode.children[1] = operand2Node;
+
+                    convertedNode = isVoidExpressionNode;
+                }
+
+                /* UNARY OPERATION EXPRESSION */
+                else if (syntaxTree.children[0].syntaxKind === SyntaxKind.TildeOperator) {
+                    var unaryOperationExprNode = new UnaryOperationExpressionNode();
+                    var operandNode = this.Convert(syntaxTree.children[1]);
+                    operandNode.parent = unaryOperationExprNode;
+                    unaryOperationExprNode.children[0] = operandNode;
+                    convertedNode = unaryOperationExprNode;
+                }
+
+                /* UNARY OPERATION EXPRESSION */
+                else if (syntaxTree.children[0].syntaxKind === SyntaxKind.TildeOperator
+                    || syntaxTree.children[0].syntaxKind === SyntaxKind.NotKeyword) {
+
+                    var unaryOperationExprNode = new UnaryOperationExpressionNode();
+                    if (syntaxTree.children[0].syntaxKind === SyntaxKind.TildeOperator) {
+                        unaryOperationExprNode.operationType = UnaryOperationType.Complement;
+                    } else if (syntaxTree.children[0].syntaxKind === SyntaxKind.NotKeyword) {
+                        unaryOperationExprNode.operationType = UnaryOperationType.Not;
+                    } else {
+                        throw 'Unknown UnaryOperationType';
+                    }
+
+                    var operandNode = this.Convert(syntaxTree.children[1]);
+                    operandNode.parent = unaryOperationExprNode;
+                    unaryOperationExprNode.children[0] = operandNode;
+                    convertedNode = unaryOperationExprNode;
+                }
+
+                /* UNARY OPERATION EXPRESSION */
+                else if (syntaxTree.children[0].syntaxKind === SyntaxKind.OpenParenthesis) {
+                    var parExprNod = new ParantheticalExpressionNode();
+                    var innerExprNode = this.Convert(syntaxTree.children[1]);
+                    innerExprNode.parent = parExprNod;
+                    parExprNod.children[0] = innerExprNode;
+                    convertedNode = parExprNod;
+                }
+
+                /* OBJECT IDENTIFIER EXPRESSION */
+                else if (syntaxTree.children[0].syntaxKind === SyntaxKind.ObjectIdentifier && syntaxTree.children.length === 1) {
+                    var objIdentExprNode = new ObjectIdentifierExpressionNode();
+                    objIdentExprNode.objectIdentifierName = syntaxTree.children[0].token.match;
+                    convertedNode = objIdentExprNode;
+                }
+
+                /* INTEGER LITERAL EXPRESSION */
+                else if (syntaxTree.children[0].syntaxKind === SyntaxKind.Integer) {
+                    var intLiteralExprNode = new IntegerLiteralExpressionNode();
+                    intLiteralExprNode.value = parseInt(syntaxTree.children[0].token.match, 10);
+                    convertedNode = intLiteralExprNode;
+                }
+
+                /* STRING LITERAL EXPRESSION */
+                else if (syntaxTree.children[0].syntaxKind === SyntaxKind.String) {
+                    var stringLiteralExprNode = new StringLiteralExpressionNode();
+                    stringLiteralExprNode.value = syntaxTree.children[0].token.match;
+                    convertedNode = stringLiteralExprNode;
+                }
+
+                /* TRUE KEYWORD EXPRESSION */
+                else if (syntaxTree.children[0].syntaxKind === SyntaxKind.TrueKeyword) {
+                    var trueKeywordExprNode = new TrueKeywordExpressionNode();
+                    convertedNode = trueKeywordExprNode;
+                }
+
+                /* FALSE KEYWORD EXPRESSION */
+                else if (syntaxTree.children[0].syntaxKind === SyntaxKind.FalseKeyword) {
+                    var falseKeywordExprNode = new FalseKeywordExpressionNode();
+                    convertedNode = falseKeywordExprNode;
+                }
+            }
+
+            /* LOCAL VARIABLE DECLARATION */
+            else if (syntaxTree.syntaxKind === SyntaxKind.LocalVariableDeclarationList) {
+
+            }
+
+            /* CASE OPTION */
+            else if (syntaxTree.syntaxKind === SyntaxKind.CaseOption) {
+
             }
 
             /* ERROR */
@@ -236,6 +397,16 @@
                     syntaxTree.children.splice.apply(syntaxTree.children, [i, 1].concat(<any>syntaxTree.children[i].children))
                 }
             }
+        }
+
+        private isBinaryOperator(syntaxTree: SyntaxTree): boolean {
+            return (syntaxTree.syntaxKind === SyntaxKind.AdditionOperator
+                || syntaxTree.syntaxKind === SyntaxKind.SubtractionOperator
+                || syntaxTree.syntaxKind === SyntaxKind.MultiplationOperator
+                || syntaxTree.syntaxKind === SyntaxKind.DivisionOperator
+                || syntaxTree.syntaxKind === SyntaxKind.LessThanOperator
+                || syntaxTree.syntaxKind === SyntaxKind.LessThanOrEqualsOperator
+                || syntaxTree.syntaxKind === SyntaxKind.EqualsOperator);
         }
     }
 } 

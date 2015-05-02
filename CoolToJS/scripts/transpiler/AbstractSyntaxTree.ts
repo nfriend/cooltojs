@@ -12,17 +12,34 @@
         WhileExpression = 7,
         BlockExpression = 8,
         LetExpression = 9,
-        CaseExpression = 10,
-        NewExpression = 11,
-        IsvoidExpression = 12,
-        BinaryOperationExpression = 13,
-        UnaryOperationExpression = 14,
-        ParantheticalExpression = 15,
-        ObjectIdentifierExpression = 16,
-        IntegerLiteralExpression = 17,
-        StringLiteralExpression = 18,
-        TrueKeywordExpression = 19,
-        FalseKeywordExpression = 20
+        LocalVariableDeclaration = 10,
+        CaseExpression = 11,
+        CaseOption = 12,
+        NewExpression = 13,
+        IsvoidExpression = 14,
+        BinaryOperationExpression = 15,
+        UnaryOperationExpression = 16,
+        ParantheticalExpression = 17,
+        ObjectIdentifierExpression = 18,
+        IntegerLiteralExpression = 19,
+        StringLiteralExpression = 20,
+        TrueKeywordExpression = 21,
+        FalseKeywordExpression = 22
+    }
+
+    export enum BinaryOperationType {
+        Addition = 0,
+        Subtraction = 1,
+        Division = 2,
+        Multiplication = 3,
+        LessThan = 4,
+        LessThanOrEqualTo = 4,
+        Comparison = 4,
+    }
+
+    export enum UnaryOperationType {
+        Complement = 0,
+        Not = 1,
     }
 
     export class Node {
@@ -241,6 +258,162 @@
 
         set expressionList(expressions: Array<ExpressionNode>) {
             throw 'Setter for BlockExpressionNode.expressionList not yet implemented';
+        }
+    }
+
+    export class LetExpressionNode extends ExpressionNode {
+        constructor() {
+            super(NodeType.LetExpression);
+        }
+
+        localVariableDeclarations: Array<LocalVariableDeclarationNode> = [];
+
+        get letBodyExpression(): ExpressionNode {
+            return this.children[0];
+        }
+
+        set letBodyExpression(bodyExpression: ExpressionNode) {
+            this.children[0] = bodyExpression;
+        }
+    }
+
+    export class LocalVariableDeclarationNode extends Node {
+        constructor() {
+            super(NodeType.LocalVariableDeclaration);
+        }
+    }
+
+    export class CaseExpressionNode extends ExpressionNode {
+        constructor() {
+            super(NodeType.CaseExpression);
+        }
+
+        condition: ExpressionNode;
+
+        get caseOptionList(): Array<CaseOptionNode> {
+            return this.children;
+        }
+
+        set caseOptionList(optionsList: Array<CaseOptionNode>) {
+            throw 'Setter for CaseExpressionNode.caseOptionList not yet implemented';
+        }
+    }
+
+    export class CaseOptionNode extends Node {
+        constructor() {
+            super(NodeType.CaseOption);
+        }
+    }
+
+    export class NewExpressionNode extends ExpressionNode {
+        constructor() {
+            super(NodeType.NewExpression);
+        }
+
+        typeName: string;
+    }
+
+    export class IsVoidExpressionNode extends ExpressionNode {
+        constructor() {
+            super(NodeType.IsvoidExpression);
+        }
+
+        get isVoidCondition(): ExpressionNode {
+            return this.children[0];
+        }
+
+        set isVoidCondition(condition: ExpressionNode) {
+            this.children[0] = condition;
+        }
+    }
+
+    export class BinaryOperationExpressionNode extends ExpressionNode {
+        constructor() {
+            super(NodeType.BinaryOperationExpression);
+        }
+
+        operationType: BinaryOperationType;
+
+        get operand1(): ExpressionNode {
+            return this.children[0];
+        }
+
+        set operand1(operand: ExpressionNode) {
+            this.children[0] = operand;
+        }
+
+        get operand2(): ExpressionNode {
+            return this.children[1];
+        }
+
+        set operand2(operand: ExpressionNode) {
+            this.children[1] = operand;
+        }
+    }
+
+    export class UnaryOperationExpressionNode extends ExpressionNode {
+        constructor() {
+            super(NodeType.UnaryOperationExpression);
+        }
+
+        operationType: UnaryOperationType;
+
+        get operand(): ExpressionNode {
+            return this.children[0];
+        }
+
+        set operand(operand: ExpressionNode) {
+            this.children[0] = operand;
+        }
+    }
+
+    export class ParantheticalExpressionNode extends ExpressionNode {
+        constructor() {
+            super(NodeType.ParantheticalExpression);
+        }
+
+        get innerExpression(): ExpressionNode {
+            return this.children[0];
+        }
+
+        set innerExpression(inner: ExpressionNode) {
+            this.children[0] = inner;
+        }
+    }
+
+    export class ObjectIdentifierExpressionNode extends ExpressionNode {
+        constructor() {
+            super(NodeType.ObjectIdentifierExpression);
+        }
+
+        objectIdentifierName: string;
+    }
+
+    export class IntegerLiteralExpressionNode extends ExpressionNode {
+        constructor() {
+            super(NodeType.IntegerLiteralExpression);
+        }
+
+        value: number;
+    }
+
+    export class StringLiteralExpressionNode extends ExpressionNode {
+        constructor() {
+            super(NodeType.StringLiteralExpression);
+        }
+
+        value: string;
+    }
+
+    export class TrueKeywordExpressionNode extends ExpressionNode {
+        constructor() {
+            super(NodeType.TrueKeywordExpression);
+        }
+    }
+
+    export class FalseKeywordExpressionNode extends ExpressionNode {
+        constructor() {
+            super(NodeType.FalseKeywordExpression);
         }
     }
 } 
