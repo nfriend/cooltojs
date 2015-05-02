@@ -152,7 +152,7 @@
         identifierName: string;
 
         get assignmentExpression(): ExpressionNode {
-            return <ExpressionNode>this.children[0];
+            return this.children[0];
         }
 
         set assignmentExpression(assignmentExpression: ExpressionNode) {
@@ -170,11 +170,77 @@
         isCallToSelf: boolean = false;
 
         get parameterExpressionList(): Array<ExpressionNode> {
-            return <Array<ExpressionNode>>this.children;
+            return this.children;
         }
 
         set parameterExpressionList(expressions: Array<ExpressionNode>) {
             throw 'Setter for MethodCallExpressionNode.parameterExpressionList not yet implemented';
+        }
+    }
+
+    export class IfThenElseExpressionNode extends ExpressionNode {
+        constructor() {
+            super(NodeType.IfThenElseExpression);
+        }
+
+        get predicate(): ExpressionNode {
+            return this.children[0];
+        }
+
+        set predicate(predicate: ExpressionNode) {
+            this.children[0] = predicate;
+        }
+
+        get consequent(): ExpressionNode {
+            return this.children[0];
+        }
+
+        set consequent(consequent: ExpressionNode) {
+            this.children[0] = consequent;
+        }
+
+        get alternative(): ExpressionNode {
+            return this.children[0];
+        }
+
+        set alternative(alternative: ExpressionNode) {
+            this.children[0] = alternative;
+        }
+    }
+
+    export class WhileExpressionNode extends ExpressionNode {
+        constructor() {
+            super(NodeType.WhileExpression);
+        }
+
+        get whileConditionExpression(): ExpressionNode {
+            return this.children[0];
+        }
+
+        set whileConditionExpression(conditionExpression: ExpressionNode) {
+            this.children[0] = conditionExpression;
+        }
+
+        get whileBodyExpression(): ExpressionNode {
+            return this.children[1];
+        }
+
+        set whileBodyExpression(bodyExpression: ExpressionNode) {
+            this.children[1] = bodyExpression;
+        }
+    }
+
+    export class BlockExpressionNode extends ExpressionNode {
+        constructor() {
+            super(NodeType.BlockExpression);
+        }
+
+        get expressionList(): Array<ExpressionNode> {
+            return this.children;
+        }
+
+        set expressionList(expressions: Array<ExpressionNode>) {
+            throw 'Setter for BlockExpressionNode.expressionList not yet implemented';
         }
     }
 } 

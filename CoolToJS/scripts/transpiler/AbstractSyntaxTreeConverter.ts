@@ -166,11 +166,64 @@
 
                     convertedNode = methodCallExprNode;
                 }
+
+                /* IF/THEN/ELSE EXPRESSION */
+                else if (syntaxTree.children[0].syntaxKind === SyntaxKind.IfKeyword) {
+                    var ifThenElseExprNode = new IfThenElseExpressionNode();
+
+                    var predicateNode = this.Convert(syntaxTree.children[1]);
+                    ifThenElseExprNode.children[0] = predicateNode;
+                    var consequentNode = this.Convert(syntaxTree.children[3]);
+                    ifThenElseExprNode.children[1] = consequentNode;
+                    var alternativeNode = this.Convert(syntaxTree.children[5]);
+                    ifThenElseExprNode.children[2] = alternativeNode;
+
+                    predicateNode.parent = ifThenElseExprNode;
+                    consequentNode.parent = ifThenElseExprNode;
+                    alternativeNode.parent = ifThenElseExprNode;
+
+                    convertedNode = ifThenElseExprNode;
+                }
+
+                /* WHILE EXPRESSION */
+                else if (syntaxTree.children[0].syntaxKind === SyntaxKind.WhileKeyword) {
+                    var whileExprNode = new WhileExpressionNode();
+
+                    var conditionNode = this.Convert(syntaxTree.children[1]);
+                    whileExprNode.children[0] = conditionNode;
+                    var bodyExpressionNode = this.Convert(syntaxTree.children[3]);
+                    whileExprNode.children[1] = bodyExpressionNode;
+
+                    conditionNode.parent = whileExprNode;
+                    bodyExpressionNode.parent = whileExprNode;
+
+                    convertedNode = whileExprNode;
+                }
+
+                /* BLOCK EXPRESSION */
+                else if (syntaxTree.children[0].syntaxKind === SyntaxKind.OpenCurlyBracket) {
+                    var blockExpressionNode = new BlockExpressionNode();
+
+                    this.flattenRecursion(syntaxTree.children[1]);
+                    for (var i = 0; i < syntaxTree.children[1].children.length; i++) {
+                        if (syntaxTree.children[1].children[i].syntaxKind === SyntaxKind.Expression) {
+                            var childExpressionNode = this.Convert(syntaxTree.children[1].children[i]);
+                            childExpressionNode.parent = blockExpressionNode;
+                            blockExpressionNode.children.push(childExpressionNode);
+                        }
+                    }
+
+                    convertedNode = blockExpressionNode;
+                }
+
+                /* LET EXPRESSION */
+                else if (syntaxTree.children[0].syntaxKind === SyntaxKind.LetKeyword) {
+                }
             }
 
-            /*  */
+            /* ERROR */
             else {
-                convertedNode = new ProgramNode();
+                throw 'Unknown syntaxTree kind!';
             }
 
             return convertedNode;

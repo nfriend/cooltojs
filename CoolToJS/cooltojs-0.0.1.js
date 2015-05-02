@@ -200,6 +200,90 @@ var CoolToJS;
             return MethodCallExpressionNode;
         })(ExpressionNode);
         AST.MethodCallExpressionNode = MethodCallExpressionNode;
+        var IfThenElseExpressionNode = (function (_super) {
+            __extends(IfThenElseExpressionNode, _super);
+            function IfThenElseExpressionNode() {
+                _super.call(this, 6 /* IfThenElseExpression */);
+            }
+            Object.defineProperty(IfThenElseExpressionNode.prototype, "predicate", {
+                get: function () {
+                    return this.children[0];
+                },
+                set: function (predicate) {
+                    this.children[0] = predicate;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(IfThenElseExpressionNode.prototype, "consequent", {
+                get: function () {
+                    return this.children[0];
+                },
+                set: function (consequent) {
+                    this.children[0] = consequent;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(IfThenElseExpressionNode.prototype, "alternative", {
+                get: function () {
+                    return this.children[0];
+                },
+                set: function (alternative) {
+                    this.children[0] = alternative;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            return IfThenElseExpressionNode;
+        })(ExpressionNode);
+        AST.IfThenElseExpressionNode = IfThenElseExpressionNode;
+        var WhileExpressionNode = (function (_super) {
+            __extends(WhileExpressionNode, _super);
+            function WhileExpressionNode() {
+                _super.call(this, 7 /* WhileExpression */);
+            }
+            Object.defineProperty(WhileExpressionNode.prototype, "whileConditionExpression", {
+                get: function () {
+                    return this.children[0];
+                },
+                set: function (conditionExpression) {
+                    this.children[0] = conditionExpression;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(WhileExpressionNode.prototype, "whileBodyExpression", {
+                get: function () {
+                    return this.children[1];
+                },
+                set: function (bodyExpression) {
+                    this.children[1] = bodyExpression;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            return WhileExpressionNode;
+        })(ExpressionNode);
+        AST.WhileExpressionNode = WhileExpressionNode;
+        var BlockExpressionNode = (function (_super) {
+            __extends(BlockExpressionNode, _super);
+            function BlockExpressionNode() {
+                _super.call(this, 8 /* BlockExpression */);
+            }
+            Object.defineProperty(BlockExpressionNode.prototype, "expressionList", {
+                get: function () {
+                    return this.children;
+                },
+                set: function (expressions) {
+                    throw 'Setter for BlockExpressionNode.expressionList not yet implemented';
+                },
+                enumerable: true,
+                configurable: true
+            });
+            return BlockExpressionNode;
+        })(ExpressionNode);
+        AST.BlockExpressionNode = BlockExpressionNode;
     })(AST = CoolToJS.AST || (CoolToJS.AST = {}));
 })(CoolToJS || (CoolToJS = {}));
 var CoolToJS;
@@ -337,9 +421,36 @@ var CoolToJS;
                             }
                             convertedNode = methodCallExprNode;
                         }
+                        else if (syntaxTree.children[0].syntaxKind === 23 /* IfKeyword */) {
+                            var ifThenElseExprNode = new AST.IfThenElseExpressionNode();
+                            var predicateNode = _this.Convert(syntaxTree.children[1]);
+                            ifThenElseExprNode.children[0] = predicateNode;
+                            var consequentNode = _this.Convert(syntaxTree.children[3]);
+                            ifThenElseExprNode.children[1] = consequentNode;
+                            var alternativeNode = _this.Convert(syntaxTree.children[5]);
+                            ifThenElseExprNode.children[2] = alternativeNode;
+                            predicateNode.parent = ifThenElseExprNode;
+                            consequentNode.parent = ifThenElseExprNode;
+                            alternativeNode.parent = ifThenElseExprNode;
+                            convertedNode = ifThenElseExprNode;
+                        }
+                        else if (syntaxTree.children[0].syntaxKind === 39 /* WhileKeyword */) {
+                            var whileExprNode = new AST.WhileExpressionNode();
+                            var conditionNode = _this.Convert(syntaxTree.children[1]);
+                            whileExprNode.children[0] = conditionNode;
+                            var bodyExpressionNode = _this.Convert(syntaxTree.children[3]);
+                            whileExprNode.children[1] = bodyExpressionNode;
+                            conditionNode.parent = whileExprNode;
+                            bodyExpressionNode.parent = whileExprNode;
+                            convertedNode = whileExprNode;
+                        }
+                        else if (syntaxTree.children[0].syntaxKind === 40 /* OpenCurlyBracket */) {
+                            var blockExpressionNode = new AST.BlockExpressionNode();
+                            convertedNode = blockExpressionNode;
+                        }
                     }
                     else {
-                        convertedNode = new AST.ProgramNode();
+                        throw 'Unknown syntaxTree kind!';
                     }
                     return convertedNode;
                 };
