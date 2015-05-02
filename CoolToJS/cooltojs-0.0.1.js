@@ -14,14 +14,30 @@ var CoolToJS;
             NodeType[NodeType["Class"] = 1] = "Class";
             NodeType[NodeType["Property"] = 2] = "Property";
             NodeType[NodeType["Method"] = 3] = "Method";
-            NodeType[NodeType["Expression"] = 4] = "Expression";
-            NodeType[NodeType["BlockExpression"] = 5] = "BlockExpression";
+            NodeType[NodeType["AssignmentExpression"] = 4] = "AssignmentExpression";
+            NodeType[NodeType["MethodCallExpression"] = 5] = "MethodCallExpression";
+            NodeType[NodeType["IfThenElseExpression"] = 6] = "IfThenElseExpression";
+            NodeType[NodeType["WhileExpression"] = 7] = "WhileExpression";
+            NodeType[NodeType["BlockExpression"] = 8] = "BlockExpression";
+            NodeType[NodeType["LetExpression"] = 9] = "LetExpression";
+            NodeType[NodeType["CaseExpression"] = 10] = "CaseExpression";
+            NodeType[NodeType["NewExpression"] = 11] = "NewExpression";
+            NodeType[NodeType["IsvoidExpression"] = 12] = "IsvoidExpression";
+            NodeType[NodeType["BinaryOperationExpression"] = 13] = "BinaryOperationExpression";
+            NodeType[NodeType["UnaryOperationExpression"] = 14] = "UnaryOperationExpression";
+            NodeType[NodeType["ParantheticalExpression"] = 15] = "ParantheticalExpression";
+            NodeType[NodeType["ObjectIdentifierExpression"] = 16] = "ObjectIdentifierExpression";
+            NodeType[NodeType["IntegerLiteralExpression"] = 17] = "IntegerLiteralExpression";
+            NodeType[NodeType["StringLiteralExpression"] = 18] = "StringLiteralExpression";
+            NodeType[NodeType["TrueKeywordExpression"] = 19] = "TrueKeywordExpression";
+            NodeType[NodeType["FalseKeywordExpression"] = 20] = "FalseKeywordExpression";
         })(AST.NodeType || (AST.NodeType = {}));
         var NodeType = AST.NodeType;
         var Node = (function () {
             function Node(type) {
                 this.type = type;
                 this.children = [];
+                this.nodeTypeName = NodeType[this.type];
             }
             return Node;
         })();
@@ -50,6 +66,38 @@ var CoolToJS;
                 this.className = className;
                 _super.call(this, 1 /* Class */);
             }
+            Object.defineProperty(ClassNode.prototype, "propertyList", {
+                get: function () {
+                    var propertyList = [];
+                    for (var i = 0; i < this.children.length; i++) {
+                        if (this.children[i].type === 2 /* Property */) {
+                            propertyList.push(this.children[i]);
+                        }
+                    }
+                    return propertyList;
+                },
+                set: function (propertyList) {
+                    throw 'Setter for ClassNode.propertyList not yet implemented';
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(ClassNode.prototype, "merthodList", {
+                get: function () {
+                    var methodNode = [];
+                    for (var i = 0; i < this.children.length; i++) {
+                        if (this.children[i].type === 3 /* Method */) {
+                            methodNode.push(this.children[i]);
+                        }
+                    }
+                    return methodNode;
+                },
+                set: function (methodList) {
+                    throw 'Setter for ClassNode.methodList not yet implemented';
+                },
+                enumerable: true,
+                configurable: true
+            });
             Object.defineProperty(ClassNode.prototype, "isSubClass", {
                 get: function () {
                     return CoolToJS.Utility.isNullUndefinedOrWhitespace(this.superClassName);
@@ -62,12 +110,96 @@ var CoolToJS;
         AST.ClassNode = ClassNode;
         var MethodNode = (function (_super) {
             __extends(MethodNode, _super);
-            function MethodNode() {
+            function MethodNode(methodName) {
                 _super.call(this, 3 /* Method */);
+                this.parameters = [];
+                this.methodName = methodName;
             }
+            Object.defineProperty(MethodNode.prototype, "hasParameters", {
+                get: function () {
+                    return this.parameters.length > 0;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(MethodNode.prototype, "methodBodyExpression", {
+                get: function () {
+                    return this.children[0];
+                },
+                set: function (methodBodyExpression) {
+                    this.children[0] = methodBodyExpression;
+                },
+                enumerable: true,
+                configurable: true
+            });
             return MethodNode;
         })(Node);
         AST.MethodNode = MethodNode;
+        var PropertyNode = (function (_super) {
+            __extends(PropertyNode, _super);
+            function PropertyNode(propertyName) {
+                _super.call(this, 2 /* Property */);
+                this.propertyName = propertyName;
+            }
+            Object.defineProperty(PropertyNode.prototype, "propertyInitializerExpression", {
+                get: function () {
+                    return this.children[0];
+                },
+                set: function (propertyInitializerExpression) {
+                    this.children[0] = propertyInitializerExpression;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            return PropertyNode;
+        })(Node);
+        AST.PropertyNode = PropertyNode;
+        var ExpressionNode = (function (_super) {
+            __extends(ExpressionNode, _super);
+            function ExpressionNode(expressionType) {
+                _super.call(this, expressionType);
+            }
+            return ExpressionNode;
+        })(Node);
+        AST.ExpressionNode = ExpressionNode;
+        var AssignmentExpressionNode = (function (_super) {
+            __extends(AssignmentExpressionNode, _super);
+            function AssignmentExpressionNode() {
+                _super.call(this, 4 /* AssignmentExpression */);
+            }
+            Object.defineProperty(AssignmentExpressionNode.prototype, "assignmentExpression", {
+                get: function () {
+                    return this.children[0];
+                },
+                set: function (assignmentExpression) {
+                    this.children[0] = assignmentExpression;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            return AssignmentExpressionNode;
+        })(ExpressionNode);
+        AST.AssignmentExpressionNode = AssignmentExpressionNode;
+        var MethodCallExpressionNode = (function (_super) {
+            __extends(MethodCallExpressionNode, _super);
+            function MethodCallExpressionNode() {
+                _super.call(this, 5 /* MethodCallExpression */);
+                this.isCallToParent = false;
+                this.isCallToSelf = false;
+            }
+            Object.defineProperty(MethodCallExpressionNode.prototype, "parameterExpressionList", {
+                get: function () {
+                    return this.children;
+                },
+                set: function (expressions) {
+                    throw 'Setter for MethodCallExpressionNode.parameterExpressionList not yet implemented';
+                },
+                enumerable: true,
+                configurable: true
+            });
+            return MethodCallExpressionNode;
+        })(ExpressionNode);
+        AST.MethodCallExpressionNode = MethodCallExpressionNode;
     })(AST = CoolToJS.AST || (CoolToJS.AST = {}));
 })(CoolToJS || (CoolToJS = {}));
 var CoolToJS;
@@ -83,10 +215,9 @@ var CoolToJS;
                     // use a shallow copy of the provided tree so we
                     // don't alter the original
                     syntaxTree = CoolToJS.Utility.ShallowCopySyntaxTree(syntaxTree);
-                    if (_this.isRecursiveSyntaxKind(syntaxTree.syntaxKind)) {
-                        _this.flattenRecursion(syntaxTree);
-                    }
+                    /* PROGRAM */
                     if (syntaxTree.syntaxKind === 53 /* Program */) {
+                        _this.flattenRecursion(syntaxTree);
                         convertedNode = new AST.ProgramNode();
                         for (var i = 0; i < syntaxTree.children.length; i++) {
                             if (syntaxTree.children[i].syntaxKind === 44 /* Class */) {
@@ -99,10 +230,12 @@ var CoolToJS;
                     else if (syntaxTree.syntaxKind === 44 /* Class */) {
                         var classNode = new AST.ClassNode(syntaxTree.children[1].token.match);
                         if (syntaxTree.children[2].syntaxKind === 25 /* InheritsKeyword */) {
+                            // if this class is a subclass
                             classNode.superClassName = syntaxTree.children[3].token.match;
                         }
                         for (var i = 0; i < syntaxTree.children.length; i++) {
                             if (syntaxTree.children[i].syntaxKind === 49 /* FeatureList */) {
+                                _this.flattenRecursion(syntaxTree.children[i]);
                                 for (var j = 0; j < syntaxTree.children[i].children.length; j++) {
                                     if (syntaxTree.children[i].children[j].syntaxKind === 48 /* Feature */) {
                                         var childFeatureNode = _this.Convert(syntaxTree.children[i].children[j]);
@@ -116,8 +249,97 @@ var CoolToJS;
                         convertedNode = classNode;
                     }
                     else if (syntaxTree.syntaxKind === 48 /* Feature */) {
-                        //TODO
-                        convertedNode = new AST.MethodNode();
+                        if (syntaxTree.children[1].syntaxKind === 1 /* OpenParenthesis */) {
+                            // we should convert into a method
+                            var methodNode = new AST.MethodNode(syntaxTree.children[0].token.match);
+                            if (syntaxTree.children[2].syntaxKind === 51 /* FormalList */) {
+                                // this method has at least one parameter
+                                methodNode.returnTypeName = syntaxTree.children[5].token.match;
+                                _this.flattenRecursion(syntaxTree.children[2]);
+                                for (var i = 0; i < syntaxTree.children[2].children.length; i++) {
+                                    if (syntaxTree.children[2].children[i].syntaxKind === 50 /* Formal */) {
+                                        methodNode.parameters.push({
+                                            parameterName: syntaxTree.children[2].children[i].children[0].token.match,
+                                            parameterTypeName: syntaxTree.children[2].children[i].children[2].token.match
+                                        });
+                                    }
+                                }
+                                // convert the method body
+                                var methodBodyNode = _this.Convert(syntaxTree.children[7]);
+                                methodBodyNode.parent = methodNode;
+                                methodNode.children.push(methodBodyNode);
+                            }
+                            else {
+                                // this method has no parameters
+                                methodNode.returnTypeName = syntaxTree.children[4].token.match;
+                                // convert the method body
+                                var methodBodyNode = _this.Convert(syntaxTree.children[6]);
+                                methodBodyNode.parent = methodNode;
+                                methodNode.children.push(methodBodyNode);
+                            }
+                            convertedNode = methodNode;
+                        }
+                        else if (syntaxTree.children[1].syntaxKind === 9 /* Colon */) {
+                            // we should convert into a property
+                            var propertyNode = new AST.PropertyNode(syntaxTree.children[0].token.match);
+                            propertyNode.typeName = syntaxTree.children[2].token.match;
+                            if (syntaxTree.children[4]) {
+                                // if this property has an initializer
+                                // convert the property initializer
+                                var propertyInitializerNode = _this.Convert(syntaxTree.children[4]);
+                                propertyInitializerNode.parent = propertyNode;
+                                propertyNode.children.push(propertyInitializerNode);
+                            }
+                            convertedNode = propertyNode;
+                        }
+                        else {
+                            throw 'Unexpected SyntaxKind: second child of a Feature should either be a ( or a :';
+                        }
+                    }
+                    else if (syntaxTree.syntaxKind === 45 /* Expression */) {
+                        /* ASSIGNMENT EXPRESSION */
+                        if (syntaxTree.children[1].syntaxKind === 12 /* AssignmentOperator */) {
+                            var assignmentExprNode = new AST.AssignmentExpressionNode();
+                            assignmentExprNode.identifierName = syntaxTree.children[0].token.match;
+                            var assignmentExpression = _this.Convert(syntaxTree.children[2]);
+                            assignmentExpression.parent = assignmentExprNode;
+                            assignmentExprNode.children.push(assignmentExpression);
+                            convertedNode = assignmentExprNode;
+                        }
+                        else if (syntaxTree.children[1].syntaxKind === 7 /* DotOperator */ || syntaxTree.children[1].syntaxKind === 16 /* AtSignOperator */ || (syntaxTree.children[0].syntaxKind === 32 /* ObjectIdentifier */ && syntaxTree.children[1].syntaxKind === 1 /* OpenParenthesis */)) {
+                            var methodCallExprNode = new AST.MethodCallExpressionNode(), expressionListIndex;
+                            if (syntaxTree.children[1].syntaxKind === 7 /* DotOperator */) {
+                                // standard method call on an expression
+                                methodCallExprNode.methodName = syntaxTree.children[2].token.match;
+                                expressionListIndex = 4;
+                            }
+                            else if (syntaxTree.children[1].syntaxKind === 16 /* AtSignOperator */) {
+                                // method call to parent class
+                                methodCallExprNode.methodName = syntaxTree.children[4].token.match;
+                                methodCallExprNode.isCallToParent = true;
+                                expressionListIndex = 6;
+                            }
+                            else if (syntaxTree.children[1].syntaxKind === 1 /* OpenParenthesis */) {
+                                // method call to implied "self"
+                                methodCallExprNode.methodName = syntaxTree.children[0].token.match;
+                                methodCallExprNode.isCallToSelf = true;
+                                expressionListIndex = 3;
+                            }
+                            if (syntaxTree.children[expressionListIndex].syntaxKind === 46 /* ExpressionList */) {
+                                _this.flattenRecursion(syntaxTree.children[expressionListIndex]);
+                                for (var i = 0; i < syntaxTree.children[expressionListIndex].children.length; i++) {
+                                    if (syntaxTree.children[4].children[i].syntaxKind === 45 /* Expression */) {
+                                        var parameterExprNode = _this.Convert(syntaxTree.children[expressionListIndex].children[i]);
+                                        parameterExprNode.parent = methodCallExprNode;
+                                        methodCallExprNode.children.push(parameterExprNode);
+                                    }
+                                }
+                            }
+                            convertedNode = methodCallExprNode;
+                        }
+                    }
+                    else {
+                        convertedNode = new AST.ProgramNode();
                     }
                     return convertedNode;
                 };
@@ -129,9 +351,6 @@ var CoolToJS;
                         syntaxTree.children.splice.apply(syntaxTree.children, [i, 1].concat(syntaxTree.children[i].children));
                     }
                 }
-            };
-            AbstractSyntaxTreeConverter.prototype.isRecursiveSyntaxKind = function (syntaxKind) {
-                return (syntaxKind === 53 /* Program */ || syntaxKind === 49 /* FeatureList */ || syntaxKind === 51 /* FormalList */ || syntaxKind === 46 /* ExpressionList */ || syntaxKind === 47 /* ExpressionSeries */);
             };
             return AbstractSyntaxTreeConverter;
         })();
