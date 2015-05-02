@@ -153,12 +153,14 @@
 
                         methodCallExprNode.methodName = syntaxTree.children[2].token.match;
                         methodCallExprNode.token = syntaxTree.children[2].token;
+                        methodCallExprNode.targetExpression = this.convert(syntaxTree.children[0]);
                         expressionListIndex = 4;
 
                     } else if (syntaxTree.children[1].syntaxKind === SyntaxKind.AtSignOperator) {
                         // method call to parent class
                         methodCallExprNode.methodName = syntaxTree.children[4].token.match;
                         methodCallExprNode.token = syntaxTree.children[4].token;
+                        methodCallExprNode.targetExpression = this.convert(syntaxTree.children[0]);
                         methodCallExprNode.isCallToParent = true;
                         expressionListIndex = 6;
 
@@ -169,6 +171,8 @@
                         methodCallExprNode.token = syntaxTree.children[0].token;
                         methodCallExprNode.isCallToSelf = true;
                         expressionListIndex = 2;
+                    } else {
+                        throw 'Unknown method call expression type';
                     }
 
                     if (syntaxTree.children[expressionListIndex].syntaxKind === SyntaxKind.ExpressionList) {

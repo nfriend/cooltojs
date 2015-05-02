@@ -620,12 +620,14 @@ var CoolToJS;
                             // standard method call on an expression
                             methodCallExprNode.methodName = syntaxTree.children[2].token.match;
                             methodCallExprNode.token = syntaxTree.children[2].token;
+                            methodCallExprNode.targetExpression = _this.convert(syntaxTree.children[0]);
                             expressionListIndex = 4;
                         }
                         else if (syntaxTree.children[1].syntaxKind === 16 /* AtSignOperator */) {
                             // method call to parent class
                             methodCallExprNode.methodName = syntaxTree.children[4].token.match;
                             methodCallExprNode.token = syntaxTree.children[4].token;
+                            methodCallExprNode.targetExpression = _this.convert(syntaxTree.children[0]);
                             methodCallExprNode.isCallToParent = true;
                             expressionListIndex = 6;
                         }
@@ -635,6 +637,9 @@ var CoolToJS;
                             methodCallExprNode.token = syntaxTree.children[0].token;
                             methodCallExprNode.isCallToSelf = true;
                             expressionListIndex = 2;
+                        }
+                        else {
+                            throw 'Unknown method call expression type';
                         }
                         if (syntaxTree.children[expressionListIndex].syntaxKind === 46 /* ExpressionList */) {
                             _this.flattenRecursion(syntaxTree.children[expressionListIndex]);
@@ -1385,7 +1390,12 @@ var CoolToJS;
             this.Analyze = function (astConvertOutput) {
                 var errorMessages = astConvertOutput.errorMessages || [];
                 var warningMessages = astConvertOutput.warningMessages || [];
-                _this.analyze(astConvertOutput.abstractSyntaxTree, [], errorMessages, warningMessages);
+                var starterTypeEnvironment = {
+                    currentClassType: null,
+                    variableScope: [],
+                    methodScope: []
+                };
+                _this.analyze(astConvertOutput.abstractSyntaxTree, starterTypeEnvironment, errorMessages, warningMessages);
                 return {
                     success: errorMessages.length === 0,
                     errorMessages: errorMessages,
@@ -1393,7 +1403,7 @@ var CoolToJS;
                 };
             };
             // analyzes the current node and returns the inferred type name (if applicable)
-            this.analyze = function (ast, scope, errorMessages, warningMessages) {
+            this.analyze = function (ast, typeEnvironment, errorMessages, warningMessages) {
                 /* PROGRAM */
                 if (ast.type === 0 /* Program */) {
                     var programNode = ast;
@@ -1448,11 +1458,13 @@ var CoolToJS;
                         }
                     }
                     ast.children.forEach(function (node) {
-                        _this.analyze(node, scope, errorMessages, warningMessages);
+                        _this.analyze(node, typeEnvironment, errorMessages, warningMessages);
                     });
                 }
                 else if (ast.type === 1 /* Class */) {
                     var classNode = ast;
+                    typeEnvironment.currentClassType = classNode.className;
+                    typeEnvironment.methodScope = [];
                     // ensure that all method names are unique
                     var duplicateMethods = [];
                     for (var i = 0; i < classNode.methodList.length; i++) {
@@ -1460,6 +1472,12 @@ var CoolToJS;
                             return c.methodName;
                         }).slice(0, i).indexOf(classNode.methodList[i].methodName) !== -1) {
                             duplicateMethods.push(classNode.methodList[i]);
+                        }
+                        else {
+                            typeEnvironment.methodScope.push({
+                                identifierName: classNode.methodList[i].methodName,
+                                identifierType: classNode.methodList[i].returnTypeName
+                            });
                         }
                     }
                     duplicateMethods.forEach(function (methodNode) {
@@ -1484,13 +1502,13 @@ var CoolToJS;
                         });
                     });
                     ast.children.forEach(function (node) {
-                        _this.analyze(node, scope, errorMessages, warningMessages);
+                        _this.analyze(node, typeEnvironment, errorMessages, warningMessages);
                     });
                 }
                 else if (ast.type === 2 /* Property */) {
                     var propertyNode = ast;
                     if (propertyNode.hasInitializer) {
-                        var initializerType = _this.analyze(propertyNode.propertyInitializerExpression, scope, errorMessages, warningMessages);
+                        var initializerType = _this.analyze(propertyNode.propertyInitializerExpression, typeEnvironment, errorMessages, warningMessages);
                         if (!_this.isAssignableFrom(propertyNode.typeName, initializerType)) {
                             _this.addTypeError(propertyNode.typeName, initializerType, propertyNode.token.location, errorMessages);
                         }
@@ -1501,11 +1519,11 @@ var CoolToJS;
                 }
                 else if (ast.type === 4 /* AssignmentExpression */) {
                     var assignmentExpressionNode = ast;
-                    for (var i = scope.length - 1; i >= 0; i--) {
-                        if (scope[i].variableName === assignmentExpressionNode.identifierName) {
-                            var expressionType = _this.analyze(assignmentExpressionNode.assignmentExpression, scope, errorMessages, warningMessages);
-                            if (!_this.isAssignableFrom(scope[i].variableType, expressionType)) {
-                                _this.addTypeError(scope[i].variableType, expressionType, assignmentExpressionNode.token.location, errorMessages);
+                    for (var i = typeEnvironment.variableScope.length - 1; i >= 0; i--) {
+                        if (typeEnvironment.variableScope[i].identifierName === assignmentExpressionNode.identifierName) {
+                            var expressionType = _this.analyze(assignmentExpressionNode.assignmentExpression, typeEnvironment, errorMessages, warningMessages);
+                            if (!_this.isAssignableFrom(typeEnvironment.variableScope[i].identifierType, expressionType)) {
+                                _this.addTypeError(typeEnvironment.variableScope[i].identifierType, expressionType, assignmentExpressionNode.token.location, errorMessages);
                             }
                             return expressionType;
                         }
@@ -1516,11 +1534,37 @@ var CoolToJS;
                     });
                     return _this.unknownType;
                 }
+                else if (ast.type === 5 /* MethodCallExpression */) {
+                    var methodCallExpressionNode = ast;
+                    var methodTargetType;
+                    if (!methodCallExpressionNode.isCallToParent && !methodCallExpressionNode.isCallToSelf) {
+                        methodTargetType = _this.analyze(methodCallExpressionNode.targetExpression, typeEnvironment, errorMessages, warningMessages);
+                    }
+                    else if (!methodCallExpressionNode.isCallToParent) {
+                        methodTargetType = typeEnvironment.currentClassType;
+                    }
+                    else if (!methodCallExpressionNode.isCallToSelf) {
+                        methodTargetType = methodCallExpressionNode.explicitParentCallTypeName;
+                    }
+                    else {
+                        throw 'MethodCallExpressionNode should not have both isCallToParent = true AND isCallToSelf = true';
+                    }
+                    for (var i = typeEnvironment.methodScope.length - 1; i >= 0; i--) {
+                        if (typeEnvironment.methodScope[i].identifierName === methodCallExpressionNode.methodName) {
+                            return typeEnvironment.methodScope[i].identifierType;
+                        }
+                    }
+                    errorMessages.push({
+                        location: methodCallExpressionNode.token.location,
+                        message: 'Call to undefined method "' + methodCallExpressionNode.methodName + '"'
+                    });
+                    return _this.unknownType;
+                }
                 else if (ast.type === 8 /* BlockExpression */) {
                     var blockExpressionNode = ast;
                     var returnType;
                     blockExpressionNode.expressionList.forEach(function (expressionNode) {
-                        returnType = _this.analyze(expressionNode, scope, errorMessages, warningMessages);
+                        returnType = _this.analyze(expressionNode, typeEnvironment, errorMessages, warningMessages);
                     });
                     return returnType;
                 }
@@ -1528,14 +1572,14 @@ var CoolToJS;
                     var letExpressionNode = ast;
                     // add the new variables to the scope
                     letExpressionNode.localVariableDeclarations.forEach(function (varDeclarationNode) {
-                        scope.push({
-                            variableName: varDeclarationNode.identifierName,
-                            variableType: varDeclarationNode.typeName
+                        typeEnvironment.variableScope.push({
+                            identifierName: varDeclarationNode.identifierName,
+                            identifierType: varDeclarationNode.typeName
                         });
                     });
-                    var returnType = _this.analyze(letExpressionNode.letBodyExpression, scope, errorMessages, warningMessages);
+                    var returnType = _this.analyze(letExpressionNode.letBodyExpression, typeEnvironment, errorMessages, warningMessages);
                     // remove the added variables from the scope
-                    scope.splice(scope.length - letExpressionNode.localVariableDeclarations.length, letExpressionNode.localVariableDeclarations.length);
+                    typeEnvironment.variableScope.splice(typeEnvironment.variableScope.length - letExpressionNode.localVariableDeclarations.length, letExpressionNode.localVariableDeclarations.length);
                     return returnType;
                 }
                 else if (ast.type === 13 /* NewExpression */) {
@@ -1544,9 +1588,9 @@ var CoolToJS;
                 }
                 else if (ast.type === 18 /* ObjectIdentifierExpression */) {
                     var objectIdExpressionNode = ast;
-                    for (var i = scope.length - 1; i >= 0; i--) {
-                        if (scope[i].variableName === objectIdExpressionNode.objectIdentifierName) {
-                            return scope[i].variableType;
+                    for (var i = typeEnvironment.variableScope.length - 1; i >= 0; i--) {
+                        if (typeEnvironment.variableScope[i].identifierName === objectIdExpressionNode.objectIdentifierName) {
+                            return typeEnvironment.variableScope[i].identifierType;
                         }
                     }
                     errorMessages.push({

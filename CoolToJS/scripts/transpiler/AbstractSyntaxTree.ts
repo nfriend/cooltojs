@@ -187,7 +187,9 @@
 
         methodName: string;
         isCallToParent: boolean = false;
+        explicitParentCallTypeName: string;
         isCallToSelf: boolean = false;
+        targetExpression: ExpressionNode;
 
         get parameterExpressionList(): Array<ExpressionNode> {
             return this.children;

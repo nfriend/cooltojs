@@ -3,7 +3,12 @@
         Analyze = (astConvertOutput: ASTConverterOutput): SemanticAnalyzerOutput => {
             var errorMessages = astConvertOutput.errorMessages || [];
             var warningMessages = astConvertOutput.warningMessages || [];
-            this.analyze(astConvertOutput.abstractSyntaxTree, [], errorMessages, warningMessages);
+            var starterTypeEnvironment: TypeEnvironment = {
+                currentClassType: null,
+                variableScope: [],
+                methodScope: []
+            }
+            this.analyze(astConvertOutput.abstractSyntaxTree, starterTypeEnvironment, errorMessages, warningMessages);
 
             return {
                 success: errorMessages.length === 0,
@@ -14,7 +19,7 @@
 
         // analyzes the current node and returns the inferred type name (if applicable)
         analyze = (ast: Node,
-            scope: Array<ScopeVariable>,
+            typeEnvironment: TypeEnvironment,
             errorMessages: Array<ErrorMessage>,
             warningMessages: Array<WarningMessage>): string => {
 
@@ -77,19 +82,26 @@
                 }
 
                 ast.children.forEach(node => {
-                    this.analyze(node, scope, errorMessages, warningMessages);
+                    this.analyze(node, typeEnvironment, errorMessages, warningMessages);
                 });
             }
 
             /* CLASS */
             else if (ast.type === NodeType.Class) {
                 var classNode = <ClassNode>ast;
+                typeEnvironment.currentClassType = classNode.className;
+                typeEnvironment.methodScope = [];
 
                 // ensure that all method names are unique
                 var duplicateMethods: Array<MethodNode> = [];
                 for (var i = 0; i < classNode.methodList.length; i++) {
                     if (classNode.methodList.map(c => { return c.methodName }).slice(0, i).indexOf(classNode.methodList[i].methodName) !== -1) {
                         duplicateMethods.push(classNode.methodList[i]);
+                    } else {
+                        typeEnvironment.methodScope.push({
+                            identifierName: classNode.methodList[i].methodName,
+                            identifierType: classNode.methodList[i].returnTypeName
+                        })
                     }
                 }
 
@@ -116,7 +128,7 @@
                 });
 
                 ast.children.forEach(node => {
-                    this.analyze(node, scope, errorMessages, warningMessages);
+                    this.analyze(node, typeEnvironment, errorMessages, warningMessages);
                 });
             }
 
@@ -124,7 +136,7 @@
             else if (ast.type === NodeType.Property) {
                 var propertyNode = <PropertyNode>ast;
                 if (propertyNode.hasInitializer) {
-                    var initializerType = this.analyze(propertyNode.propertyInitializerExpression, scope, errorMessages, warningMessages);
+                    var initializerType = this.analyze(propertyNode.propertyInitializerExpression, typeEnvironment, errorMessages, warningMessages);
                     if (!this.isAssignableFrom(propertyNode.typeName, initializerType)) {
                         this.addTypeError(propertyNode.typeName, initializerType, propertyNode.token.location, errorMessages);
                     }
@@ -139,12 +151,12 @@
             /* ASSIGNMENT EXPRESSION */
             else if (ast.type === NodeType.AssignmentExpression) {
                 var assignmentExpressionNode = <AssignmentExpressionNode>ast;
-                for (var i = scope.length - 1; i >= 0; i--) {
-                    if (scope[i].variableName === assignmentExpressionNode.identifierName) {
-                        var expressionType = this.analyze(assignmentExpressionNode.assignmentExpression, scope, errorMessages, warningMessages);
+                for (var i = typeEnvironment.variableScope.length - 1; i >= 0; i--) {
+                    if (typeEnvironment.variableScope[i].identifierName === assignmentExpressionNode.identifierName) {
+                        var expressionType = this.analyze(assignmentExpressionNode.assignmentExpression, typeEnvironment, errorMessages, warningMessages);
 
-                        if (!this.isAssignableFrom(scope[i].variableType, expressionType)) {
-                            this.addTypeError(scope[i].variableType, expressionType, assignmentExpressionNode.token.location, errorMessages);
+                        if (!this.isAssignableFrom(typeEnvironment.variableScope[i].identifierType, expressionType)) {
+                            this.addTypeError(typeEnvironment.variableScope[i].identifierType, expressionType, assignmentExpressionNode.token.location, errorMessages);
                         }
 
                         return expressionType;
@@ -159,12 +171,41 @@
                 return this.unknownType;
             }
 
+            /* METHOD CALL EXPRESSION */
+            else if (ast.type === NodeType.MethodCallExpression) {
+                var methodCallExpressionNode = <MethodCallExpressionNode>ast;
+                var methodTargetType: string;
+
+                if (!methodCallExpressionNode.isCallToParent && !methodCallExpressionNode.isCallToSelf) {
+                    methodTargetType = this.analyze(methodCallExpressionNode.targetExpression, typeEnvironment, errorMessages, warningMessages);
+                } else if (!methodCallExpressionNode.isCallToParent) {
+                    methodTargetType = typeEnvironment.currentClassType;
+                } else if (!methodCallExpressionNode.isCallToSelf) {
+                    methodTargetType = methodCallExpressionNode.explicitParentCallTypeName;
+                } else {
+                    throw 'MethodCallExpressionNode should not have both isCallToParent = true AND isCallToSelf = true';
+                }
+
+                for (var i = typeEnvironment.methodScope.length - 1; i >= 0; i--) {
+                    if (typeEnvironment.methodScope[i].identifierName === methodCallExpressionNode.methodName) {
+                        return typeEnvironment.methodScope[i].identifierType;
+                    }
+                }
+
+                errorMessages.push({
+                    location: methodCallExpressionNode.token.location,
+                    message: 'Call to undefined method "' + methodCallExpressionNode.methodName + '"'
+                });
+
+                return this.unknownType;
+            }
+
             /* BLOCK EXPRESSION */
             else if (ast.type === NodeType.BlockExpression) {
                 var blockExpressionNode = <BlockExpressionNode>ast;
                 var returnType: string;
                 blockExpressionNode.expressionList.forEach(expressionNode => {
-                    returnType = this.analyze(expressionNode, scope, errorMessages, warningMessages);
+                    returnType = this.analyze(expressionNode, typeEnvironment, errorMessages, warningMessages);
                 });
                 return returnType;
             }
@@ -175,15 +216,17 @@
 
                 // add the new variables to the scope
                 letExpressionNode.localVariableDeclarations.forEach(varDeclarationNode => {
-                    scope.push({
-                        variableName: varDeclarationNode.identifierName,
-                        variableType: varDeclarationNode.typeName
+                    typeEnvironment.variableScope.push({
+                        identifierName: varDeclarationNode.identifierName,
+                        identifierType: varDeclarationNode.typeName
                     });
                 });
-                var returnType = this.analyze(letExpressionNode.letBodyExpression, scope, errorMessages, warningMessages);
+                var returnType = this.analyze(letExpressionNode.letBodyExpression, typeEnvironment, errorMessages, warningMessages);
 
                 // remove the added variables from the scope
-                scope.splice(scope.length - letExpressionNode.localVariableDeclarations.length, letExpressionNode.localVariableDeclarations.length);
+                typeEnvironment.variableScope.splice(
+                    typeEnvironment.variableScope.length - letExpressionNode.localVariableDeclarations.length,
+                    letExpressionNode.localVariableDeclarations.length);
 
                 return returnType;
             }
@@ -198,9 +241,9 @@
             else if (ast.type === NodeType.ObjectIdentifierExpression) {
                 var objectIdExpressionNode = <ObjectIdentifierExpressionNode>ast;
 
-                for (var i = scope.length - 1; i >= 0; i--) {
-                    if (scope[i].variableName === objectIdExpressionNode.objectIdentifierName) {
-                        return scope[i].variableType;
+                for (var i = typeEnvironment.variableScope.length - 1; i >= 0; i--) {
+                    if (typeEnvironment.variableScope[i].identifierName === objectIdExpressionNode.objectIdentifierName) {
+                        return typeEnvironment.variableScope[i].identifierType;
                     }
                 }
 
@@ -431,8 +474,14 @@
         children: Array<TypeHeirarchy> = [];
     }
 
-    interface ScopeVariable {
-        variableName: string;
-        variableType: string
+    interface TypeEnvironment {
+        currentClassType: string;
+        variableScope: Array<ScopeItem>;
+        methodScope: Array<ScopeItem>;
+    }
+
+    interface ScopeItem {
+        identifierName: string;
+        identifierType: string
     }
 }
