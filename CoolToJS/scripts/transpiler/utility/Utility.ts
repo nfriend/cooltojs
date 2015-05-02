@@ -37,7 +37,7 @@
     }
 
     // from http://stackoverflow.com/a/11616993/1063392
-    export function stringify(ast: AST.Node): string {
+    export function stringify(ast: Node): string {
         var cache = [];
         var returnVal = JSON.stringify(ast, function (key, value) {
             if (typeof value === 'object' && value !== null) {

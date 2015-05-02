@@ -37,4 +37,17 @@
         errorMessages?: Array<ErrorMessage>;
         warningMessages?: Array<WarningMessage>;
     }
+
+    export interface ASTConverterOutput {
+        success: boolean;
+        abstractSyntaxTree: Node;
+        errorMessages?: Array<ErrorMessage>;
+        warningMessages?: Array<WarningMessage>;
+    }
+
+    export interface SemanticAnalyzerOutput {
+        success: boolean;
+        errorMessages?: Array<ErrorMessage>;
+        warningMessages?: Array<WarningMessage>;
+    }
 }

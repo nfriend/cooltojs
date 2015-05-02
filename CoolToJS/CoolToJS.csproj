@@ -65,6 +65,7 @@
     <TypeScriptCompile Include="scripts\transpiler\LexicalAnalyzer.ts" />
     <TypeScriptCompile Include="scripts\transpiler\OutputInterfaces.ts" />
     <TypeScriptCompile Include="scripts\transpiler\Parser.ts" />
+    <TypeScriptCompile Include="scripts\transpiler\SemanticAnalyzer.ts" />
     <TypeScriptCompile Include="scripts\transpiler\SimpleSyntaxKind.ts" />
     <TypeScriptCompile Include="scripts\transpiler\SyntaxKind.ts" />
     <TypeScriptCompile Include="scripts\transpiler\Transpiler.ts" />

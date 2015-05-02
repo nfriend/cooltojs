@@ -97,15 +97,19 @@ _in_string(function(input) {\n\
             };
         }
 
-        var astConverter = new AST.AbstractSyntaxTreeConverter();
-        var ast = astConverter.Convert(parserOutput.syntaxTree);
+        var astConverter = new AbstractSyntaxTreeConverter();
+        var astConvertOutput = astConverter.Convert(parserOutput);
 
         //console.log(Utility.stringify(ast));
 
+        var semanticAnalyzer = new SemanticAnalyzer();
+        var semanticAnalyzerOutput = semanticAnalyzer.Analyze(astConvertOutput);
+
         return {
-            success: true,
-            generatedJavaScript: generatedJavaScriptExample,
+            success: semanticAnalyzerOutput.errorMessages.length === 0,
+            errorMessages: semanticAnalyzerOutput.errorMessages,
             warningMessages: parserOutput.warningMessages,
+            generatedJavaScript: generatedJavaScriptExample,
             elapsedTime: Date.now() - startTime
         };
     }

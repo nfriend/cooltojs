@@ -210,9 +210,11 @@
                 editorOutput += '• ' + transpilerOutput.errorMessages[i].message + '\n';
 
                 // underline the error in the Cool editor
-                addUnderlineToCoolEditor(transpilerOutput.errorMessages[i].location.line - 1,
-                                         transpilerOutput.errorMessages[i].location.column - 1,
-                                         transpilerOutput.errorMessages[i].location.length);
+                if (transpilerOutput.errorMessages[i].location) {
+                    addUnderlineToCoolEditor(transpilerOutput.errorMessages[i].location.line - 1,
+                                             transpilerOutput.errorMessages[i].location.column - 1,
+                                             transpilerOutput.errorMessages[i].location.length);
+                }
             }
             editorOutput += '\n*/\n\n';
         }

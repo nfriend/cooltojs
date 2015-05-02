@@ -1,4 +1,4 @@
-﻿module CoolToJS.AST {
+﻿module CoolToJS {
     'use strict';
 
     export enum NodeType {
@@ -57,6 +57,7 @@
         sourceLocation: SourceLocation;
         children: Array<Node>;
         parent: Node;
+        token: Token;
     }
 
     export class ProgramNode extends Node {
@@ -95,7 +96,7 @@
             throw 'Setter for ClassNode.propertyList not yet implemented';
         }
 
-        get merthodList(): Array<MethodNode> {
+        get methodList(): Array<MethodNode> {
             var methodNode: Array<MethodNode> = [];
             for (var i = 0; i < this.children.length; i++) {
                 if (this.children[i].type === NodeType.Method) {
@@ -105,7 +106,7 @@
             return <Array<MethodNode>>methodNode;
         }
 
-        set merthodList(methodList: Array<MethodNode>) {
+        set methodList(methodList: Array<MethodNode>) {
             throw 'Setter for ClassNode.methodList not yet implemented';
         }
 
@@ -115,9 +116,8 @@
     }
 
     export class MethodNode extends Node {
-        constructor(methodName: string) {
+        constructor() {
             super(NodeType.Method);
-            this.methodName = methodName;
         }
 
         methodName: string;
@@ -138,9 +138,8 @@
     }
 
     export class PropertyNode extends Node {
-        constructor(propertyName: string) {
+        constructor() {
             super(NodeType.Property);
-            this.propertyName = propertyName;
         }
 
         propertyName: string;

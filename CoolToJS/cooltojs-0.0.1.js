@@ -1,341 +1,3 @@
-var CoolToJS;
-(function (CoolToJS) {
-    var AST;
-    (function (AST) {
-        'use strict';
-        var AbstractSyntaxTreeConverter = (function () {
-            function AbstractSyntaxTreeConverter() {
-                var _this = this;
-                this.Convert = function (syntaxTree) {
-                    var convertedNode;
-                    // use a shallow copy of the provided tree so we
-                    // don't alter the original
-                    syntaxTree = CoolToJS.Utility.ShallowCopySyntaxTree(syntaxTree);
-                    /* PROGRAM */
-                    if (syntaxTree.syntaxKind === 53 /* Program */) {
-                        _this.flattenRecursion(syntaxTree);
-                        convertedNode = new AST.ProgramNode();
-                        for (var i = 0; i < syntaxTree.children.length; i++) {
-                            if (syntaxTree.children[i].syntaxKind === 44 /* Class */) {
-                                var childClassNode = _this.Convert(syntaxTree.children[i]);
-                                childClassNode.parent = convertedNode;
-                                convertedNode.children.push(childClassNode);
-                            }
-                        }
-                    }
-                    else if (syntaxTree.syntaxKind === 44 /* Class */) {
-                        var classNode = new AST.ClassNode(syntaxTree.children[1].token.match);
-                        if (syntaxTree.children[2].syntaxKind === 25 /* InheritsKeyword */) {
-                            // if this class is a subclass
-                            classNode.superClassName = syntaxTree.children[3].token.match;
-                        }
-                        for (var i = 0; i < syntaxTree.children.length; i++) {
-                            if (syntaxTree.children[i].syntaxKind === 49 /* FeatureList */) {
-                                _this.flattenRecursion(syntaxTree.children[i]);
-                                for (var j = 0; j < syntaxTree.children[i].children.length; j++) {
-                                    if (syntaxTree.children[i].children[j].syntaxKind === 48 /* Feature */) {
-                                        var childFeatureNode = _this.Convert(syntaxTree.children[i].children[j]);
-                                        childFeatureNode.parent = classNode;
-                                        classNode.children.push(childFeatureNode);
-                                    }
-                                }
-                                break;
-                            }
-                        }
-                        convertedNode = classNode;
-                    }
-                    else if (syntaxTree.syntaxKind === 48 /* Feature */) {
-                        if (syntaxTree.children[1].syntaxKind === 1 /* OpenParenthesis */) {
-                            // we should convert into a method
-                            var methodNode = new AST.MethodNode(syntaxTree.children[0].token.match);
-                            if (syntaxTree.children[2].syntaxKind === 51 /* FormalList */) {
-                                // this method has at least one parameter
-                                methodNode.returnTypeName = syntaxTree.children[5].token.match;
-                                _this.flattenRecursion(syntaxTree.children[2]);
-                                for (var i = 0; i < syntaxTree.children[2].children.length; i++) {
-                                    if (syntaxTree.children[2].children[i].syntaxKind === 50 /* Formal */) {
-                                        methodNode.parameters.push({
-                                            parameterName: syntaxTree.children[2].children[i].children[0].token.match,
-                                            parameterTypeName: syntaxTree.children[2].children[i].children[2].token.match
-                                        });
-                                    }
-                                }
-                                // convert the method body
-                                var methodBodyNode = _this.Convert(syntaxTree.children[7]);
-                                methodBodyNode.parent = methodNode;
-                                methodNode.children.push(methodBodyNode);
-                            }
-                            else {
-                                // this method has no parameters
-                                methodNode.returnTypeName = syntaxTree.children[4].token.match;
-                                // convert the method body
-                                var methodBodyNode = _this.Convert(syntaxTree.children[6]);
-                                methodBodyNode.parent = methodNode;
-                                methodNode.children.push(methodBodyNode);
-                            }
-                            convertedNode = methodNode;
-                        }
-                        else if (syntaxTree.children[1].syntaxKind === 9 /* Colon */) {
-                            // we should convert into a property
-                            var propertyNode = new AST.PropertyNode(syntaxTree.children[0].token.match);
-                            propertyNode.typeName = syntaxTree.children[2].token.match;
-                            if (syntaxTree.children[4]) {
-                                // if this property has an initializer
-                                // convert the property initializer
-                                var propertyInitializerNode = _this.Convert(syntaxTree.children[4]);
-                                propertyInitializerNode.parent = propertyNode;
-                                propertyNode.children.push(propertyInitializerNode);
-                            }
-                            convertedNode = propertyNode;
-                        }
-                        else {
-                            throw 'Unexpected SyntaxKind: second child of a Feature should either be a ( or a :';
-                        }
-                    }
-                    else if (syntaxTree.syntaxKind === 45 /* Expression */) {
-                        /* ASSIGNMENT EXPRESSION */
-                        if (syntaxTree.children[1] && syntaxTree.children[1].syntaxKind === 12 /* AssignmentOperator */) {
-                            var assignmentExprNode = new AST.AssignmentExpressionNode();
-                            assignmentExprNode.identifierName = syntaxTree.children[0].token.match;
-                            var assignmentExpression = _this.Convert(syntaxTree.children[2]);
-                            assignmentExpression.parent = assignmentExprNode;
-                            assignmentExprNode.children.push(assignmentExpression);
-                            convertedNode = assignmentExprNode;
-                        }
-                        else if (syntaxTree.children[1] && (syntaxTree.children[1].syntaxKind === 7 /* DotOperator */ || syntaxTree.children[1].syntaxKind === 16 /* AtSignOperator */ || (syntaxTree.children[0].syntaxKind === 32 /* ObjectIdentifier */ && syntaxTree.children[1].syntaxKind === 1 /* OpenParenthesis */))) {
-                            var methodCallExprNode = new AST.MethodCallExpressionNode(), expressionListIndex;
-                            if (syntaxTree.children[1].syntaxKind === 7 /* DotOperator */) {
-                                // standard method call on an expression
-                                methodCallExprNode.methodName = syntaxTree.children[2].token.match;
-                                expressionListIndex = 4;
-                            }
-                            else if (syntaxTree.children[1].syntaxKind === 16 /* AtSignOperator */) {
-                                // method call to parent class
-                                methodCallExprNode.methodName = syntaxTree.children[4].token.match;
-                                methodCallExprNode.isCallToParent = true;
-                                expressionListIndex = 6;
-                            }
-                            else if (syntaxTree.children[1].syntaxKind === 1 /* OpenParenthesis */) {
-                                // method call to implied "self"
-                                methodCallExprNode.methodName = syntaxTree.children[0].token.match;
-                                methodCallExprNode.isCallToSelf = true;
-                                expressionListIndex = 2;
-                            }
-                            if (syntaxTree.children[expressionListIndex].syntaxKind === 46 /* ExpressionList */) {
-                                _this.flattenRecursion(syntaxTree.children[expressionListIndex]);
-                                for (var i = 0; i < syntaxTree.children[expressionListIndex].children.length; i++) {
-                                    if (syntaxTree.children[expressionListIndex].children[i].syntaxKind === 45 /* Expression */) {
-                                        var parameterExprNode = _this.Convert(syntaxTree.children[expressionListIndex].children[i]);
-                                        parameterExprNode.parent = methodCallExprNode;
-                                        methodCallExprNode.children.push(parameterExprNode);
-                                    }
-                                }
-                            }
-                            convertedNode = methodCallExprNode;
-                        }
-                        else if (syntaxTree.children[0].syntaxKind === 23 /* IfKeyword */) {
-                            var ifThenElseExprNode = new AST.IfThenElseExpressionNode();
-                            var predicateNode = _this.Convert(syntaxTree.children[1]);
-                            ifThenElseExprNode.children[0] = predicateNode;
-                            var consequentNode = _this.Convert(syntaxTree.children[3]);
-                            ifThenElseExprNode.children[1] = consequentNode;
-                            var alternativeNode = _this.Convert(syntaxTree.children[5]);
-                            ifThenElseExprNode.children[2] = alternativeNode;
-                            predicateNode.parent = ifThenElseExprNode;
-                            consequentNode.parent = ifThenElseExprNode;
-                            alternativeNode.parent = ifThenElseExprNode;
-                            convertedNode = ifThenElseExprNode;
-                        }
-                        else if (syntaxTree.children[0].syntaxKind === 39 /* WhileKeyword */) {
-                            var whileExprNode = new AST.WhileExpressionNode();
-                            var conditionNode = _this.Convert(syntaxTree.children[1]);
-                            whileExprNode.children[0] = conditionNode;
-                            var bodyExpressionNode = _this.Convert(syntaxTree.children[3]);
-                            whileExprNode.children[1] = bodyExpressionNode;
-                            conditionNode.parent = whileExprNode;
-                            bodyExpressionNode.parent = whileExprNode;
-                            convertedNode = whileExprNode;
-                        }
-                        else if (syntaxTree.children[0].syntaxKind === 40 /* OpenCurlyBracket */) {
-                            var blockExpressionNode = new AST.BlockExpressionNode();
-                            _this.flattenRecursion(syntaxTree.children[1]);
-                            for (var i = 0; i < syntaxTree.children[1].children.length; i++) {
-                                if (syntaxTree.children[1].children[i].syntaxKind === 45 /* Expression */) {
-                                    var childExpressionNode = _this.Convert(syntaxTree.children[1].children[i]);
-                                    childExpressionNode.parent = blockExpressionNode;
-                                    blockExpressionNode.children.push(childExpressionNode);
-                                }
-                            }
-                            convertedNode = blockExpressionNode;
-                        }
-                        else if (syntaxTree.children[0].syntaxKind === 28 /* LetKeyword */) {
-                            var letExpressionNode = new AST.LetExpressionNode();
-                            _this.flattenRecursion(syntaxTree.children[1]);
-                            for (var i = 0; i < syntaxTree.children[1].children.length; i++) {
-                                if (syntaxTree.children[1].children[i].syntaxKind === 32 /* ObjectIdentifier */) {
-                                    var localVarDeclaration = new AST.LocalVariableDeclarationNode();
-                                    localVarDeclaration.identifierName = syntaxTree.children[1].children[i].token.match;
-                                    localVarDeclaration.typeName = syntaxTree.children[1].children[i + 2].token.match;
-                                    if (syntaxTree.children[1].children[i + 3] && syntaxTree.children[1].children[i + 3].syntaxKind == 12 /* AssignmentOperator */) {
-                                        var localVarDeclInitExprNode = _this.Convert(syntaxTree.children[1].children[i + 4]);
-                                        localVarDeclInitExprNode.parent = localVarDeclaration;
-                                        // Why are getters/setters not working?
-                                        //localVarDeclaration.initializerExpression = localVarDeclInitExprNode;
-                                        localVarDeclaration.children[0] = localVarDeclInitExprNode;
-                                    }
-                                    localVarDeclaration.parent = letExpressionNode;
-                                    letExpressionNode.localVariableDeclarations.push(localVarDeclaration);
-                                }
-                            }
-                            var expressionBodyNode = _this.Convert(syntaxTree.children[3]);
-                            expressionBodyNode.parent = letExpressionNode;
-                            letExpressionNode.children.push(expressionBodyNode);
-                            convertedNode = letExpressionNode;
-                        }
-                        else if (syntaxTree.children[0].syntaxKind === 17 /* CaseKeyword */) {
-                            var caseExpressionNode = new AST.CaseExpressionNode();
-                            _this.flattenRecursion(syntaxTree.children[3]);
-                            for (var i = 0; i < syntaxTree.children[3].children.length; i++) {
-                                if (syntaxTree.children[3].children[i].syntaxKind === 32 /* ObjectIdentifier */) {
-                                    var caseOptionNode = new AST.CaseOptionNode();
-                                    caseOptionNode.identiferName = syntaxTree.children[3].children[i].token.match;
-                                    caseOptionNode.typeName = syntaxTree.children[3].children[i + 2].token.match;
-                                    var caseOptionExpressionNode = _this.Convert(syntaxTree.children[3].children[i + 4]);
-                                    caseOptionExpressionNode.parent = caseOptionNode;
-                                    caseOptionNode.children[0] = caseOptionExpressionNode;
-                                    caseOptionNode.parent = caseExpressionNode;
-                                    caseExpressionNode.caseOptionList.push(caseOptionNode);
-                                }
-                            }
-                            var caseConditionNode = _this.Convert(syntaxTree.children[1]);
-                            caseConditionNode.parent = caseExpressionNode;
-                            caseExpressionNode.condition = caseConditionNode;
-                            convertedNode = caseExpressionNode;
-                        }
-                        else if (syntaxTree.children[0].syntaxKind === 30 /* NewKeyword */) {
-                            var newExpressionNode = new AST.NewExpressionNode();
-                            newExpressionNode.typeName = syntaxTree.children[1].token.match;
-                            convertedNode = newExpressionNode;
-                        }
-                        else if (syntaxTree.children[0].syntaxKind === 27 /* IsvoidKeyword */) {
-                            var isVoidExpressionNode = new AST.IsVoidExpressionNode();
-                            var isVoidConditionNode = _this.Convert(syntaxTree.children[1]);
-                            isVoidExpressionNode.parent = isVoidExpressionNode;
-                            isVoidExpressionNode.children[0] = isVoidConditionNode;
-                            convertedNode = isVoidExpressionNode;
-                        }
-                        else if (syntaxTree.children[1] && _this.isBinaryOperator(syntaxTree.children[1])) {
-                            var binaryOperationExprNode = new AST.BinaryOperationExpressionNode();
-                            switch (syntaxTree.children[1].syntaxKind) {
-                                case 4 /* AdditionOperator */:
-                                    binaryOperationExprNode.operationType = 0 /* Addition */;
-                                    break;
-                                case 6 /* SubtractionOperator */:
-                                    binaryOperationExprNode.operationType = 1 /* Subtraction */;
-                                    break;
-                                case 3 /* MultiplationOperator */:
-                                    binaryOperationExprNode.operationType = 3 /* Multiplication */;
-                                    break;
-                                case 8 /* DivisionOperator */:
-                                    binaryOperationExprNode.operationType = 2 /* Division */;
-                                    break;
-                                case 11 /* LessThanOperator */:
-                                    binaryOperationExprNode.operationType = 4 /* LessThan */;
-                                    break;
-                                case 13 /* LessThanOrEqualsOperator */:
-                                    binaryOperationExprNode.operationType = 4 /* LessThanOrEqualTo */;
-                                    break;
-                                case 14 /* EqualsOperator */:
-                                    binaryOperationExprNode.operationType = 4 /* Comparison */;
-                                    break;
-                                default:
-                                    throw 'Unknown BinaryOperationType';
-                            }
-                            var operand1Node = _this.Convert(syntaxTree.children[0]);
-                            operand1Node.parent = binaryOperationExprNode;
-                            var operand2Node = _this.Convert(syntaxTree.children[0]);
-                            operand2Node.parent = binaryOperationExprNode;
-                            binaryOperationExprNode.children[0] = operand1Node;
-                            binaryOperationExprNode.children[1] = operand2Node;
-                            convertedNode = binaryOperationExprNode;
-                        }
-                        else if (syntaxTree.children[0].syntaxKind === 42 /* TildeOperator */) {
-                            var unaryOperationExprNode = new AST.UnaryOperationExpressionNode();
-                            var operandNode = _this.Convert(syntaxTree.children[1]);
-                            operandNode.parent = unaryOperationExprNode;
-                            unaryOperationExprNode.children[0] = operandNode;
-                            convertedNode = unaryOperationExprNode;
-                        }
-                        else if (syntaxTree.children[0].syntaxKind === 42 /* TildeOperator */ || syntaxTree.children[0].syntaxKind === 31 /* NotKeyword */) {
-                            var unaryOperationExprNode = new AST.UnaryOperationExpressionNode();
-                            if (syntaxTree.children[0].syntaxKind === 42 /* TildeOperator */) {
-                                unaryOperationExprNode.operationType = 0 /* Complement */;
-                            }
-                            else if (syntaxTree.children[0].syntaxKind === 31 /* NotKeyword */) {
-                                unaryOperationExprNode.operationType = 1 /* Not */;
-                            }
-                            else {
-                                throw 'Unknown UnaryOperationType';
-                            }
-                            var operandNode = _this.Convert(syntaxTree.children[1]);
-                            operandNode.parent = unaryOperationExprNode;
-                            unaryOperationExprNode.children[0] = operandNode;
-                            convertedNode = unaryOperationExprNode;
-                        }
-                        else if (syntaxTree.children[0].syntaxKind === 1 /* OpenParenthesis */) {
-                            var parExprNod = new AST.ParantheticalExpressionNode();
-                            var innerExprNode = _this.Convert(syntaxTree.children[1]);
-                            innerExprNode.parent = parExprNod;
-                            parExprNod.children[0] = innerExprNode;
-                            convertedNode = parExprNod;
-                        }
-                        else if (syntaxTree.children[0].syntaxKind === 32 /* ObjectIdentifier */ && syntaxTree.children.length === 1) {
-                            var objIdentExprNode = new AST.ObjectIdentifierExpressionNode();
-                            objIdentExprNode.objectIdentifierName = syntaxTree.children[0].token.match;
-                            convertedNode = objIdentExprNode;
-                        }
-                        else if (syntaxTree.children[0].syntaxKind === 26 /* Integer */) {
-                            var intLiteralExprNode = new AST.IntegerLiteralExpressionNode();
-                            intLiteralExprNode.value = parseInt(syntaxTree.children[0].token.match, 10);
-                            convertedNode = intLiteralExprNode;
-                        }
-                        else if (syntaxTree.children[0].syntaxKind === 35 /* String */) {
-                            var stringLiteralExprNode = new AST.StringLiteralExpressionNode();
-                            // TODO: remove quotes
-                            stringLiteralExprNode.value = syntaxTree.children[0].token.match;
-                            convertedNode = stringLiteralExprNode;
-                        }
-                        else if (syntaxTree.children[0].syntaxKind === 37 /* TrueKeyword */) {
-                            var trueKeywordExprNode = new AST.TrueKeywordExpressionNode();
-                            convertedNode = trueKeywordExprNode;
-                        }
-                        else if (syntaxTree.children[0].syntaxKind === 21 /* FalseKeyword */) {
-                            var falseKeywordExprNode = new AST.FalseKeywordExpressionNode();
-                            convertedNode = falseKeywordExprNode;
-                        }
-                    }
-                    else {
-                        throw 'Unknown syntaxTree kind!';
-                    }
-                    return convertedNode;
-                };
-            }
-            AbstractSyntaxTreeConverter.prototype.flattenRecursion = function (syntaxTree) {
-                for (var i = 0; i < syntaxTree.children.length; i++) {
-                    if (syntaxTree.children[i].syntaxKind === syntaxTree.syntaxKind) {
-                        // replace the node with its children
-                        syntaxTree.children.splice.apply(syntaxTree.children, [i, 1].concat(syntaxTree.children[i].children));
-                    }
-                }
-            };
-            AbstractSyntaxTreeConverter.prototype.isBinaryOperator = function (syntaxTree) {
-                return (syntaxTree.syntaxKind === 4 /* AdditionOperator */ || syntaxTree.syntaxKind === 6 /* SubtractionOperator */ || syntaxTree.syntaxKind === 3 /* MultiplationOperator */ || syntaxTree.syntaxKind === 8 /* DivisionOperator */ || syntaxTree.syntaxKind === 11 /* LessThanOperator */ || syntaxTree.syntaxKind === 13 /* LessThanOrEqualsOperator */ || syntaxTree.syntaxKind === 14 /* EqualsOperator */);
-            };
-            return AbstractSyntaxTreeConverter;
-        })();
-        AST.AbstractSyntaxTreeConverter = AbstractSyntaxTreeConverter;
-    })(AST = CoolToJS.AST || (CoolToJS.AST = {}));
-})(CoolToJS || (CoolToJS = {}));
 var __extends = this.__extends || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -344,495 +6,841 @@ var __extends = this.__extends || function (d, b) {
 };
 var CoolToJS;
 (function (CoolToJS) {
-    var AST;
-    (function (AST) {
-        'use strict';
-        (function (NodeType) {
-            NodeType[NodeType["Program"] = 0] = "Program";
-            NodeType[NodeType["Class"] = 1] = "Class";
-            NodeType[NodeType["Property"] = 2] = "Property";
-            NodeType[NodeType["Method"] = 3] = "Method";
-            NodeType[NodeType["AssignmentExpression"] = 4] = "AssignmentExpression";
-            NodeType[NodeType["MethodCallExpression"] = 5] = "MethodCallExpression";
-            NodeType[NodeType["IfThenElseExpression"] = 6] = "IfThenElseExpression";
-            NodeType[NodeType["WhileExpression"] = 7] = "WhileExpression";
-            NodeType[NodeType["BlockExpression"] = 8] = "BlockExpression";
-            NodeType[NodeType["LetExpression"] = 9] = "LetExpression";
-            NodeType[NodeType["LocalVariableDeclaration"] = 10] = "LocalVariableDeclaration";
-            NodeType[NodeType["CaseExpression"] = 11] = "CaseExpression";
-            NodeType[NodeType["CaseOption"] = 12] = "CaseOption";
-            NodeType[NodeType["NewExpression"] = 13] = "NewExpression";
-            NodeType[NodeType["IsvoidExpression"] = 14] = "IsvoidExpression";
-            NodeType[NodeType["BinaryOperationExpression"] = 15] = "BinaryOperationExpression";
-            NodeType[NodeType["UnaryOperationExpression"] = 16] = "UnaryOperationExpression";
-            NodeType[NodeType["ParantheticalExpression"] = 17] = "ParantheticalExpression";
-            NodeType[NodeType["ObjectIdentifierExpression"] = 18] = "ObjectIdentifierExpression";
-            NodeType[NodeType["IntegerLiteralExpression"] = 19] = "IntegerLiteralExpression";
-            NodeType[NodeType["StringLiteralExpression"] = 20] = "StringLiteralExpression";
-            NodeType[NodeType["TrueKeywordExpression"] = 21] = "TrueKeywordExpression";
-            NodeType[NodeType["FalseKeywordExpression"] = 22] = "FalseKeywordExpression";
-        })(AST.NodeType || (AST.NodeType = {}));
-        var NodeType = AST.NodeType;
-        (function (BinaryOperationType) {
-            BinaryOperationType[BinaryOperationType["Addition"] = 0] = "Addition";
-            BinaryOperationType[BinaryOperationType["Subtraction"] = 1] = "Subtraction";
-            BinaryOperationType[BinaryOperationType["Division"] = 2] = "Division";
-            BinaryOperationType[BinaryOperationType["Multiplication"] = 3] = "Multiplication";
-            BinaryOperationType[BinaryOperationType["LessThan"] = 4] = "LessThan";
-            BinaryOperationType[BinaryOperationType["LessThanOrEqualTo"] = 4] = "LessThanOrEqualTo";
-            BinaryOperationType[BinaryOperationType["Comparison"] = 4] = "Comparison";
-        })(AST.BinaryOperationType || (AST.BinaryOperationType = {}));
-        var BinaryOperationType = AST.BinaryOperationType;
-        (function (UnaryOperationType) {
-            UnaryOperationType[UnaryOperationType["Complement"] = 0] = "Complement";
-            UnaryOperationType[UnaryOperationType["Not"] = 1] = "Not";
-        })(AST.UnaryOperationType || (AST.UnaryOperationType = {}));
-        var UnaryOperationType = AST.UnaryOperationType;
-        var Node = (function () {
-            function Node(type) {
-                this.type = type;
-                this.children = [];
-                this.nodeTypeName = NodeType[this.type];
-            }
-            return Node;
-        })();
-        AST.Node = Node;
-        var ProgramNode = (function (_super) {
-            __extends(ProgramNode, _super);
-            function ProgramNode() {
-                _super.call(this, 0 /* Program */);
-            }
-            Object.defineProperty(ProgramNode.prototype, "classList", {
-                get: function () {
-                    return this.children;
-                },
-                set: function (classList) {
-                    this.children = classList;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            return ProgramNode;
-        })(Node);
-        AST.ProgramNode = ProgramNode;
-        var ClassNode = (function (_super) {
-            __extends(ClassNode, _super);
-            function ClassNode(className) {
-                this.className = className;
-                _super.call(this, 1 /* Class */);
-            }
-            Object.defineProperty(ClassNode.prototype, "propertyList", {
-                get: function () {
-                    var propertyList = [];
-                    for (var i = 0; i < this.children.length; i++) {
-                        if (this.children[i].type === 2 /* Property */) {
-                            propertyList.push(this.children[i]);
+    'use strict';
+    (function (NodeType) {
+        NodeType[NodeType["Program"] = 0] = "Program";
+        NodeType[NodeType["Class"] = 1] = "Class";
+        NodeType[NodeType["Property"] = 2] = "Property";
+        NodeType[NodeType["Method"] = 3] = "Method";
+        NodeType[NodeType["AssignmentExpression"] = 4] = "AssignmentExpression";
+        NodeType[NodeType["MethodCallExpression"] = 5] = "MethodCallExpression";
+        NodeType[NodeType["IfThenElseExpression"] = 6] = "IfThenElseExpression";
+        NodeType[NodeType["WhileExpression"] = 7] = "WhileExpression";
+        NodeType[NodeType["BlockExpression"] = 8] = "BlockExpression";
+        NodeType[NodeType["LetExpression"] = 9] = "LetExpression";
+        NodeType[NodeType["LocalVariableDeclaration"] = 10] = "LocalVariableDeclaration";
+        NodeType[NodeType["CaseExpression"] = 11] = "CaseExpression";
+        NodeType[NodeType["CaseOption"] = 12] = "CaseOption";
+        NodeType[NodeType["NewExpression"] = 13] = "NewExpression";
+        NodeType[NodeType["IsvoidExpression"] = 14] = "IsvoidExpression";
+        NodeType[NodeType["BinaryOperationExpression"] = 15] = "BinaryOperationExpression";
+        NodeType[NodeType["UnaryOperationExpression"] = 16] = "UnaryOperationExpression";
+        NodeType[NodeType["ParantheticalExpression"] = 17] = "ParantheticalExpression";
+        NodeType[NodeType["ObjectIdentifierExpression"] = 18] = "ObjectIdentifierExpression";
+        NodeType[NodeType["IntegerLiteralExpression"] = 19] = "IntegerLiteralExpression";
+        NodeType[NodeType["StringLiteralExpression"] = 20] = "StringLiteralExpression";
+        NodeType[NodeType["TrueKeywordExpression"] = 21] = "TrueKeywordExpression";
+        NodeType[NodeType["FalseKeywordExpression"] = 22] = "FalseKeywordExpression";
+    })(CoolToJS.NodeType || (CoolToJS.NodeType = {}));
+    var NodeType = CoolToJS.NodeType;
+    (function (BinaryOperationType) {
+        BinaryOperationType[BinaryOperationType["Addition"] = 0] = "Addition";
+        BinaryOperationType[BinaryOperationType["Subtraction"] = 1] = "Subtraction";
+        BinaryOperationType[BinaryOperationType["Division"] = 2] = "Division";
+        BinaryOperationType[BinaryOperationType["Multiplication"] = 3] = "Multiplication";
+        BinaryOperationType[BinaryOperationType["LessThan"] = 4] = "LessThan";
+        BinaryOperationType[BinaryOperationType["LessThanOrEqualTo"] = 4] = "LessThanOrEqualTo";
+        BinaryOperationType[BinaryOperationType["Comparison"] = 4] = "Comparison";
+    })(CoolToJS.BinaryOperationType || (CoolToJS.BinaryOperationType = {}));
+    var BinaryOperationType = CoolToJS.BinaryOperationType;
+    (function (UnaryOperationType) {
+        UnaryOperationType[UnaryOperationType["Complement"] = 0] = "Complement";
+        UnaryOperationType[UnaryOperationType["Not"] = 1] = "Not";
+    })(CoolToJS.UnaryOperationType || (CoolToJS.UnaryOperationType = {}));
+    var UnaryOperationType = CoolToJS.UnaryOperationType;
+    var Node = (function () {
+        function Node(type) {
+            this.type = type;
+            this.children = [];
+            this.nodeTypeName = NodeType[this.type];
+        }
+        return Node;
+    })();
+    CoolToJS.Node = Node;
+    var ProgramNode = (function (_super) {
+        __extends(ProgramNode, _super);
+        function ProgramNode() {
+            _super.call(this, 0 /* Program */);
+        }
+        Object.defineProperty(ProgramNode.prototype, "classList", {
+            get: function () {
+                return this.children;
+            },
+            set: function (classList) {
+                this.children = classList;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return ProgramNode;
+    })(Node);
+    CoolToJS.ProgramNode = ProgramNode;
+    var ClassNode = (function (_super) {
+        __extends(ClassNode, _super);
+        function ClassNode(className) {
+            this.className = className;
+            _super.call(this, 1 /* Class */);
+        }
+        Object.defineProperty(ClassNode.prototype, "propertyList", {
+            get: function () {
+                var propertyList = [];
+                for (var i = 0; i < this.children.length; i++) {
+                    if (this.children[i].type === 2 /* Property */) {
+                        propertyList.push(this.children[i]);
+                    }
+                }
+                return propertyList;
+            },
+            set: function (propertyList) {
+                throw 'Setter for ClassNode.propertyList not yet implemented';
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(ClassNode.prototype, "methodList", {
+            get: function () {
+                var methodNode = [];
+                for (var i = 0; i < this.children.length; i++) {
+                    if (this.children[i].type === 3 /* Method */) {
+                        methodNode.push(this.children[i]);
+                    }
+                }
+                return methodNode;
+            },
+            set: function (methodList) {
+                throw 'Setter for ClassNode.methodList not yet implemented';
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(ClassNode.prototype, "isSubClass", {
+            get: function () {
+                return CoolToJS.Utility.isNullUndefinedOrWhitespace(this.superClassName);
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return ClassNode;
+    })(Node);
+    CoolToJS.ClassNode = ClassNode;
+    var MethodNode = (function (_super) {
+        __extends(MethodNode, _super);
+        function MethodNode() {
+            _super.call(this, 3 /* Method */);
+            this.parameters = [];
+        }
+        Object.defineProperty(MethodNode.prototype, "hasParameters", {
+            get: function () {
+                return this.parameters.length > 0;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(MethodNode.prototype, "methodBodyExpression", {
+            get: function () {
+                return this.children[0];
+            },
+            set: function (methodBodyExpression) {
+                this.children[0] = methodBodyExpression;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return MethodNode;
+    })(Node);
+    CoolToJS.MethodNode = MethodNode;
+    var PropertyNode = (function (_super) {
+        __extends(PropertyNode, _super);
+        function PropertyNode() {
+            _super.call(this, 2 /* Property */);
+        }
+        Object.defineProperty(PropertyNode.prototype, "propertyInitializerExpression", {
+            get: function () {
+                return this.children[0];
+            },
+            set: function (propertyInitializerExpression) {
+                this.children[0] = propertyInitializerExpression;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return PropertyNode;
+    })(Node);
+    CoolToJS.PropertyNode = PropertyNode;
+    var ExpressionNode = (function (_super) {
+        __extends(ExpressionNode, _super);
+        function ExpressionNode(expressionType) {
+            _super.call(this, expressionType);
+        }
+        return ExpressionNode;
+    })(Node);
+    CoolToJS.ExpressionNode = ExpressionNode;
+    var AssignmentExpressionNode = (function (_super) {
+        __extends(AssignmentExpressionNode, _super);
+        function AssignmentExpressionNode() {
+            _super.call(this, 4 /* AssignmentExpression */);
+        }
+        Object.defineProperty(AssignmentExpressionNode.prototype, "assignmentExpression", {
+            get: function () {
+                return this.children[0];
+            },
+            set: function (assignmentExpression) {
+                this.children[0] = assignmentExpression;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return AssignmentExpressionNode;
+    })(ExpressionNode);
+    CoolToJS.AssignmentExpressionNode = AssignmentExpressionNode;
+    var MethodCallExpressionNode = (function (_super) {
+        __extends(MethodCallExpressionNode, _super);
+        function MethodCallExpressionNode() {
+            _super.call(this, 5 /* MethodCallExpression */);
+            this.isCallToParent = false;
+            this.isCallToSelf = false;
+        }
+        Object.defineProperty(MethodCallExpressionNode.prototype, "parameterExpressionList", {
+            get: function () {
+                return this.children;
+            },
+            set: function (expressions) {
+                throw 'Setter for MethodCallExpressionNode.parameterExpressionList not yet implemented';
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return MethodCallExpressionNode;
+    })(ExpressionNode);
+    CoolToJS.MethodCallExpressionNode = MethodCallExpressionNode;
+    var IfThenElseExpressionNode = (function (_super) {
+        __extends(IfThenElseExpressionNode, _super);
+        function IfThenElseExpressionNode() {
+            _super.call(this, 6 /* IfThenElseExpression */);
+        }
+        Object.defineProperty(IfThenElseExpressionNode.prototype, "predicate", {
+            get: function () {
+                return this.children[0];
+            },
+            set: function (predicate) {
+                this.children[0] = predicate;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(IfThenElseExpressionNode.prototype, "consequent", {
+            get: function () {
+                return this.children[0];
+            },
+            set: function (consequent) {
+                this.children[0] = consequent;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(IfThenElseExpressionNode.prototype, "alternative", {
+            get: function () {
+                return this.children[0];
+            },
+            set: function (alternative) {
+                this.children[0] = alternative;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return IfThenElseExpressionNode;
+    })(ExpressionNode);
+    CoolToJS.IfThenElseExpressionNode = IfThenElseExpressionNode;
+    var WhileExpressionNode = (function (_super) {
+        __extends(WhileExpressionNode, _super);
+        function WhileExpressionNode() {
+            _super.call(this, 7 /* WhileExpression */);
+        }
+        Object.defineProperty(WhileExpressionNode.prototype, "whileConditionExpression", {
+            get: function () {
+                return this.children[0];
+            },
+            set: function (conditionExpression) {
+                this.children[0] = conditionExpression;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(WhileExpressionNode.prototype, "whileBodyExpression", {
+            get: function () {
+                return this.children[1];
+            },
+            set: function (bodyExpression) {
+                this.children[1] = bodyExpression;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return WhileExpressionNode;
+    })(ExpressionNode);
+    CoolToJS.WhileExpressionNode = WhileExpressionNode;
+    var BlockExpressionNode = (function (_super) {
+        __extends(BlockExpressionNode, _super);
+        function BlockExpressionNode() {
+            _super.call(this, 8 /* BlockExpression */);
+        }
+        Object.defineProperty(BlockExpressionNode.prototype, "expressionList", {
+            get: function () {
+                return this.children;
+            },
+            set: function (expressions) {
+                throw 'Setter for BlockExpressionNode.expressionList not yet implemented';
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return BlockExpressionNode;
+    })(ExpressionNode);
+    CoolToJS.BlockExpressionNode = BlockExpressionNode;
+    var LetExpressionNode = (function (_super) {
+        __extends(LetExpressionNode, _super);
+        function LetExpressionNode() {
+            _super.call(this, 9 /* LetExpression */);
+            this.localVariableDeclarations = [];
+        }
+        Object.defineProperty(LetExpressionNode.prototype, "letBodyExpression", {
+            get: function () {
+                return this.children[0];
+            },
+            set: function (bodyExpression) {
+                this.children[0] = bodyExpression;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return LetExpressionNode;
+    })(ExpressionNode);
+    CoolToJS.LetExpressionNode = LetExpressionNode;
+    var LocalVariableDeclarationNode = (function (_super) {
+        __extends(LocalVariableDeclarationNode, _super);
+        function LocalVariableDeclarationNode() {
+            _super.call(this, 10 /* LocalVariableDeclaration */);
+        }
+        Object.defineProperty(LocalVariableDeclarationNode.prototype, "initializerExpression", {
+            get: function () {
+                return this.children[0];
+            },
+            set: function (initializer) {
+                this.children[0] = initializer;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return LocalVariableDeclarationNode;
+    })(Node);
+    CoolToJS.LocalVariableDeclarationNode = LocalVariableDeclarationNode;
+    var CaseExpressionNode = (function (_super) {
+        __extends(CaseExpressionNode, _super);
+        function CaseExpressionNode() {
+            _super.call(this, 11 /* CaseExpression */);
+        }
+        Object.defineProperty(CaseExpressionNode.prototype, "caseOptionList", {
+            get: function () {
+                return this.children;
+            },
+            set: function (optionsList) {
+                throw 'Setter for CaseExpressionNode.caseOptionList not yet implemented';
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return CaseExpressionNode;
+    })(ExpressionNode);
+    CoolToJS.CaseExpressionNode = CaseExpressionNode;
+    var CaseOptionNode = (function (_super) {
+        __extends(CaseOptionNode, _super);
+        function CaseOptionNode() {
+            _super.call(this, 12 /* CaseOption */);
+        }
+        return CaseOptionNode;
+    })(Node);
+    CoolToJS.CaseOptionNode = CaseOptionNode;
+    var NewExpressionNode = (function (_super) {
+        __extends(NewExpressionNode, _super);
+        function NewExpressionNode() {
+            _super.call(this, 13 /* NewExpression */);
+        }
+        return NewExpressionNode;
+    })(ExpressionNode);
+    CoolToJS.NewExpressionNode = NewExpressionNode;
+    var IsVoidExpressionNode = (function (_super) {
+        __extends(IsVoidExpressionNode, _super);
+        function IsVoidExpressionNode() {
+            _super.call(this, 14 /* IsvoidExpression */);
+        }
+        Object.defineProperty(IsVoidExpressionNode.prototype, "isVoidCondition", {
+            get: function () {
+                return this.children[0];
+            },
+            set: function (condition) {
+                this.children[0] = condition;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return IsVoidExpressionNode;
+    })(ExpressionNode);
+    CoolToJS.IsVoidExpressionNode = IsVoidExpressionNode;
+    var BinaryOperationExpressionNode = (function (_super) {
+        __extends(BinaryOperationExpressionNode, _super);
+        function BinaryOperationExpressionNode() {
+            _super.call(this, 15 /* BinaryOperationExpression */);
+        }
+        Object.defineProperty(BinaryOperationExpressionNode.prototype, "operand1", {
+            get: function () {
+                return this.children[0];
+            },
+            set: function (operand) {
+                this.children[0] = operand;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(BinaryOperationExpressionNode.prototype, "operand2", {
+            get: function () {
+                return this.children[1];
+            },
+            set: function (operand) {
+                this.children[1] = operand;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return BinaryOperationExpressionNode;
+    })(ExpressionNode);
+    CoolToJS.BinaryOperationExpressionNode = BinaryOperationExpressionNode;
+    var UnaryOperationExpressionNode = (function (_super) {
+        __extends(UnaryOperationExpressionNode, _super);
+        function UnaryOperationExpressionNode() {
+            _super.call(this, 16 /* UnaryOperationExpression */);
+        }
+        Object.defineProperty(UnaryOperationExpressionNode.prototype, "operand", {
+            get: function () {
+                return this.children[0];
+            },
+            set: function (operand) {
+                this.children[0] = operand;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return UnaryOperationExpressionNode;
+    })(ExpressionNode);
+    CoolToJS.UnaryOperationExpressionNode = UnaryOperationExpressionNode;
+    var ParantheticalExpressionNode = (function (_super) {
+        __extends(ParantheticalExpressionNode, _super);
+        function ParantheticalExpressionNode() {
+            _super.call(this, 17 /* ParantheticalExpression */);
+        }
+        Object.defineProperty(ParantheticalExpressionNode.prototype, "innerExpression", {
+            get: function () {
+                return this.children[0];
+            },
+            set: function (inner) {
+                this.children[0] = inner;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return ParantheticalExpressionNode;
+    })(ExpressionNode);
+    CoolToJS.ParantheticalExpressionNode = ParantheticalExpressionNode;
+    var ObjectIdentifierExpressionNode = (function (_super) {
+        __extends(ObjectIdentifierExpressionNode, _super);
+        function ObjectIdentifierExpressionNode() {
+            _super.call(this, 18 /* ObjectIdentifierExpression */);
+        }
+        return ObjectIdentifierExpressionNode;
+    })(ExpressionNode);
+    CoolToJS.ObjectIdentifierExpressionNode = ObjectIdentifierExpressionNode;
+    var IntegerLiteralExpressionNode = (function (_super) {
+        __extends(IntegerLiteralExpressionNode, _super);
+        function IntegerLiteralExpressionNode() {
+            _super.call(this, 19 /* IntegerLiteralExpression */);
+        }
+        return IntegerLiteralExpressionNode;
+    })(ExpressionNode);
+    CoolToJS.IntegerLiteralExpressionNode = IntegerLiteralExpressionNode;
+    var StringLiteralExpressionNode = (function (_super) {
+        __extends(StringLiteralExpressionNode, _super);
+        function StringLiteralExpressionNode() {
+            _super.call(this, 20 /* StringLiteralExpression */);
+        }
+        return StringLiteralExpressionNode;
+    })(ExpressionNode);
+    CoolToJS.StringLiteralExpressionNode = StringLiteralExpressionNode;
+    var TrueKeywordExpressionNode = (function (_super) {
+        __extends(TrueKeywordExpressionNode, _super);
+        function TrueKeywordExpressionNode() {
+            _super.call(this, 21 /* TrueKeywordExpression */);
+        }
+        return TrueKeywordExpressionNode;
+    })(ExpressionNode);
+    CoolToJS.TrueKeywordExpressionNode = TrueKeywordExpressionNode;
+    var FalseKeywordExpressionNode = (function (_super) {
+        __extends(FalseKeywordExpressionNode, _super);
+        function FalseKeywordExpressionNode() {
+            _super.call(this, 22 /* FalseKeywordExpression */);
+        }
+        return FalseKeywordExpressionNode;
+    })(ExpressionNode);
+    CoolToJS.FalseKeywordExpressionNode = FalseKeywordExpressionNode;
+})(CoolToJS || (CoolToJS = {}));
+var CoolToJS;
+(function (CoolToJS) {
+    'use strict';
+    var AbstractSyntaxTreeConverter = (function () {
+        function AbstractSyntaxTreeConverter() {
+            var _this = this;
+            this.Convert = function (parserOutput) {
+                return {
+                    success: true,
+                    abstractSyntaxTree: _this.convert(parserOutput.syntaxTree),
+                    errorMessages: parserOutput.errorMessages,
+                    warningMessages: parserOutput.warningMessages
+                };
+            };
+            this.convert = function (syntaxTree) {
+                var convertedNode;
+                // use a shallow copy of the provided tree so we
+                // don't alter the original
+                syntaxTree = CoolToJS.Utility.ShallowCopySyntaxTree(syntaxTree);
+                /* PROGRAM */
+                if (syntaxTree.syntaxKind === 53 /* Program */) {
+                    _this.flattenRecursion(syntaxTree);
+                    convertedNode = new CoolToJS.ProgramNode();
+                    for (var i = 0; i < syntaxTree.children.length; i++) {
+                        if (syntaxTree.children[i].syntaxKind === 44 /* Class */) {
+                            var childClassNode = _this.convert(syntaxTree.children[i]);
+                            childClassNode.parent = convertedNode;
+                            convertedNode.children.push(childClassNode);
                         }
                     }
-                    return propertyList;
-                },
-                set: function (propertyList) {
-                    throw 'Setter for ClassNode.propertyList not yet implemented';
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(ClassNode.prototype, "merthodList", {
-                get: function () {
-                    var methodNode = [];
-                    for (var i = 0; i < this.children.length; i++) {
-                        if (this.children[i].type === 3 /* Method */) {
-                            methodNode.push(this.children[i]);
+                }
+                else if (syntaxTree.syntaxKind === 44 /* Class */) {
+                    var classNode = new CoolToJS.ClassNode(syntaxTree.children[1].token.match);
+                    classNode.token = syntaxTree.children[1].token;
+                    if (syntaxTree.children[2].syntaxKind === 25 /* InheritsKeyword */) {
+                        // if this class is a subclass
+                        classNode.superClassName = syntaxTree.children[3].token.match;
+                    }
+                    for (var i = 0; i < syntaxTree.children.length; i++) {
+                        if (syntaxTree.children[i].syntaxKind === 49 /* FeatureList */) {
+                            _this.flattenRecursion(syntaxTree.children[i]);
+                            for (var j = 0; j < syntaxTree.children[i].children.length; j++) {
+                                if (syntaxTree.children[i].children[j].syntaxKind === 48 /* Feature */) {
+                                    var childFeatureNode = _this.convert(syntaxTree.children[i].children[j]);
+                                    childFeatureNode.parent = classNode;
+                                    classNode.children.push(childFeatureNode);
+                                }
+                            }
+                            break;
                         }
                     }
-                    return methodNode;
-                },
-                set: function (methodList) {
-                    throw 'Setter for ClassNode.methodList not yet implemented';
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(ClassNode.prototype, "isSubClass", {
-                get: function () {
-                    return CoolToJS.Utility.isNullUndefinedOrWhitespace(this.superClassName);
-                },
-                enumerable: true,
-                configurable: true
-            });
-            return ClassNode;
-        })(Node);
-        AST.ClassNode = ClassNode;
-        var MethodNode = (function (_super) {
-            __extends(MethodNode, _super);
-            function MethodNode(methodName) {
-                _super.call(this, 3 /* Method */);
-                this.parameters = [];
-                this.methodName = methodName;
+                    convertedNode = classNode;
+                }
+                else if (syntaxTree.syntaxKind === 48 /* Feature */) {
+                    if (syntaxTree.children[1].syntaxKind === 1 /* OpenParenthesis */) {
+                        // we should convert into a method
+                        var methodNode = new CoolToJS.MethodNode();
+                        methodNode.methodName = syntaxTree.children[0].token.match;
+                        methodNode.token = syntaxTree.children[0].token;
+                        if (syntaxTree.children[2].syntaxKind === 51 /* FormalList */) {
+                            // this method has at least one parameter
+                            methodNode.returnTypeName = syntaxTree.children[5].token.match;
+                            _this.flattenRecursion(syntaxTree.children[2]);
+                            for (var i = 0; i < syntaxTree.children[2].children.length; i++) {
+                                if (syntaxTree.children[2].children[i].syntaxKind === 50 /* Formal */) {
+                                    methodNode.parameters.push({
+                                        parameterName: syntaxTree.children[2].children[i].children[0].token.match,
+                                        parameterTypeName: syntaxTree.children[2].children[i].children[2].token.match
+                                    });
+                                }
+                            }
+                            // convert the method body
+                            var methodBodyNode = _this.convert(syntaxTree.children[7]);
+                            methodBodyNode.parent = methodNode;
+                            methodNode.children.push(methodBodyNode);
+                        }
+                        else {
+                            // this method has no parameters
+                            methodNode.returnTypeName = syntaxTree.children[4].token.match;
+                            // convert the method body
+                            var methodBodyNode = _this.convert(syntaxTree.children[6]);
+                            methodBodyNode.parent = methodNode;
+                            methodNode.children.push(methodBodyNode);
+                        }
+                        convertedNode = methodNode;
+                    }
+                    else if (syntaxTree.children[1].syntaxKind === 9 /* Colon */) {
+                        // we should convert into a property
+                        var propertyNode = new CoolToJS.PropertyNode();
+                        propertyNode.propertyName = syntaxTree.children[0].token.match;
+                        propertyNode.token = syntaxTree.children[0].token;
+                        propertyNode.typeName = syntaxTree.children[2].token.match;
+                        if (syntaxTree.children[4]) {
+                            // if this property has an initializer
+                            // convert the property initializer
+                            var propertyInitializerNode = _this.convert(syntaxTree.children[4]);
+                            propertyInitializerNode.parent = propertyNode;
+                            propertyNode.children.push(propertyInitializerNode);
+                        }
+                        convertedNode = propertyNode;
+                    }
+                    else {
+                        throw 'Unexpected SyntaxKind: second child of a Feature should either be a ( or a :';
+                    }
+                }
+                else if (syntaxTree.syntaxKind === 45 /* Expression */) {
+                    /* ASSIGNMENT EXPRESSION */
+                    if (syntaxTree.children[1] && syntaxTree.children[1].syntaxKind === 12 /* AssignmentOperator */) {
+                        var assignmentExprNode = new CoolToJS.AssignmentExpressionNode();
+                        assignmentExprNode.identifierName = syntaxTree.children[0].token.match;
+                        var assignmentExpression = _this.convert(syntaxTree.children[2]);
+                        assignmentExpression.parent = assignmentExprNode;
+                        assignmentExprNode.children.push(assignmentExpression);
+                        convertedNode = assignmentExprNode;
+                    }
+                    else if (syntaxTree.children[1] && (syntaxTree.children[1].syntaxKind === 7 /* DotOperator */ || syntaxTree.children[1].syntaxKind === 16 /* AtSignOperator */ || (syntaxTree.children[0].syntaxKind === 32 /* ObjectIdentifier */ && syntaxTree.children[1].syntaxKind === 1 /* OpenParenthesis */))) {
+                        var methodCallExprNode = new CoolToJS.MethodCallExpressionNode(), expressionListIndex;
+                        if (syntaxTree.children[1].syntaxKind === 7 /* DotOperator */) {
+                            // standard method call on an expression
+                            methodCallExprNode.methodName = syntaxTree.children[2].token.match;
+                            methodCallExprNode.token = syntaxTree.children[2].token;
+                            expressionListIndex = 4;
+                        }
+                        else if (syntaxTree.children[1].syntaxKind === 16 /* AtSignOperator */) {
+                            // method call to parent class
+                            methodCallExprNode.methodName = syntaxTree.children[4].token.match;
+                            methodCallExprNode.token = syntaxTree.children[4].token;
+                            methodCallExprNode.isCallToParent = true;
+                            expressionListIndex = 6;
+                        }
+                        else if (syntaxTree.children[1].syntaxKind === 1 /* OpenParenthesis */) {
+                            // method call to implied "self"
+                            methodCallExprNode.methodName = syntaxTree.children[0].token.match;
+                            methodCallExprNode.token = syntaxTree.children[0].token;
+                            methodCallExprNode.isCallToSelf = true;
+                            expressionListIndex = 2;
+                        }
+                        if (syntaxTree.children[expressionListIndex].syntaxKind === 46 /* ExpressionList */) {
+                            _this.flattenRecursion(syntaxTree.children[expressionListIndex]);
+                            for (var i = 0; i < syntaxTree.children[expressionListIndex].children.length; i++) {
+                                if (syntaxTree.children[expressionListIndex].children[i].syntaxKind === 45 /* Expression */) {
+                                    var parameterExprNode = _this.convert(syntaxTree.children[expressionListIndex].children[i]);
+                                    parameterExprNode.parent = methodCallExprNode;
+                                    methodCallExprNode.children.push(parameterExprNode);
+                                }
+                            }
+                        }
+                        convertedNode = methodCallExprNode;
+                    }
+                    else if (syntaxTree.children[0].syntaxKind === 23 /* IfKeyword */) {
+                        var ifThenElseExprNode = new CoolToJS.IfThenElseExpressionNode();
+                        var predicateNode = _this.convert(syntaxTree.children[1]);
+                        ifThenElseExprNode.children[0] = predicateNode;
+                        var consequentNode = _this.convert(syntaxTree.children[3]);
+                        ifThenElseExprNode.children[1] = consequentNode;
+                        var alternativeNode = _this.convert(syntaxTree.children[5]);
+                        ifThenElseExprNode.children[2] = alternativeNode;
+                        predicateNode.parent = ifThenElseExprNode;
+                        consequentNode.parent = ifThenElseExprNode;
+                        alternativeNode.parent = ifThenElseExprNode;
+                        convertedNode = ifThenElseExprNode;
+                    }
+                    else if (syntaxTree.children[0].syntaxKind === 39 /* WhileKeyword */) {
+                        var whileExprNode = new CoolToJS.WhileExpressionNode();
+                        var conditionNode = _this.convert(syntaxTree.children[1]);
+                        whileExprNode.children[0] = conditionNode;
+                        var bodyExpressionNode = _this.convert(syntaxTree.children[3]);
+                        whileExprNode.children[1] = bodyExpressionNode;
+                        conditionNode.parent = whileExprNode;
+                        bodyExpressionNode.parent = whileExprNode;
+                        convertedNode = whileExprNode;
+                    }
+                    else if (syntaxTree.children[0].syntaxKind === 40 /* OpenCurlyBracket */) {
+                        var blockExpressionNode = new CoolToJS.BlockExpressionNode();
+                        _this.flattenRecursion(syntaxTree.children[1]);
+                        for (var i = 0; i < syntaxTree.children[1].children.length; i++) {
+                            if (syntaxTree.children[1].children[i].syntaxKind === 45 /* Expression */) {
+                                var childExpressionNode = _this.convert(syntaxTree.children[1].children[i]);
+                                childExpressionNode.parent = blockExpressionNode;
+                                blockExpressionNode.children.push(childExpressionNode);
+                            }
+                        }
+                        convertedNode = blockExpressionNode;
+                    }
+                    else if (syntaxTree.children[0].syntaxKind === 28 /* LetKeyword */) {
+                        var letExpressionNode = new CoolToJS.LetExpressionNode();
+                        _this.flattenRecursion(syntaxTree.children[1]);
+                        for (var i = 0; i < syntaxTree.children[1].children.length; i++) {
+                            if (syntaxTree.children[1].children[i].syntaxKind === 32 /* ObjectIdentifier */) {
+                                var localVarDeclaration = new CoolToJS.LocalVariableDeclarationNode();
+                                localVarDeclaration.identifierName = syntaxTree.children[1].children[i].token.match;
+                                localVarDeclaration.typeName = syntaxTree.children[1].children[i + 2].token.match;
+                                if (syntaxTree.children[1].children[i + 3] && syntaxTree.children[1].children[i + 3].syntaxKind == 12 /* AssignmentOperator */) {
+                                    var localVarDeclInitExprNode = _this.convert(syntaxTree.children[1].children[i + 4]);
+                                    localVarDeclInitExprNode.parent = localVarDeclaration;
+                                    // Why are getters/setters not working?
+                                    //localVarDeclaration.initializerExpression = localVarDeclInitExprNode;
+                                    localVarDeclaration.children[0] = localVarDeclInitExprNode;
+                                }
+                                localVarDeclaration.parent = letExpressionNode;
+                                letExpressionNode.localVariableDeclarations.push(localVarDeclaration);
+                            }
+                        }
+                        var expressionBodyNode = _this.convert(syntaxTree.children[3]);
+                        expressionBodyNode.parent = letExpressionNode;
+                        letExpressionNode.children.push(expressionBodyNode);
+                        convertedNode = letExpressionNode;
+                    }
+                    else if (syntaxTree.children[0].syntaxKind === 17 /* CaseKeyword */) {
+                        var caseExpressionNode = new CoolToJS.CaseExpressionNode();
+                        _this.flattenRecursion(syntaxTree.children[3]);
+                        for (var i = 0; i < syntaxTree.children[3].children.length; i++) {
+                            if (syntaxTree.children[3].children[i].syntaxKind === 32 /* ObjectIdentifier */) {
+                                var caseOptionNode = new CoolToJS.CaseOptionNode();
+                                caseOptionNode.identiferName = syntaxTree.children[3].children[i].token.match;
+                                caseOptionNode.typeName = syntaxTree.children[3].children[i + 2].token.match;
+                                var caseOptionExpressionNode = _this.convert(syntaxTree.children[3].children[i + 4]);
+                                caseOptionExpressionNode.parent = caseOptionNode;
+                                caseOptionNode.children[0] = caseOptionExpressionNode;
+                                caseOptionNode.parent = caseExpressionNode;
+                                caseExpressionNode.caseOptionList.push(caseOptionNode);
+                            }
+                        }
+                        var caseConditionNode = _this.convert(syntaxTree.children[1]);
+                        caseConditionNode.parent = caseExpressionNode;
+                        caseExpressionNode.condition = caseConditionNode;
+                        convertedNode = caseExpressionNode;
+                    }
+                    else if (syntaxTree.children[0].syntaxKind === 30 /* NewKeyword */) {
+                        var newExpressionNode = new CoolToJS.NewExpressionNode();
+                        newExpressionNode.typeName = syntaxTree.children[1].token.match;
+                        convertedNode = newExpressionNode;
+                    }
+                    else if (syntaxTree.children[0].syntaxKind === 27 /* IsvoidKeyword */) {
+                        var isVoidExpressionNode = new CoolToJS.IsVoidExpressionNode();
+                        var isVoidConditionNode = _this.convert(syntaxTree.children[1]);
+                        isVoidExpressionNode.parent = isVoidExpressionNode;
+                        isVoidExpressionNode.children[0] = isVoidConditionNode;
+                        convertedNode = isVoidExpressionNode;
+                    }
+                    else if (syntaxTree.children[1] && _this.isBinaryOperator(syntaxTree.children[1])) {
+                        var binaryOperationExprNode = new CoolToJS.BinaryOperationExpressionNode();
+                        switch (syntaxTree.children[1].syntaxKind) {
+                            case 4 /* AdditionOperator */:
+                                binaryOperationExprNode.operationType = 0 /* Addition */;
+                                break;
+                            case 6 /* SubtractionOperator */:
+                                binaryOperationExprNode.operationType = 1 /* Subtraction */;
+                                break;
+                            case 3 /* MultiplationOperator */:
+                                binaryOperationExprNode.operationType = 3 /* Multiplication */;
+                                break;
+                            case 8 /* DivisionOperator */:
+                                binaryOperationExprNode.operationType = 2 /* Division */;
+                                break;
+                            case 11 /* LessThanOperator */:
+                                binaryOperationExprNode.operationType = 4 /* LessThan */;
+                                break;
+                            case 13 /* LessThanOrEqualsOperator */:
+                                binaryOperationExprNode.operationType = 4 /* LessThanOrEqualTo */;
+                                break;
+                            case 14 /* EqualsOperator */:
+                                binaryOperationExprNode.operationType = 4 /* Comparison */;
+                                break;
+                            default:
+                                throw 'Unknown BinaryOperationType';
+                        }
+                        var operand1Node = _this.convert(syntaxTree.children[0]);
+                        operand1Node.parent = binaryOperationExprNode;
+                        var operand2Node = _this.convert(syntaxTree.children[0]);
+                        operand2Node.parent = binaryOperationExprNode;
+                        binaryOperationExprNode.children[0] = operand1Node;
+                        binaryOperationExprNode.children[1] = operand2Node;
+                        convertedNode = binaryOperationExprNode;
+                    }
+                    else if (syntaxTree.children[0].syntaxKind === 42 /* TildeOperator */) {
+                        var unaryOperationExprNode = new CoolToJS.UnaryOperationExpressionNode();
+                        var operandNode = _this.convert(syntaxTree.children[1]);
+                        operandNode.parent = unaryOperationExprNode;
+                        unaryOperationExprNode.children[0] = operandNode;
+                        convertedNode = unaryOperationExprNode;
+                    }
+                    else if (syntaxTree.children[0].syntaxKind === 42 /* TildeOperator */ || syntaxTree.children[0].syntaxKind === 31 /* NotKeyword */) {
+                        var unaryOperationExprNode = new CoolToJS.UnaryOperationExpressionNode();
+                        if (syntaxTree.children[0].syntaxKind === 42 /* TildeOperator */) {
+                            unaryOperationExprNode.operationType = 0 /* Complement */;
+                        }
+                        else if (syntaxTree.children[0].syntaxKind === 31 /* NotKeyword */) {
+                            unaryOperationExprNode.operationType = 1 /* Not */;
+                        }
+                        else {
+                            throw 'Unknown UnaryOperationType';
+                        }
+                        var operandNode = _this.convert(syntaxTree.children[1]);
+                        operandNode.parent = unaryOperationExprNode;
+                        unaryOperationExprNode.children[0] = operandNode;
+                        convertedNode = unaryOperationExprNode;
+                    }
+                    else if (syntaxTree.children[0].syntaxKind === 1 /* OpenParenthesis */) {
+                        var parExprNod = new CoolToJS.ParantheticalExpressionNode();
+                        var innerExprNode = _this.convert(syntaxTree.children[1]);
+                        innerExprNode.parent = parExprNod;
+                        parExprNod.children[0] = innerExprNode;
+                        convertedNode = parExprNod;
+                    }
+                    else if (syntaxTree.children[0].syntaxKind === 32 /* ObjectIdentifier */ && syntaxTree.children.length === 1) {
+                        var objIdentExprNode = new CoolToJS.ObjectIdentifierExpressionNode();
+                        objIdentExprNode.objectIdentifierName = syntaxTree.children[0].token.match;
+                        convertedNode = objIdentExprNode;
+                    }
+                    else if (syntaxTree.children[0].syntaxKind === 26 /* Integer */) {
+                        var intLiteralExprNode = new CoolToJS.IntegerLiteralExpressionNode();
+                        intLiteralExprNode.value = parseInt(syntaxTree.children[0].token.match, 10);
+                        convertedNode = intLiteralExprNode;
+                    }
+                    else if (syntaxTree.children[0].syntaxKind === 35 /* String */) {
+                        var stringLiteralExprNode = new CoolToJS.StringLiteralExpressionNode();
+                        // TODO: remove quotes
+                        stringLiteralExprNode.value = syntaxTree.children[0].token.match;
+                        convertedNode = stringLiteralExprNode;
+                    }
+                    else if (syntaxTree.children[0].syntaxKind === 37 /* TrueKeyword */) {
+                        var trueKeywordExprNode = new CoolToJS.TrueKeywordExpressionNode();
+                        convertedNode = trueKeywordExprNode;
+                    }
+                    else if (syntaxTree.children[0].syntaxKind === 21 /* FalseKeyword */) {
+                        var falseKeywordExprNode = new CoolToJS.FalseKeywordExpressionNode();
+                        convertedNode = falseKeywordExprNode;
+                    }
+                }
+                else {
+                    throw 'Unknown syntaxTree kind!';
+                }
+                return convertedNode;
+            };
+        }
+        AbstractSyntaxTreeConverter.prototype.flattenRecursion = function (syntaxTree) {
+            for (var i = 0; i < syntaxTree.children.length; i++) {
+                if (syntaxTree.children[i].syntaxKind === syntaxTree.syntaxKind) {
+                    // replace the node with its children
+                    syntaxTree.children.splice.apply(syntaxTree.children, [i, 1].concat(syntaxTree.children[i].children));
+                }
             }
-            Object.defineProperty(MethodNode.prototype, "hasParameters", {
-                get: function () {
-                    return this.parameters.length > 0;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(MethodNode.prototype, "methodBodyExpression", {
-                get: function () {
-                    return this.children[0];
-                },
-                set: function (methodBodyExpression) {
-                    this.children[0] = methodBodyExpression;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            return MethodNode;
-        })(Node);
-        AST.MethodNode = MethodNode;
-        var PropertyNode = (function (_super) {
-            __extends(PropertyNode, _super);
-            function PropertyNode(propertyName) {
-                _super.call(this, 2 /* Property */);
-                this.propertyName = propertyName;
-            }
-            Object.defineProperty(PropertyNode.prototype, "propertyInitializerExpression", {
-                get: function () {
-                    return this.children[0];
-                },
-                set: function (propertyInitializerExpression) {
-                    this.children[0] = propertyInitializerExpression;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            return PropertyNode;
-        })(Node);
-        AST.PropertyNode = PropertyNode;
-        var ExpressionNode = (function (_super) {
-            __extends(ExpressionNode, _super);
-            function ExpressionNode(expressionType) {
-                _super.call(this, expressionType);
-            }
-            return ExpressionNode;
-        })(Node);
-        AST.ExpressionNode = ExpressionNode;
-        var AssignmentExpressionNode = (function (_super) {
-            __extends(AssignmentExpressionNode, _super);
-            function AssignmentExpressionNode() {
-                _super.call(this, 4 /* AssignmentExpression */);
-            }
-            Object.defineProperty(AssignmentExpressionNode.prototype, "assignmentExpression", {
-                get: function () {
-                    return this.children[0];
-                },
-                set: function (assignmentExpression) {
-                    this.children[0] = assignmentExpression;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            return AssignmentExpressionNode;
-        })(ExpressionNode);
-        AST.AssignmentExpressionNode = AssignmentExpressionNode;
-        var MethodCallExpressionNode = (function (_super) {
-            __extends(MethodCallExpressionNode, _super);
-            function MethodCallExpressionNode() {
-                _super.call(this, 5 /* MethodCallExpression */);
-                this.isCallToParent = false;
-                this.isCallToSelf = false;
-            }
-            Object.defineProperty(MethodCallExpressionNode.prototype, "parameterExpressionList", {
-                get: function () {
-                    return this.children;
-                },
-                set: function (expressions) {
-                    throw 'Setter for MethodCallExpressionNode.parameterExpressionList not yet implemented';
-                },
-                enumerable: true,
-                configurable: true
-            });
-            return MethodCallExpressionNode;
-        })(ExpressionNode);
-        AST.MethodCallExpressionNode = MethodCallExpressionNode;
-        var IfThenElseExpressionNode = (function (_super) {
-            __extends(IfThenElseExpressionNode, _super);
-            function IfThenElseExpressionNode() {
-                _super.call(this, 6 /* IfThenElseExpression */);
-            }
-            Object.defineProperty(IfThenElseExpressionNode.prototype, "predicate", {
-                get: function () {
-                    return this.children[0];
-                },
-                set: function (predicate) {
-                    this.children[0] = predicate;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(IfThenElseExpressionNode.prototype, "consequent", {
-                get: function () {
-                    return this.children[0];
-                },
-                set: function (consequent) {
-                    this.children[0] = consequent;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(IfThenElseExpressionNode.prototype, "alternative", {
-                get: function () {
-                    return this.children[0];
-                },
-                set: function (alternative) {
-                    this.children[0] = alternative;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            return IfThenElseExpressionNode;
-        })(ExpressionNode);
-        AST.IfThenElseExpressionNode = IfThenElseExpressionNode;
-        var WhileExpressionNode = (function (_super) {
-            __extends(WhileExpressionNode, _super);
-            function WhileExpressionNode() {
-                _super.call(this, 7 /* WhileExpression */);
-            }
-            Object.defineProperty(WhileExpressionNode.prototype, "whileConditionExpression", {
-                get: function () {
-                    return this.children[0];
-                },
-                set: function (conditionExpression) {
-                    this.children[0] = conditionExpression;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(WhileExpressionNode.prototype, "whileBodyExpression", {
-                get: function () {
-                    return this.children[1];
-                },
-                set: function (bodyExpression) {
-                    this.children[1] = bodyExpression;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            return WhileExpressionNode;
-        })(ExpressionNode);
-        AST.WhileExpressionNode = WhileExpressionNode;
-        var BlockExpressionNode = (function (_super) {
-            __extends(BlockExpressionNode, _super);
-            function BlockExpressionNode() {
-                _super.call(this, 8 /* BlockExpression */);
-            }
-            Object.defineProperty(BlockExpressionNode.prototype, "expressionList", {
-                get: function () {
-                    return this.children;
-                },
-                set: function (expressions) {
-                    throw 'Setter for BlockExpressionNode.expressionList not yet implemented';
-                },
-                enumerable: true,
-                configurable: true
-            });
-            return BlockExpressionNode;
-        })(ExpressionNode);
-        AST.BlockExpressionNode = BlockExpressionNode;
-        var LetExpressionNode = (function (_super) {
-            __extends(LetExpressionNode, _super);
-            function LetExpressionNode() {
-                _super.call(this, 9 /* LetExpression */);
-                this.localVariableDeclarations = [];
-            }
-            Object.defineProperty(LetExpressionNode.prototype, "letBodyExpression", {
-                get: function () {
-                    return this.children[0];
-                },
-                set: function (bodyExpression) {
-                    this.children[0] = bodyExpression;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            return LetExpressionNode;
-        })(ExpressionNode);
-        AST.LetExpressionNode = LetExpressionNode;
-        var LocalVariableDeclarationNode = (function (_super) {
-            __extends(LocalVariableDeclarationNode, _super);
-            function LocalVariableDeclarationNode() {
-                _super.call(this, 10 /* LocalVariableDeclaration */);
-            }
-            Object.defineProperty(LocalVariableDeclarationNode.prototype, "initializerExpression", {
-                get: function () {
-                    return this.children[0];
-                },
-                set: function (initializer) {
-                    this.children[0] = initializer;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            return LocalVariableDeclarationNode;
-        })(Node);
-        AST.LocalVariableDeclarationNode = LocalVariableDeclarationNode;
-        var CaseExpressionNode = (function (_super) {
-            __extends(CaseExpressionNode, _super);
-            function CaseExpressionNode() {
-                _super.call(this, 11 /* CaseExpression */);
-            }
-            Object.defineProperty(CaseExpressionNode.prototype, "caseOptionList", {
-                get: function () {
-                    return this.children;
-                },
-                set: function (optionsList) {
-                    throw 'Setter for CaseExpressionNode.caseOptionList not yet implemented';
-                },
-                enumerable: true,
-                configurable: true
-            });
-            return CaseExpressionNode;
-        })(ExpressionNode);
-        AST.CaseExpressionNode = CaseExpressionNode;
-        var CaseOptionNode = (function (_super) {
-            __extends(CaseOptionNode, _super);
-            function CaseOptionNode() {
-                _super.call(this, 12 /* CaseOption */);
-            }
-            return CaseOptionNode;
-        })(Node);
-        AST.CaseOptionNode = CaseOptionNode;
-        var NewExpressionNode = (function (_super) {
-            __extends(NewExpressionNode, _super);
-            function NewExpressionNode() {
-                _super.call(this, 13 /* NewExpression */);
-            }
-            return NewExpressionNode;
-        })(ExpressionNode);
-        AST.NewExpressionNode = NewExpressionNode;
-        var IsVoidExpressionNode = (function (_super) {
-            __extends(IsVoidExpressionNode, _super);
-            function IsVoidExpressionNode() {
-                _super.call(this, 14 /* IsvoidExpression */);
-            }
-            Object.defineProperty(IsVoidExpressionNode.prototype, "isVoidCondition", {
-                get: function () {
-                    return this.children[0];
-                },
-                set: function (condition) {
-                    this.children[0] = condition;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            return IsVoidExpressionNode;
-        })(ExpressionNode);
-        AST.IsVoidExpressionNode = IsVoidExpressionNode;
-        var BinaryOperationExpressionNode = (function (_super) {
-            __extends(BinaryOperationExpressionNode, _super);
-            function BinaryOperationExpressionNode() {
-                _super.call(this, 15 /* BinaryOperationExpression */);
-            }
-            Object.defineProperty(BinaryOperationExpressionNode.prototype, "operand1", {
-                get: function () {
-                    return this.children[0];
-                },
-                set: function (operand) {
-                    this.children[0] = operand;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(BinaryOperationExpressionNode.prototype, "operand2", {
-                get: function () {
-                    return this.children[1];
-                },
-                set: function (operand) {
-                    this.children[1] = operand;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            return BinaryOperationExpressionNode;
-        })(ExpressionNode);
-        AST.BinaryOperationExpressionNode = BinaryOperationExpressionNode;
-        var UnaryOperationExpressionNode = (function (_super) {
-            __extends(UnaryOperationExpressionNode, _super);
-            function UnaryOperationExpressionNode() {
-                _super.call(this, 16 /* UnaryOperationExpression */);
-            }
-            Object.defineProperty(UnaryOperationExpressionNode.prototype, "operand", {
-                get: function () {
-                    return this.children[0];
-                },
-                set: function (operand) {
-                    this.children[0] = operand;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            return UnaryOperationExpressionNode;
-        })(ExpressionNode);
-        AST.UnaryOperationExpressionNode = UnaryOperationExpressionNode;
-        var ParantheticalExpressionNode = (function (_super) {
-            __extends(ParantheticalExpressionNode, _super);
-            function ParantheticalExpressionNode() {
-                _super.call(this, 17 /* ParantheticalExpression */);
-            }
-            Object.defineProperty(ParantheticalExpressionNode.prototype, "innerExpression", {
-                get: function () {
-                    return this.children[0];
-                },
-                set: function (inner) {
-                    this.children[0] = inner;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            return ParantheticalExpressionNode;
-        })(ExpressionNode);
-        AST.ParantheticalExpressionNode = ParantheticalExpressionNode;
-        var ObjectIdentifierExpressionNode = (function (_super) {
-            __extends(ObjectIdentifierExpressionNode, _super);
-            function ObjectIdentifierExpressionNode() {
-                _super.call(this, 18 /* ObjectIdentifierExpression */);
-            }
-            return ObjectIdentifierExpressionNode;
-        })(ExpressionNode);
-        AST.ObjectIdentifierExpressionNode = ObjectIdentifierExpressionNode;
-        var IntegerLiteralExpressionNode = (function (_super) {
-            __extends(IntegerLiteralExpressionNode, _super);
-            function IntegerLiteralExpressionNode() {
-                _super.call(this, 19 /* IntegerLiteralExpression */);
-            }
-            return IntegerLiteralExpressionNode;
-        })(ExpressionNode);
-        AST.IntegerLiteralExpressionNode = IntegerLiteralExpressionNode;
-        var StringLiteralExpressionNode = (function (_super) {
-            __extends(StringLiteralExpressionNode, _super);
-            function StringLiteralExpressionNode() {
-                _super.call(this, 20 /* StringLiteralExpression */);
-            }
-            return StringLiteralExpressionNode;
-        })(ExpressionNode);
-        AST.StringLiteralExpressionNode = StringLiteralExpressionNode;
-        var TrueKeywordExpressionNode = (function (_super) {
-            __extends(TrueKeywordExpressionNode, _super);
-            function TrueKeywordExpressionNode() {
-                _super.call(this, 21 /* TrueKeywordExpression */);
-            }
-            return TrueKeywordExpressionNode;
-        })(ExpressionNode);
-        AST.TrueKeywordExpressionNode = TrueKeywordExpressionNode;
-        var FalseKeywordExpressionNode = (function (_super) {
-            __extends(FalseKeywordExpressionNode, _super);
-            function FalseKeywordExpressionNode() {
-                _super.call(this, 22 /* FalseKeywordExpression */);
-            }
-            return FalseKeywordExpressionNode;
-        })(ExpressionNode);
-        AST.FalseKeywordExpressionNode = FalseKeywordExpressionNode;
-    })(AST = CoolToJS.AST || (CoolToJS.AST = {}));
+        };
+        AbstractSyntaxTreeConverter.prototype.isBinaryOperator = function (syntaxTree) {
+            return (syntaxTree.syntaxKind === 4 /* AdditionOperator */ || syntaxTree.syntaxKind === 6 /* SubtractionOperator */ || syntaxTree.syntaxKind === 3 /* MultiplationOperator */ || syntaxTree.syntaxKind === 8 /* DivisionOperator */ || syntaxTree.syntaxKind === 11 /* LessThanOperator */ || syntaxTree.syntaxKind === 13 /* LessThanOrEqualsOperator */ || syntaxTree.syntaxKind === 14 /* EqualsOperator */);
+        };
+        return AbstractSyntaxTreeConverter;
+    })();
+    CoolToJS.AbstractSyntaxTreeConverter = AbstractSyntaxTreeConverter;
 })(CoolToJS || (CoolToJS = {}));
 var CoolToJS;
 (function (CoolToJS) {
@@ -879,214 +887,6 @@ var CoolToJS;
         }
     }
     CoolToJS.GetReferencedCoolSources = GetReferencedCoolSources;
-})(CoolToJS || (CoolToJS = {}));
-var CoolToJS;
-(function (CoolToJS) {
-    (function (Action) {
-        Action[Action["Shift"] = 0] = "Shift";
-        Action[Action["Reduce"] = 1] = "Reduce";
-        Action[Action["Accept"] = 2] = "Accept";
-        Action[Action["None"] = 3] = "None";
-    })(CoolToJS.Action || (CoolToJS.Action = {}));
-    var Action = CoolToJS.Action;
-    CoolToJS.slr1ParseTable = [
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 3 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 2 }, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 1 }],
-        [{ action: 2 /* Accept */ }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 4 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 5 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [{ action: 1 /* Reduce */, productionIndex: 1 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 3 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 2 }, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 6 }],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 7 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 8 }, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [{ action: 1 /* Reduce */, productionIndex: 2 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 9 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 12 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 11 }, { action: 3 /* None */, nextState: 10 }, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 13 }, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 14 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 15 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 16 }, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 17 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 12 }, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 19 }, null, null, null, null, null, null, { action: 3 /* None */, nextState: 11 }, { action: 3 /* None */, nextState: 18 }, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 7 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 12 }, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 3 }, null, null, null, null, null, null, { action: 3 /* None */, nextState: 11 }, { action: 3 /* None */, nextState: 20 }, null, null, null, null],
-        [null, null, { action: 0 /* Shift */, nextState: 22 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 24 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 23 }, { action: 3 /* None */, nextState: 21 }, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 25 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 26 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 6 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 4 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 0 /* Shift */, nextState: 27 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 28 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 8 }, null, null, { action: 0 /* Shift */, nextState: 29 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 30 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 13 }, null, { action: 0 /* Shift */, nextState: 31 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 5 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 32 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 33 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 24 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 23 }, { action: 3 /* None */, nextState: 34 }, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 35 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 36 }, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 52 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 53 }, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 9 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 14 }, null, null, { action: 1 /* Reduce */, productionIndex: 14 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, { action: 1 /* Reduce */, productionIndex: 12 }, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 64 }, { action: 1 /* Reduce */, productionIndex: 49 }, { action: 1 /* Reduce */, productionIndex: 49 }, { action: 1 /* Reduce */, productionIndex: 49 }, { action: 1 /* Reduce */, productionIndex: 49 }, { action: 1 /* Reduce */, productionIndex: 49 }, { action: 1 /* Reduce */, productionIndex: 49 }, { action: 1 /* Reduce */, productionIndex: 49 }, null, { action: 1 /* Reduce */, productionIndex: 49 }, { action: 1 /* Reduce */, productionIndex: 49 }, { action: 0 /* Shift */, nextState: 63 }, { action: 1 /* Reduce */, productionIndex: 49 }, { action: 1 /* Reduce */, productionIndex: 49 }, null, { action: 1 /* Reduce */, productionIndex: 49 }, null, null, { action: 1 /* Reduce */, productionIndex: 49 }, null, null, { action: 1 /* Reduce */, productionIndex: 49 }, null, { action: 1 /* Reduce */, productionIndex: 49 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 49 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 49 }, { action: 1 /* Reduce */, productionIndex: 49 }, null, { action: 1 /* Reduce */, productionIndex: 49 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 49 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 65 }, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 66 }, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 68 }, null, { action: 3 /* None */, nextState: 67 }, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 70 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 69 }, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 71 }, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 72 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 73 }, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 74 }, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 75 }, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 76 }, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 50 }, { action: 1 /* Reduce */, productionIndex: 50 }, { action: 1 /* Reduce */, productionIndex: 50 }, { action: 1 /* Reduce */, productionIndex: 50 }, { action: 1 /* Reduce */, productionIndex: 50 }, { action: 1 /* Reduce */, productionIndex: 50 }, { action: 1 /* Reduce */, productionIndex: 50 }, null, { action: 1 /* Reduce */, productionIndex: 50 }, { action: 1 /* Reduce */, productionIndex: 50 }, null, { action: 1 /* Reduce */, productionIndex: 50 }, { action: 1 /* Reduce */, productionIndex: 50 }, null, { action: 1 /* Reduce */, productionIndex: 50 }, null, null, { action: 1 /* Reduce */, productionIndex: 50 }, null, null, { action: 1 /* Reduce */, productionIndex: 50 }, null, { action: 1 /* Reduce */, productionIndex: 50 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 50 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 50 }, { action: 1 /* Reduce */, productionIndex: 50 }, null, { action: 1 /* Reduce */, productionIndex: 50 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 50 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 51 }, { action: 1 /* Reduce */, productionIndex: 51 }, { action: 1 /* Reduce */, productionIndex: 51 }, { action: 1 /* Reduce */, productionIndex: 51 }, { action: 1 /* Reduce */, productionIndex: 51 }, { action: 1 /* Reduce */, productionIndex: 51 }, { action: 1 /* Reduce */, productionIndex: 51 }, null, { action: 1 /* Reduce */, productionIndex: 51 }, { action: 1 /* Reduce */, productionIndex: 51 }, null, { action: 1 /* Reduce */, productionIndex: 51 }, { action: 1 /* Reduce */, productionIndex: 51 }, null, { action: 1 /* Reduce */, productionIndex: 51 }, null, null, { action: 1 /* Reduce */, productionIndex: 51 }, null, null, { action: 1 /* Reduce */, productionIndex: 51 }, null, { action: 1 /* Reduce */, productionIndex: 51 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 51 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 51 }, { action: 1 /* Reduce */, productionIndex: 51 }, null, { action: 1 /* Reduce */, productionIndex: 51 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 51 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 52 }, { action: 1 /* Reduce */, productionIndex: 52 }, { action: 1 /* Reduce */, productionIndex: 52 }, { action: 1 /* Reduce */, productionIndex: 52 }, { action: 1 /* Reduce */, productionIndex: 52 }, { action: 1 /* Reduce */, productionIndex: 52 }, { action: 1 /* Reduce */, productionIndex: 52 }, null, { action: 1 /* Reduce */, productionIndex: 52 }, { action: 1 /* Reduce */, productionIndex: 52 }, null, { action: 1 /* Reduce */, productionIndex: 52 }, { action: 1 /* Reduce */, productionIndex: 52 }, null, { action: 1 /* Reduce */, productionIndex: 52 }, null, null, { action: 1 /* Reduce */, productionIndex: 52 }, null, null, { action: 1 /* Reduce */, productionIndex: 52 }, null, { action: 1 /* Reduce */, productionIndex: 52 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 52 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 52 }, { action: 1 /* Reduce */, productionIndex: 52 }, null, { action: 1 /* Reduce */, productionIndex: 52 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 52 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 53 }, { action: 1 /* Reduce */, productionIndex: 53 }, { action: 1 /* Reduce */, productionIndex: 53 }, { action: 1 /* Reduce */, productionIndex: 53 }, { action: 1 /* Reduce */, productionIndex: 53 }, { action: 1 /* Reduce */, productionIndex: 53 }, { action: 1 /* Reduce */, productionIndex: 53 }, null, { action: 1 /* Reduce */, productionIndex: 53 }, { action: 1 /* Reduce */, productionIndex: 53 }, null, { action: 1 /* Reduce */, productionIndex: 53 }, { action: 1 /* Reduce */, productionIndex: 53 }, null, { action: 1 /* Reduce */, productionIndex: 53 }, null, null, { action: 1 /* Reduce */, productionIndex: 53 }, null, null, { action: 1 /* Reduce */, productionIndex: 53 }, null, { action: 1 /* Reduce */, productionIndex: 53 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 53 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 53 }, { action: 1 /* Reduce */, productionIndex: 53 }, null, { action: 1 /* Reduce */, productionIndex: 53 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 53 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 77 }, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 78 }, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 79 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 80 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 81 }, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 82 }, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 83 }, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 84 }, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 85 }, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 86 }, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 87 }, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 88 }, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, { action: 0 /* Shift */, nextState: 89 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 91 }, { action: 3 /* None */, nextState: 90 }, null, null, null, null, null, null, null],
-        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 92 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 93 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 94 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, { action: 0 /* Shift */, nextState: 95 }, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 96 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 97 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 98 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 37 }, { action: 1 /* Reduce */, productionIndex: 37 }, { action: 1 /* Reduce */, productionIndex: 37 }, { action: 1 /* Reduce */, productionIndex: 37 }, { action: 1 /* Reduce */, productionIndex: 37 }, { action: 1 /* Reduce */, productionIndex: 37 }, { action: 1 /* Reduce */, productionIndex: 37 }, null, { action: 1 /* Reduce */, productionIndex: 37 }, { action: 1 /* Reduce */, productionIndex: 37 }, null, { action: 1 /* Reduce */, productionIndex: 37 }, { action: 1 /* Reduce */, productionIndex: 37 }, null, { action: 1 /* Reduce */, productionIndex: 37 }, null, null, { action: 1 /* Reduce */, productionIndex: 37 }, null, null, { action: 1 /* Reduce */, productionIndex: 37 }, null, { action: 1 /* Reduce */, productionIndex: 37 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 37 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 37 }, { action: 1 /* Reduce */, productionIndex: 37 }, null, { action: 1 /* Reduce */, productionIndex: 37 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 37 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 38 }, { action: 1 /* Reduce */, productionIndex: 38 }, { action: 1 /* Reduce */, productionIndex: 38 }, { action: 1 /* Reduce */, productionIndex: 38 }, { action: 1 /* Reduce */, productionIndex: 38 }, { action: 0 /* Shift */, nextState: 54 }, { action: 1 /* Reduce */, productionIndex: 38 }, null, { action: 1 /* Reduce */, productionIndex: 38 }, { action: 1 /* Reduce */, productionIndex: 38 }, null, { action: 1 /* Reduce */, productionIndex: 38 }, { action: 1 /* Reduce */, productionIndex: 38 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 38 }, null, null, { action: 1 /* Reduce */, productionIndex: 38 }, null, { action: 1 /* Reduce */, productionIndex: 38 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 38 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 38 }, { action: 1 /* Reduce */, productionIndex: 38 }, null, { action: 1 /* Reduce */, productionIndex: 38 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 38 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 43 }, { action: 1 /* Reduce */, productionIndex: 43 }, { action: 1 /* Reduce */, productionIndex: 43 }, { action: 1 /* Reduce */, productionIndex: 43 }, { action: 1 /* Reduce */, productionIndex: 43 }, { action: 0 /* Shift */, nextState: 54 }, { action: 1 /* Reduce */, productionIndex: 43 }, null, { action: 1 /* Reduce */, productionIndex: 43 }, { action: 1 /* Reduce */, productionIndex: 43 }, null, { action: 1 /* Reduce */, productionIndex: 43 }, { action: 1 /* Reduce */, productionIndex: 43 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 43 }, null, null, { action: 1 /* Reduce */, productionIndex: 43 }, null, { action: 1 /* Reduce */, productionIndex: 43 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 43 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 43 }, { action: 1 /* Reduce */, productionIndex: 43 }, null, { action: 1 /* Reduce */, productionIndex: 43 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 43 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 47 }, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, { action: 1 /* Reduce */, productionIndex: 47 }, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, { action: 1 /* Reduce */, productionIndex: 47 }, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 47 }, null, null, { action: 1 /* Reduce */, productionIndex: 47 }, null, { action: 1 /* Reduce */, productionIndex: 47 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 47 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 47 }, { action: 1 /* Reduce */, productionIndex: 47 }, null, { action: 1 /* Reduce */, productionIndex: 47 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 47 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 0 /* Shift */, nextState: 99 }, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 100 }, null, null, null, null, null, null, null, null],
-        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 101 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 102 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 103 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 39 }, { action: 0 /* Shift */, nextState: 58 }, { action: 1 /* Reduce */, productionIndex: 39 }, { action: 1 /* Reduce */, productionIndex: 39 }, { action: 1 /* Reduce */, productionIndex: 39 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, { action: 1 /* Reduce */, productionIndex: 39 }, { action: 1 /* Reduce */, productionIndex: 39 }, null, { action: 1 /* Reduce */, productionIndex: 39 }, { action: 1 /* Reduce */, productionIndex: 39 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 39 }, null, null, { action: 1 /* Reduce */, productionIndex: 39 }, null, { action: 1 /* Reduce */, productionIndex: 39 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 39 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 39 }, { action: 1 /* Reduce */, productionIndex: 39 }, null, { action: 1 /* Reduce */, productionIndex: 39 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 39 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 40 }, { action: 0 /* Shift */, nextState: 58 }, { action: 1 /* Reduce */, productionIndex: 40 }, { action: 1 /* Reduce */, productionIndex: 40 }, { action: 1 /* Reduce */, productionIndex: 40 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, { action: 1 /* Reduce */, productionIndex: 40 }, { action: 1 /* Reduce */, productionIndex: 40 }, null, { action: 1 /* Reduce */, productionIndex: 40 }, { action: 1 /* Reduce */, productionIndex: 40 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 40 }, null, null, { action: 1 /* Reduce */, productionIndex: 40 }, null, { action: 1 /* Reduce */, productionIndex: 40 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 40 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 40 }, { action: 1 /* Reduce */, productionIndex: 40 }, null, { action: 1 /* Reduce */, productionIndex: 40 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 40 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 41 }, { action: 1 /* Reduce */, productionIndex: 41 }, { action: 1 /* Reduce */, productionIndex: 41 }, { action: 1 /* Reduce */, productionIndex: 41 }, { action: 1 /* Reduce */, productionIndex: 41 }, { action: 0 /* Shift */, nextState: 54 }, { action: 1 /* Reduce */, productionIndex: 41 }, null, { action: 1 /* Reduce */, productionIndex: 41 }, { action: 1 /* Reduce */, productionIndex: 41 }, null, { action: 1 /* Reduce */, productionIndex: 41 }, { action: 1 /* Reduce */, productionIndex: 41 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 41 }, null, null, { action: 1 /* Reduce */, productionIndex: 41 }, null, { action: 1 /* Reduce */, productionIndex: 41 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 41 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 41 }, { action: 1 /* Reduce */, productionIndex: 41 }, null, { action: 1 /* Reduce */, productionIndex: 41 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 41 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 42 }, { action: 1 /* Reduce */, productionIndex: 42 }, { action: 1 /* Reduce */, productionIndex: 42 }, { action: 1 /* Reduce */, productionIndex: 42 }, { action: 1 /* Reduce */, productionIndex: 42 }, { action: 0 /* Shift */, nextState: 54 }, { action: 1 /* Reduce */, productionIndex: 42 }, null, { action: 1 /* Reduce */, productionIndex: 42 }, { action: 1 /* Reduce */, productionIndex: 42 }, null, { action: 1 /* Reduce */, productionIndex: 42 }, { action: 1 /* Reduce */, productionIndex: 42 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 42 }, null, null, { action: 1 /* Reduce */, productionIndex: 42 }, null, { action: 1 /* Reduce */, productionIndex: 42 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 42 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 42 }, { action: 1 /* Reduce */, productionIndex: 42 }, null, { action: 1 /* Reduce */, productionIndex: 42 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 42 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 44 }, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, { action: 1 /* Reduce */, productionIndex: 44 }, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, { action: 1 /* Reduce */, productionIndex: 44 }, { action: 1 /* Reduce */, productionIndex: 44 }, null, { action: 1 /* Reduce */, productionIndex: 44 }, { action: 1 /* Reduce */, productionIndex: 44 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 44 }, null, null, { action: 1 /* Reduce */, productionIndex: 44 }, null, { action: 1 /* Reduce */, productionIndex: 44 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 44 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 44 }, { action: 1 /* Reduce */, productionIndex: 44 }, null, { action: 1 /* Reduce */, productionIndex: 44 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 44 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 45 }, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, { action: 1 /* Reduce */, productionIndex: 45 }, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, { action: 1 /* Reduce */, productionIndex: 45 }, { action: 1 /* Reduce */, productionIndex: 45 }, null, { action: 1 /* Reduce */, productionIndex: 45 }, { action: 1 /* Reduce */, productionIndex: 45 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 45 }, null, null, { action: 1 /* Reduce */, productionIndex: 45 }, null, { action: 1 /* Reduce */, productionIndex: 45 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 45 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 45 }, { action: 1 /* Reduce */, productionIndex: 45 }, null, { action: 1 /* Reduce */, productionIndex: 45 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 45 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 46 }, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, { action: 1 /* Reduce */, productionIndex: 46 }, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, { action: 1 /* Reduce */, productionIndex: 46 }, { action: 1 /* Reduce */, productionIndex: 46 }, null, { action: 1 /* Reduce */, productionIndex: 46 }, { action: 1 /* Reduce */, productionIndex: 46 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 46 }, null, null, { action: 1 /* Reduce */, productionIndex: 46 }, null, { action: 1 /* Reduce */, productionIndex: 46 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 46 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 46 }, { action: 1 /* Reduce */, productionIndex: 46 }, null, { action: 1 /* Reduce */, productionIndex: 46 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 46 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 25 }, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, { action: 1 /* Reduce */, productionIndex: 25 }, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, { action: 1 /* Reduce */, productionIndex: 25 }, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 25 }, null, null, { action: 1 /* Reduce */, productionIndex: 25 }, null, { action: 1 /* Reduce */, productionIndex: 25 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 25 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 25 }, { action: 1 /* Reduce */, productionIndex: 25 }, null, { action: 1 /* Reduce */, productionIndex: 25 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 25 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 30 }, { action: 1 /* Reduce */, productionIndex: 30 }, { action: 1 /* Reduce */, productionIndex: 30 }, { action: 1 /* Reduce */, productionIndex: 30 }, { action: 1 /* Reduce */, productionIndex: 30 }, { action: 1 /* Reduce */, productionIndex: 30 }, { action: 1 /* Reduce */, productionIndex: 30 }, null, { action: 1 /* Reduce */, productionIndex: 30 }, { action: 1 /* Reduce */, productionIndex: 30 }, null, { action: 1 /* Reduce */, productionIndex: 30 }, { action: 1 /* Reduce */, productionIndex: 30 }, null, { action: 1 /* Reduce */, productionIndex: 30 }, null, null, { action: 1 /* Reduce */, productionIndex: 30 }, null, null, { action: 1 /* Reduce */, productionIndex: 30 }, null, { action: 1 /* Reduce */, productionIndex: 30 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 30 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 30 }, { action: 1 /* Reduce */, productionIndex: 30 }, null, { action: 1 /* Reduce */, productionIndex: 30 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 30 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 0 /* Shift */, nextState: 104 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 15 }, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, { action: 0 /* Shift */, nextState: 105 }, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 106 }, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 107 }, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 34 }, { action: 1 /* Reduce */, productionIndex: 34 }, { action: 1 /* Reduce */, productionIndex: 34 }, { action: 1 /* Reduce */, productionIndex: 34 }, { action: 1 /* Reduce */, productionIndex: 34 }, { action: 1 /* Reduce */, productionIndex: 34 }, { action: 1 /* Reduce */, productionIndex: 34 }, null, { action: 1 /* Reduce */, productionIndex: 34 }, { action: 1 /* Reduce */, productionIndex: 34 }, null, { action: 1 /* Reduce */, productionIndex: 34 }, { action: 1 /* Reduce */, productionIndex: 34 }, null, { action: 1 /* Reduce */, productionIndex: 34 }, null, null, { action: 1 /* Reduce */, productionIndex: 34 }, null, null, { action: 1 /* Reduce */, productionIndex: 34 }, null, { action: 1 /* Reduce */, productionIndex: 34 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 34 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 34 }, { action: 1 /* Reduce */, productionIndex: 34 }, null, { action: 1 /* Reduce */, productionIndex: 34 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 34 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, { action: 1 /* Reduce */, productionIndex: 17 }, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 68 }, null, { action: 3 /* None */, nextState: 108 }, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 109 }, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 110 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 112 }, null, null, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 111 }, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 48 }, { action: 1 /* Reduce */, productionIndex: 48 }, { action: 1 /* Reduce */, productionIndex: 48 }, { action: 1 /* Reduce */, productionIndex: 48 }, { action: 1 /* Reduce */, productionIndex: 48 }, { action: 1 /* Reduce */, productionIndex: 48 }, { action: 1 /* Reduce */, productionIndex: 48 }, null, { action: 1 /* Reduce */, productionIndex: 48 }, { action: 1 /* Reduce */, productionIndex: 48 }, null, { action: 1 /* Reduce */, productionIndex: 48 }, { action: 1 /* Reduce */, productionIndex: 48 }, null, { action: 1 /* Reduce */, productionIndex: 48 }, null, null, { action: 1 /* Reduce */, productionIndex: 48 }, null, null, { action: 1 /* Reduce */, productionIndex: 48 }, null, { action: 1 /* Reduce */, productionIndex: 48 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 48 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 48 }, { action: 1 /* Reduce */, productionIndex: 48 }, null, { action: 1 /* Reduce */, productionIndex: 48 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 48 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 113 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 11 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, { action: 0 /* Shift */, nextState: 114 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 91 }, { action: 3 /* None */, nextState: 115 }, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 116 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 31 }, { action: 1 /* Reduce */, productionIndex: 31 }, { action: 1 /* Reduce */, productionIndex: 31 }, { action: 1 /* Reduce */, productionIndex: 31 }, { action: 1 /* Reduce */, productionIndex: 31 }, { action: 1 /* Reduce */, productionIndex: 31 }, { action: 1 /* Reduce */, productionIndex: 31 }, null, { action: 1 /* Reduce */, productionIndex: 31 }, { action: 1 /* Reduce */, productionIndex: 31 }, null, { action: 1 /* Reduce */, productionIndex: 31 }, { action: 1 /* Reduce */, productionIndex: 31 }, null, { action: 1 /* Reduce */, productionIndex: 31 }, null, null, { action: 1 /* Reduce */, productionIndex: 31 }, null, null, { action: 1 /* Reduce */, productionIndex: 31 }, null, { action: 1 /* Reduce */, productionIndex: 31 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 31 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 31 }, { action: 1 /* Reduce */, productionIndex: 31 }, null, { action: 1 /* Reduce */, productionIndex: 31 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 31 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 91 }, { action: 3 /* None */, nextState: 117 }, null, null, null, null, null, null, null],
-        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 0 /* Shift */, nextState: 118 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 119 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 18 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 35 }, [{ action: 0 /* Shift */, nextState: 58 }, { action: 1 /* Reduce */, productionIndex: 35 }], [{ action: 0 /* Shift */, nextState: 56 }, { action: 1 /* Reduce */, productionIndex: 35 }], { action: 1 /* Reduce */, productionIndex: 35 }, [{ action: 0 /* Shift */, nextState: 57 }, { action: 1 /* Reduce */, productionIndex: 35 }], [{ action: 0 /* Shift */, nextState: 54 }, { action: 1 /* Reduce */, productionIndex: 35 }], [{ action: 0 /* Shift */, nextState: 59 }, { action: 1 /* Reduce */, productionIndex: 35 }], null, { action: 1 /* Reduce */, productionIndex: 35 }, [{ action: 0 /* Shift */, nextState: 60 }, { action: 1 /* Reduce */, productionIndex: 35 }], null, [{ action: 0 /* Shift */, nextState: 61 }, { action: 1 /* Reduce */, productionIndex: 35 }], [{ action: 0 /* Shift */, nextState: 62 }, { action: 1 /* Reduce */, productionIndex: 35 }], null, [{ action: 0 /* Shift */, nextState: 55 }, { action: 1 /* Reduce */, productionIndex: 35 }], null, null, { action: 1 /* Reduce */, productionIndex: 35 }, null, null, { action: 1 /* Reduce */, productionIndex: 35 }, null, { action: 1 /* Reduce */, productionIndex: 35 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 35 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 35 }, { action: 1 /* Reduce */, productionIndex: 35 }, null, { action: 1 /* Reduce */, productionIndex: 35 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 35 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, { action: 0 /* Shift */, nextState: 121 }, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 120 }, null, null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 19 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 122 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 123 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 10 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 26 }, { action: 1 /* Reduce */, productionIndex: 26 }, { action: 1 /* Reduce */, productionIndex: 26 }, { action: 1 /* Reduce */, productionIndex: 26 }, { action: 1 /* Reduce */, productionIndex: 26 }, { action: 1 /* Reduce */, productionIndex: 26 }, { action: 1 /* Reduce */, productionIndex: 26 }, null, { action: 1 /* Reduce */, productionIndex: 26 }, { action: 1 /* Reduce */, productionIndex: 26 }, null, { action: 1 /* Reduce */, productionIndex: 26 }, { action: 1 /* Reduce */, productionIndex: 26 }, null, { action: 1 /* Reduce */, productionIndex: 26 }, null, null, { action: 1 /* Reduce */, productionIndex: 26 }, null, null, { action: 1 /* Reduce */, productionIndex: 26 }, null, { action: 1 /* Reduce */, productionIndex: 26 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 26 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 26 }, { action: 1 /* Reduce */, productionIndex: 26 }, null, { action: 1 /* Reduce */, productionIndex: 26 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 26 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 0 /* Shift */, nextState: 124 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 125 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 16 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 126 }, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 33 }, { action: 1 /* Reduce */, productionIndex: 33 }, { action: 1 /* Reduce */, productionIndex: 33 }, { action: 1 /* Reduce */, productionIndex: 33 }, { action: 1 /* Reduce */, productionIndex: 33 }, { action: 1 /* Reduce */, productionIndex: 33 }, { action: 1 /* Reduce */, productionIndex: 33 }, null, { action: 1 /* Reduce */, productionIndex: 33 }, { action: 1 /* Reduce */, productionIndex: 33 }, null, { action: 1 /* Reduce */, productionIndex: 33 }, { action: 1 /* Reduce */, productionIndex: 33 }, null, { action: 1 /* Reduce */, productionIndex: 33 }, null, null, { action: 1 /* Reduce */, productionIndex: 33 }, null, null, { action: 1 /* Reduce */, productionIndex: 33 }, null, { action: 1 /* Reduce */, productionIndex: 33 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 33 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 33 }, { action: 1 /* Reduce */, productionIndex: 33 }, null, { action: 1 /* Reduce */, productionIndex: 33 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 33 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 127 }, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 70 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 128 }, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 36 }, { action: 1 /* Reduce */, productionIndex: 36 }, { action: 1 /* Reduce */, productionIndex: 36 }, { action: 1 /* Reduce */, productionIndex: 36 }, { action: 1 /* Reduce */, productionIndex: 36 }, { action: 1 /* Reduce */, productionIndex: 36 }, { action: 1 /* Reduce */, productionIndex: 36 }, null, { action: 1 /* Reduce */, productionIndex: 36 }, { action: 1 /* Reduce */, productionIndex: 36 }, null, { action: 1 /* Reduce */, productionIndex: 36 }, { action: 1 /* Reduce */, productionIndex: 36 }, null, { action: 1 /* Reduce */, productionIndex: 36 }, null, null, { action: 1 /* Reduce */, productionIndex: 36 }, null, null, { action: 1 /* Reduce */, productionIndex: 36 }, null, { action: 1 /* Reduce */, productionIndex: 36 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 36 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 36 }, { action: 1 /* Reduce */, productionIndex: 36 }, null, { action: 1 /* Reduce */, productionIndex: 36 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 36 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 129 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 27 }, { action: 1 /* Reduce */, productionIndex: 27 }, { action: 1 /* Reduce */, productionIndex: 27 }, { action: 1 /* Reduce */, productionIndex: 27 }, { action: 1 /* Reduce */, productionIndex: 27 }, { action: 1 /* Reduce */, productionIndex: 27 }, { action: 1 /* Reduce */, productionIndex: 27 }, null, { action: 1 /* Reduce */, productionIndex: 27 }, { action: 1 /* Reduce */, productionIndex: 27 }, null, { action: 1 /* Reduce */, productionIndex: 27 }, { action: 1 /* Reduce */, productionIndex: 27 }, null, { action: 1 /* Reduce */, productionIndex: 27 }, null, null, { action: 1 /* Reduce */, productionIndex: 27 }, null, null, { action: 1 /* Reduce */, productionIndex: 27 }, null, { action: 1 /* Reduce */, productionIndex: 27 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 27 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 27 }, { action: 1 /* Reduce */, productionIndex: 27 }, null, { action: 1 /* Reduce */, productionIndex: 27 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 27 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, { action: 0 /* Shift */, nextState: 130 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 91 }, { action: 3 /* None */, nextState: 131 }, null, null, null, null, null, null, null],
-        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, { action: 0 /* Shift */, nextState: 132 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, { action: 0 /* Shift */, nextState: 133 }, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 20 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 21 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 134 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 28 }, { action: 1 /* Reduce */, productionIndex: 28 }, { action: 1 /* Reduce */, productionIndex: 28 }, { action: 1 /* Reduce */, productionIndex: 28 }, { action: 1 /* Reduce */, productionIndex: 28 }, { action: 1 /* Reduce */, productionIndex: 28 }, { action: 1 /* Reduce */, productionIndex: 28 }, null, { action: 1 /* Reduce */, productionIndex: 28 }, { action: 1 /* Reduce */, productionIndex: 28 }, null, { action: 1 /* Reduce */, productionIndex: 28 }, { action: 1 /* Reduce */, productionIndex: 28 }, null, { action: 1 /* Reduce */, productionIndex: 28 }, null, null, { action: 1 /* Reduce */, productionIndex: 28 }, null, null, { action: 1 /* Reduce */, productionIndex: 28 }, null, { action: 1 /* Reduce */, productionIndex: 28 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 28 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 28 }, { action: 1 /* Reduce */, productionIndex: 28 }, null, { action: 1 /* Reduce */, productionIndex: 28 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 28 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 0 /* Shift */, nextState: 135 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 32 }, { action: 1 /* Reduce */, productionIndex: 32 }, { action: 1 /* Reduce */, productionIndex: 32 }, { action: 1 /* Reduce */, productionIndex: 32 }, { action: 1 /* Reduce */, productionIndex: 32 }, { action: 1 /* Reduce */, productionIndex: 32 }, { action: 1 /* Reduce */, productionIndex: 32 }, null, { action: 1 /* Reduce */, productionIndex: 32 }, { action: 1 /* Reduce */, productionIndex: 32 }, null, { action: 1 /* Reduce */, productionIndex: 32 }, { action: 1 /* Reduce */, productionIndex: 32 }, null, { action: 1 /* Reduce */, productionIndex: 32 }, null, null, { action: 1 /* Reduce */, productionIndex: 32 }, null, null, { action: 1 /* Reduce */, productionIndex: 32 }, null, { action: 1 /* Reduce */, productionIndex: 32 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 32 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 32 }, { action: 1 /* Reduce */, productionIndex: 32 }, null, { action: 1 /* Reduce */, productionIndex: 32 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 32 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 70 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 136 }, null],
-        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 137 }, null, null, null, null, null, null, null, null],
-        [null, null, { action: 1 /* Reduce */, productionIndex: 29 }, { action: 1 /* Reduce */, productionIndex: 29 }, { action: 1 /* Reduce */, productionIndex: 29 }, { action: 1 /* Reduce */, productionIndex: 29 }, { action: 1 /* Reduce */, productionIndex: 29 }, { action: 1 /* Reduce */, productionIndex: 29 }, { action: 1 /* Reduce */, productionIndex: 29 }, null, { action: 1 /* Reduce */, productionIndex: 29 }, { action: 1 /* Reduce */, productionIndex: 29 }, null, { action: 1 /* Reduce */, productionIndex: 29 }, { action: 1 /* Reduce */, productionIndex: 29 }, null, { action: 1 /* Reduce */, productionIndex: 29 }, null, null, { action: 1 /* Reduce */, productionIndex: 29 }, null, null, { action: 1 /* Reduce */, productionIndex: 29 }, null, { action: 1 /* Reduce */, productionIndex: 29 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 29 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 29 }, { action: 1 /* Reduce */, productionIndex: 29 }, null, { action: 1 /* Reduce */, productionIndex: 29 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 29 }, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 22 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, { action: 0 /* Shift */, nextState: 138 }, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 23 }, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 112 }, null, null, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 139 }, null, null, null, null, null, null, null, null, null, null],
-        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 24 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
-    ];
-    CoolToJS.productions = [
-        { popCount: 2, reduceResult: null },
-        { popCount: 2, reduceResult: 53 /* Program */ },
-        { popCount: 3, reduceResult: 53 /* Program */ },
-        { popCount: 2, reduceResult: 49 /* FeatureList */ },
-        { popCount: 3, reduceResult: 49 /* FeatureList */ },
-        { popCount: 7, reduceResult: 44 /* Class */ },
-        { popCount: 6, reduceResult: 44 /* Class */ },
-        { popCount: 5, reduceResult: 44 /* Class */ },
-        { popCount: 1, reduceResult: 51 /* FormalList */ },
-        { popCount: 3, reduceResult: 51 /* FormalList */ },
-        { popCount: 9, reduceResult: 48 /* Feature */ },
-        { popCount: 8, reduceResult: 48 /* Feature */ },
-        { popCount: 5, reduceResult: 48 /* Feature */ },
-        { popCount: 3, reduceResult: 48 /* Feature */ },
-        { popCount: 3, reduceResult: 50 /* Formal */ },
-        { popCount: 1, reduceResult: 46 /* ExpressionList */ },
-        { popCount: 3, reduceResult: 46 /* ExpressionList */ },
-        { popCount: 2, reduceResult: 47 /* ExpressionSeries */ },
-        { popCount: 3, reduceResult: 47 /* ExpressionSeries */ },
-        { popCount: 3, reduceResult: 52 /* LocalVariableDeclarationList */ },
-        { popCount: 5, reduceResult: 52 /* LocalVariableDeclarationList */ },
-        { popCount: 5, reduceResult: 52 /* LocalVariableDeclarationList */ },
-        { popCount: 7, reduceResult: 52 /* LocalVariableDeclarationList */ },
-        { popCount: 6, reduceResult: 43 /* CaseOption */ },
-        { popCount: 7, reduceResult: 43 /* CaseOption */ },
-        { popCount: 3, reduceResult: 45 /* Expression */ },
-        { popCount: 5, reduceResult: 45 /* Expression */ },
-        { popCount: 6, reduceResult: 45 /* Expression */ },
-        { popCount: 7, reduceResult: 45 /* Expression */ },
-        { popCount: 8, reduceResult: 45 /* Expression */ },
-        { popCount: 3, reduceResult: 45 /* Expression */ },
-        { popCount: 4, reduceResult: 45 /* Expression */ },
-        { popCount: 7, reduceResult: 45 /* Expression */ },
-        { popCount: 5, reduceResult: 45 /* Expression */ },
-        { popCount: 3, reduceResult: 45 /* Expression */ },
-        { popCount: 4, reduceResult: 45 /* Expression */ },
-        { popCount: 5, reduceResult: 45 /* Expression */ },
-        { popCount: 2, reduceResult: 45 /* Expression */ },
-        { popCount: 2, reduceResult: 45 /* Expression */ },
-        { popCount: 3, reduceResult: 45 /* Expression */ },
-        { popCount: 3, reduceResult: 45 /* Expression */ },
-        { popCount: 3, reduceResult: 45 /* Expression */ },
-        { popCount: 3, reduceResult: 45 /* Expression */ },
-        { popCount: 2, reduceResult: 45 /* Expression */ },
-        { popCount: 3, reduceResult: 45 /* Expression */ },
-        { popCount: 3, reduceResult: 45 /* Expression */ },
-        { popCount: 3, reduceResult: 45 /* Expression */ },
-        { popCount: 2, reduceResult: 45 /* Expression */ },
-        { popCount: 3, reduceResult: 45 /* Expression */ },
-        { popCount: 1, reduceResult: 45 /* Expression */ },
-        { popCount: 1, reduceResult: 45 /* Expression */ },
-        { popCount: 1, reduceResult: 45 /* Expression */ },
-        { popCount: 1, reduceResult: 45 /* Expression */ },
-        { popCount: 1, reduceResult: 45 /* Expression */ },
-    ];
 })(CoolToJS || (CoolToJS = {}));
 var CoolToJS;
 (function (CoolToJS) {
@@ -1359,6 +1159,324 @@ var CoolToJS;
         return Parser;
     })();
     CoolToJS.Parser = Parser;
+})(CoolToJS || (CoolToJS = {}));
+var CoolToJS;
+(function (CoolToJS) {
+    (function (Action) {
+        Action[Action["Shift"] = 0] = "Shift";
+        Action[Action["Reduce"] = 1] = "Reduce";
+        Action[Action["Accept"] = 2] = "Accept";
+        Action[Action["None"] = 3] = "None";
+    })(CoolToJS.Action || (CoolToJS.Action = {}));
+    var Action = CoolToJS.Action;
+    CoolToJS.slr1ParseTable = [
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 3 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 2 }, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 1 }],
+        [{ action: 2 /* Accept */ }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 4 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 5 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [{ action: 1 /* Reduce */, productionIndex: 1 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 3 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 2 }, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 6 }],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 7 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 8 }, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [{ action: 1 /* Reduce */, productionIndex: 2 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 9 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 12 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 11 }, { action: 3 /* None */, nextState: 10 }, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 13 }, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 14 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 15 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 16 }, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 17 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 12 }, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 19 }, null, null, null, null, null, null, { action: 3 /* None */, nextState: 11 }, { action: 3 /* None */, nextState: 18 }, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 7 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 12 }, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 3 }, null, null, null, null, null, null, { action: 3 /* None */, nextState: 11 }, { action: 3 /* None */, nextState: 20 }, null, null, null, null],
+        [null, null, { action: 0 /* Shift */, nextState: 22 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 24 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 23 }, { action: 3 /* None */, nextState: 21 }, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 25 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 26 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 6 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 4 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 0 /* Shift */, nextState: 27 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 28 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 8 }, null, null, { action: 0 /* Shift */, nextState: 29 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 30 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 13 }, null, { action: 0 /* Shift */, nextState: 31 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 5 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 32 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 33 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 24 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 23 }, { action: 3 /* None */, nextState: 34 }, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 35 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 36 }, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 52 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 53 }, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 9 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 14 }, null, null, { action: 1 /* Reduce */, productionIndex: 14 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, { action: 1 /* Reduce */, productionIndex: 12 }, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 64 }, { action: 1 /* Reduce */, productionIndex: 49 }, { action: 1 /* Reduce */, productionIndex: 49 }, { action: 1 /* Reduce */, productionIndex: 49 }, { action: 1 /* Reduce */, productionIndex: 49 }, { action: 1 /* Reduce */, productionIndex: 49 }, { action: 1 /* Reduce */, productionIndex: 49 }, { action: 1 /* Reduce */, productionIndex: 49 }, null, { action: 1 /* Reduce */, productionIndex: 49 }, { action: 1 /* Reduce */, productionIndex: 49 }, { action: 0 /* Shift */, nextState: 63 }, { action: 1 /* Reduce */, productionIndex: 49 }, { action: 1 /* Reduce */, productionIndex: 49 }, null, { action: 1 /* Reduce */, productionIndex: 49 }, null, null, { action: 1 /* Reduce */, productionIndex: 49 }, null, null, { action: 1 /* Reduce */, productionIndex: 49 }, null, { action: 1 /* Reduce */, productionIndex: 49 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 49 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 49 }, { action: 1 /* Reduce */, productionIndex: 49 }, null, { action: 1 /* Reduce */, productionIndex: 49 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 49 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 65 }, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 66 }, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 68 }, null, { action: 3 /* None */, nextState: 67 }, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 70 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 69 }, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 71 }, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 72 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 73 }, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 74 }, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 75 }, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 76 }, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 50 }, { action: 1 /* Reduce */, productionIndex: 50 }, { action: 1 /* Reduce */, productionIndex: 50 }, { action: 1 /* Reduce */, productionIndex: 50 }, { action: 1 /* Reduce */, productionIndex: 50 }, { action: 1 /* Reduce */, productionIndex: 50 }, { action: 1 /* Reduce */, productionIndex: 50 }, null, { action: 1 /* Reduce */, productionIndex: 50 }, { action: 1 /* Reduce */, productionIndex: 50 }, null, { action: 1 /* Reduce */, productionIndex: 50 }, { action: 1 /* Reduce */, productionIndex: 50 }, null, { action: 1 /* Reduce */, productionIndex: 50 }, null, null, { action: 1 /* Reduce */, productionIndex: 50 }, null, null, { action: 1 /* Reduce */, productionIndex: 50 }, null, { action: 1 /* Reduce */, productionIndex: 50 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 50 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 50 }, { action: 1 /* Reduce */, productionIndex: 50 }, null, { action: 1 /* Reduce */, productionIndex: 50 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 50 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 51 }, { action: 1 /* Reduce */, productionIndex: 51 }, { action: 1 /* Reduce */, productionIndex: 51 }, { action: 1 /* Reduce */, productionIndex: 51 }, { action: 1 /* Reduce */, productionIndex: 51 }, { action: 1 /* Reduce */, productionIndex: 51 }, { action: 1 /* Reduce */, productionIndex: 51 }, null, { action: 1 /* Reduce */, productionIndex: 51 }, { action: 1 /* Reduce */, productionIndex: 51 }, null, { action: 1 /* Reduce */, productionIndex: 51 }, { action: 1 /* Reduce */, productionIndex: 51 }, null, { action: 1 /* Reduce */, productionIndex: 51 }, null, null, { action: 1 /* Reduce */, productionIndex: 51 }, null, null, { action: 1 /* Reduce */, productionIndex: 51 }, null, { action: 1 /* Reduce */, productionIndex: 51 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 51 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 51 }, { action: 1 /* Reduce */, productionIndex: 51 }, null, { action: 1 /* Reduce */, productionIndex: 51 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 51 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 52 }, { action: 1 /* Reduce */, productionIndex: 52 }, { action: 1 /* Reduce */, productionIndex: 52 }, { action: 1 /* Reduce */, productionIndex: 52 }, { action: 1 /* Reduce */, productionIndex: 52 }, { action: 1 /* Reduce */, productionIndex: 52 }, { action: 1 /* Reduce */, productionIndex: 52 }, null, { action: 1 /* Reduce */, productionIndex: 52 }, { action: 1 /* Reduce */, productionIndex: 52 }, null, { action: 1 /* Reduce */, productionIndex: 52 }, { action: 1 /* Reduce */, productionIndex: 52 }, null, { action: 1 /* Reduce */, productionIndex: 52 }, null, null, { action: 1 /* Reduce */, productionIndex: 52 }, null, null, { action: 1 /* Reduce */, productionIndex: 52 }, null, { action: 1 /* Reduce */, productionIndex: 52 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 52 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 52 }, { action: 1 /* Reduce */, productionIndex: 52 }, null, { action: 1 /* Reduce */, productionIndex: 52 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 52 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 53 }, { action: 1 /* Reduce */, productionIndex: 53 }, { action: 1 /* Reduce */, productionIndex: 53 }, { action: 1 /* Reduce */, productionIndex: 53 }, { action: 1 /* Reduce */, productionIndex: 53 }, { action: 1 /* Reduce */, productionIndex: 53 }, { action: 1 /* Reduce */, productionIndex: 53 }, null, { action: 1 /* Reduce */, productionIndex: 53 }, { action: 1 /* Reduce */, productionIndex: 53 }, null, { action: 1 /* Reduce */, productionIndex: 53 }, { action: 1 /* Reduce */, productionIndex: 53 }, null, { action: 1 /* Reduce */, productionIndex: 53 }, null, null, { action: 1 /* Reduce */, productionIndex: 53 }, null, null, { action: 1 /* Reduce */, productionIndex: 53 }, null, { action: 1 /* Reduce */, productionIndex: 53 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 53 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 53 }, { action: 1 /* Reduce */, productionIndex: 53 }, null, { action: 1 /* Reduce */, productionIndex: 53 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 53 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 77 }, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 78 }, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 79 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 80 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 81 }, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 82 }, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 83 }, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 84 }, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 85 }, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 86 }, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 87 }, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 88 }, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, { action: 0 /* Shift */, nextState: 89 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 91 }, { action: 3 /* None */, nextState: 90 }, null, null, null, null, null, null, null],
+        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 92 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 93 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 94 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, { action: 0 /* Shift */, nextState: 95 }, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 96 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 97 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 98 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 37 }, { action: 1 /* Reduce */, productionIndex: 37 }, { action: 1 /* Reduce */, productionIndex: 37 }, { action: 1 /* Reduce */, productionIndex: 37 }, { action: 1 /* Reduce */, productionIndex: 37 }, { action: 1 /* Reduce */, productionIndex: 37 }, { action: 1 /* Reduce */, productionIndex: 37 }, null, { action: 1 /* Reduce */, productionIndex: 37 }, { action: 1 /* Reduce */, productionIndex: 37 }, null, { action: 1 /* Reduce */, productionIndex: 37 }, { action: 1 /* Reduce */, productionIndex: 37 }, null, { action: 1 /* Reduce */, productionIndex: 37 }, null, null, { action: 1 /* Reduce */, productionIndex: 37 }, null, null, { action: 1 /* Reduce */, productionIndex: 37 }, null, { action: 1 /* Reduce */, productionIndex: 37 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 37 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 37 }, { action: 1 /* Reduce */, productionIndex: 37 }, null, { action: 1 /* Reduce */, productionIndex: 37 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 37 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 38 }, { action: 1 /* Reduce */, productionIndex: 38 }, { action: 1 /* Reduce */, productionIndex: 38 }, { action: 1 /* Reduce */, productionIndex: 38 }, { action: 1 /* Reduce */, productionIndex: 38 }, { action: 0 /* Shift */, nextState: 54 }, { action: 1 /* Reduce */, productionIndex: 38 }, null, { action: 1 /* Reduce */, productionIndex: 38 }, { action: 1 /* Reduce */, productionIndex: 38 }, null, { action: 1 /* Reduce */, productionIndex: 38 }, { action: 1 /* Reduce */, productionIndex: 38 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 38 }, null, null, { action: 1 /* Reduce */, productionIndex: 38 }, null, { action: 1 /* Reduce */, productionIndex: 38 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 38 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 38 }, { action: 1 /* Reduce */, productionIndex: 38 }, null, { action: 1 /* Reduce */, productionIndex: 38 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 38 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 43 }, { action: 1 /* Reduce */, productionIndex: 43 }, { action: 1 /* Reduce */, productionIndex: 43 }, { action: 1 /* Reduce */, productionIndex: 43 }, { action: 1 /* Reduce */, productionIndex: 43 }, { action: 0 /* Shift */, nextState: 54 }, { action: 1 /* Reduce */, productionIndex: 43 }, null, { action: 1 /* Reduce */, productionIndex: 43 }, { action: 1 /* Reduce */, productionIndex: 43 }, null, { action: 1 /* Reduce */, productionIndex: 43 }, { action: 1 /* Reduce */, productionIndex: 43 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 43 }, null, null, { action: 1 /* Reduce */, productionIndex: 43 }, null, { action: 1 /* Reduce */, productionIndex: 43 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 43 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 43 }, { action: 1 /* Reduce */, productionIndex: 43 }, null, { action: 1 /* Reduce */, productionIndex: 43 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 43 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 47 }, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, { action: 1 /* Reduce */, productionIndex: 47 }, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, { action: 1 /* Reduce */, productionIndex: 47 }, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 47 }, null, null, { action: 1 /* Reduce */, productionIndex: 47 }, null, { action: 1 /* Reduce */, productionIndex: 47 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 47 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 47 }, { action: 1 /* Reduce */, productionIndex: 47 }, null, { action: 1 /* Reduce */, productionIndex: 47 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 47 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 0 /* Shift */, nextState: 99 }, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 100 }, null, null, null, null, null, null, null, null],
+        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 101 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 102 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 103 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 39 }, { action: 0 /* Shift */, nextState: 58 }, { action: 1 /* Reduce */, productionIndex: 39 }, { action: 1 /* Reduce */, productionIndex: 39 }, { action: 1 /* Reduce */, productionIndex: 39 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, { action: 1 /* Reduce */, productionIndex: 39 }, { action: 1 /* Reduce */, productionIndex: 39 }, null, { action: 1 /* Reduce */, productionIndex: 39 }, { action: 1 /* Reduce */, productionIndex: 39 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 39 }, null, null, { action: 1 /* Reduce */, productionIndex: 39 }, null, { action: 1 /* Reduce */, productionIndex: 39 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 39 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 39 }, { action: 1 /* Reduce */, productionIndex: 39 }, null, { action: 1 /* Reduce */, productionIndex: 39 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 39 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 40 }, { action: 0 /* Shift */, nextState: 58 }, { action: 1 /* Reduce */, productionIndex: 40 }, { action: 1 /* Reduce */, productionIndex: 40 }, { action: 1 /* Reduce */, productionIndex: 40 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, { action: 1 /* Reduce */, productionIndex: 40 }, { action: 1 /* Reduce */, productionIndex: 40 }, null, { action: 1 /* Reduce */, productionIndex: 40 }, { action: 1 /* Reduce */, productionIndex: 40 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 40 }, null, null, { action: 1 /* Reduce */, productionIndex: 40 }, null, { action: 1 /* Reduce */, productionIndex: 40 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 40 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 40 }, { action: 1 /* Reduce */, productionIndex: 40 }, null, { action: 1 /* Reduce */, productionIndex: 40 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 40 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 41 }, { action: 1 /* Reduce */, productionIndex: 41 }, { action: 1 /* Reduce */, productionIndex: 41 }, { action: 1 /* Reduce */, productionIndex: 41 }, { action: 1 /* Reduce */, productionIndex: 41 }, { action: 0 /* Shift */, nextState: 54 }, { action: 1 /* Reduce */, productionIndex: 41 }, null, { action: 1 /* Reduce */, productionIndex: 41 }, { action: 1 /* Reduce */, productionIndex: 41 }, null, { action: 1 /* Reduce */, productionIndex: 41 }, { action: 1 /* Reduce */, productionIndex: 41 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 41 }, null, null, { action: 1 /* Reduce */, productionIndex: 41 }, null, { action: 1 /* Reduce */, productionIndex: 41 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 41 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 41 }, { action: 1 /* Reduce */, productionIndex: 41 }, null, { action: 1 /* Reduce */, productionIndex: 41 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 41 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 42 }, { action: 1 /* Reduce */, productionIndex: 42 }, { action: 1 /* Reduce */, productionIndex: 42 }, { action: 1 /* Reduce */, productionIndex: 42 }, { action: 1 /* Reduce */, productionIndex: 42 }, { action: 0 /* Shift */, nextState: 54 }, { action: 1 /* Reduce */, productionIndex: 42 }, null, { action: 1 /* Reduce */, productionIndex: 42 }, { action: 1 /* Reduce */, productionIndex: 42 }, null, { action: 1 /* Reduce */, productionIndex: 42 }, { action: 1 /* Reduce */, productionIndex: 42 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 42 }, null, null, { action: 1 /* Reduce */, productionIndex: 42 }, null, { action: 1 /* Reduce */, productionIndex: 42 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 42 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 42 }, { action: 1 /* Reduce */, productionIndex: 42 }, null, { action: 1 /* Reduce */, productionIndex: 42 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 42 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 44 }, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, { action: 1 /* Reduce */, productionIndex: 44 }, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, { action: 1 /* Reduce */, productionIndex: 44 }, { action: 1 /* Reduce */, productionIndex: 44 }, null, { action: 1 /* Reduce */, productionIndex: 44 }, { action: 1 /* Reduce */, productionIndex: 44 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 44 }, null, null, { action: 1 /* Reduce */, productionIndex: 44 }, null, { action: 1 /* Reduce */, productionIndex: 44 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 44 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 44 }, { action: 1 /* Reduce */, productionIndex: 44 }, null, { action: 1 /* Reduce */, productionIndex: 44 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 44 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 45 }, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, { action: 1 /* Reduce */, productionIndex: 45 }, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, { action: 1 /* Reduce */, productionIndex: 45 }, { action: 1 /* Reduce */, productionIndex: 45 }, null, { action: 1 /* Reduce */, productionIndex: 45 }, { action: 1 /* Reduce */, productionIndex: 45 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 45 }, null, null, { action: 1 /* Reduce */, productionIndex: 45 }, null, { action: 1 /* Reduce */, productionIndex: 45 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 45 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 45 }, { action: 1 /* Reduce */, productionIndex: 45 }, null, { action: 1 /* Reduce */, productionIndex: 45 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 45 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 46 }, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, { action: 1 /* Reduce */, productionIndex: 46 }, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, { action: 1 /* Reduce */, productionIndex: 46 }, { action: 1 /* Reduce */, productionIndex: 46 }, null, { action: 1 /* Reduce */, productionIndex: 46 }, { action: 1 /* Reduce */, productionIndex: 46 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 46 }, null, null, { action: 1 /* Reduce */, productionIndex: 46 }, null, { action: 1 /* Reduce */, productionIndex: 46 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 46 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 46 }, { action: 1 /* Reduce */, productionIndex: 46 }, null, { action: 1 /* Reduce */, productionIndex: 46 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 46 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 25 }, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, { action: 1 /* Reduce */, productionIndex: 25 }, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, { action: 1 /* Reduce */, productionIndex: 25 }, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 1 /* Reduce */, productionIndex: 25 }, null, null, { action: 1 /* Reduce */, productionIndex: 25 }, null, { action: 1 /* Reduce */, productionIndex: 25 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 25 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 25 }, { action: 1 /* Reduce */, productionIndex: 25 }, null, { action: 1 /* Reduce */, productionIndex: 25 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 25 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 30 }, { action: 1 /* Reduce */, productionIndex: 30 }, { action: 1 /* Reduce */, productionIndex: 30 }, { action: 1 /* Reduce */, productionIndex: 30 }, { action: 1 /* Reduce */, productionIndex: 30 }, { action: 1 /* Reduce */, productionIndex: 30 }, { action: 1 /* Reduce */, productionIndex: 30 }, null, { action: 1 /* Reduce */, productionIndex: 30 }, { action: 1 /* Reduce */, productionIndex: 30 }, null, { action: 1 /* Reduce */, productionIndex: 30 }, { action: 1 /* Reduce */, productionIndex: 30 }, null, { action: 1 /* Reduce */, productionIndex: 30 }, null, null, { action: 1 /* Reduce */, productionIndex: 30 }, null, null, { action: 1 /* Reduce */, productionIndex: 30 }, null, { action: 1 /* Reduce */, productionIndex: 30 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 30 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 30 }, { action: 1 /* Reduce */, productionIndex: 30 }, null, { action: 1 /* Reduce */, productionIndex: 30 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 30 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 0 /* Shift */, nextState: 104 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 15 }, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, { action: 0 /* Shift */, nextState: 105 }, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 106 }, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 107 }, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 34 }, { action: 1 /* Reduce */, productionIndex: 34 }, { action: 1 /* Reduce */, productionIndex: 34 }, { action: 1 /* Reduce */, productionIndex: 34 }, { action: 1 /* Reduce */, productionIndex: 34 }, { action: 1 /* Reduce */, productionIndex: 34 }, { action: 1 /* Reduce */, productionIndex: 34 }, null, { action: 1 /* Reduce */, productionIndex: 34 }, { action: 1 /* Reduce */, productionIndex: 34 }, null, { action: 1 /* Reduce */, productionIndex: 34 }, { action: 1 /* Reduce */, productionIndex: 34 }, null, { action: 1 /* Reduce */, productionIndex: 34 }, null, null, { action: 1 /* Reduce */, productionIndex: 34 }, null, null, { action: 1 /* Reduce */, productionIndex: 34 }, null, { action: 1 /* Reduce */, productionIndex: 34 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 34 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 34 }, { action: 1 /* Reduce */, productionIndex: 34 }, null, { action: 1 /* Reduce */, productionIndex: 34 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 34 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, { action: 1 /* Reduce */, productionIndex: 17 }, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 68 }, null, { action: 3 /* None */, nextState: 108 }, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 109 }, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 110 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 112 }, null, null, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 111 }, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 48 }, { action: 1 /* Reduce */, productionIndex: 48 }, { action: 1 /* Reduce */, productionIndex: 48 }, { action: 1 /* Reduce */, productionIndex: 48 }, { action: 1 /* Reduce */, productionIndex: 48 }, { action: 1 /* Reduce */, productionIndex: 48 }, { action: 1 /* Reduce */, productionIndex: 48 }, null, { action: 1 /* Reduce */, productionIndex: 48 }, { action: 1 /* Reduce */, productionIndex: 48 }, null, { action: 1 /* Reduce */, productionIndex: 48 }, { action: 1 /* Reduce */, productionIndex: 48 }, null, { action: 1 /* Reduce */, productionIndex: 48 }, null, null, { action: 1 /* Reduce */, productionIndex: 48 }, null, null, { action: 1 /* Reduce */, productionIndex: 48 }, null, { action: 1 /* Reduce */, productionIndex: 48 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 48 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 48 }, { action: 1 /* Reduce */, productionIndex: 48 }, null, { action: 1 /* Reduce */, productionIndex: 48 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 48 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 113 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 11 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, { action: 0 /* Shift */, nextState: 114 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 91 }, { action: 3 /* None */, nextState: 115 }, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 116 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 31 }, { action: 1 /* Reduce */, productionIndex: 31 }, { action: 1 /* Reduce */, productionIndex: 31 }, { action: 1 /* Reduce */, productionIndex: 31 }, { action: 1 /* Reduce */, productionIndex: 31 }, { action: 1 /* Reduce */, productionIndex: 31 }, { action: 1 /* Reduce */, productionIndex: 31 }, null, { action: 1 /* Reduce */, productionIndex: 31 }, { action: 1 /* Reduce */, productionIndex: 31 }, null, { action: 1 /* Reduce */, productionIndex: 31 }, { action: 1 /* Reduce */, productionIndex: 31 }, null, { action: 1 /* Reduce */, productionIndex: 31 }, null, null, { action: 1 /* Reduce */, productionIndex: 31 }, null, null, { action: 1 /* Reduce */, productionIndex: 31 }, null, { action: 1 /* Reduce */, productionIndex: 31 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 31 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 31 }, { action: 1 /* Reduce */, productionIndex: 31 }, null, { action: 1 /* Reduce */, productionIndex: 31 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 31 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 91 }, { action: 3 /* None */, nextState: 117 }, null, null, null, null, null, null, null],
+        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, { action: 0 /* Shift */, nextState: 118 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 119 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 18 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 35 }, [{ action: 0 /* Shift */, nextState: 58 }, { action: 1 /* Reduce */, productionIndex: 35 }], [{ action: 0 /* Shift */, nextState: 56 }, { action: 1 /* Reduce */, productionIndex: 35 }], { action: 1 /* Reduce */, productionIndex: 35 }, [{ action: 0 /* Shift */, nextState: 57 }, { action: 1 /* Reduce */, productionIndex: 35 }], [{ action: 0 /* Shift */, nextState: 54 }, { action: 1 /* Reduce */, productionIndex: 35 }], [{ action: 0 /* Shift */, nextState: 59 }, { action: 1 /* Reduce */, productionIndex: 35 }], null, { action: 1 /* Reduce */, productionIndex: 35 }, [{ action: 0 /* Shift */, nextState: 60 }, { action: 1 /* Reduce */, productionIndex: 35 }], null, [{ action: 0 /* Shift */, nextState: 61 }, { action: 1 /* Reduce */, productionIndex: 35 }], [{ action: 0 /* Shift */, nextState: 62 }, { action: 1 /* Reduce */, productionIndex: 35 }], null, [{ action: 0 /* Shift */, nextState: 55 }, { action: 1 /* Reduce */, productionIndex: 35 }], null, null, { action: 1 /* Reduce */, productionIndex: 35 }, null, null, { action: 1 /* Reduce */, productionIndex: 35 }, null, { action: 1 /* Reduce */, productionIndex: 35 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 35 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 35 }, { action: 1 /* Reduce */, productionIndex: 35 }, null, { action: 1 /* Reduce */, productionIndex: 35 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 35 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, { action: 0 /* Shift */, nextState: 121 }, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 120 }, null, null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 19 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 122 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 123 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 10 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 26 }, { action: 1 /* Reduce */, productionIndex: 26 }, { action: 1 /* Reduce */, productionIndex: 26 }, { action: 1 /* Reduce */, productionIndex: 26 }, { action: 1 /* Reduce */, productionIndex: 26 }, { action: 1 /* Reduce */, productionIndex: 26 }, { action: 1 /* Reduce */, productionIndex: 26 }, null, { action: 1 /* Reduce */, productionIndex: 26 }, { action: 1 /* Reduce */, productionIndex: 26 }, null, { action: 1 /* Reduce */, productionIndex: 26 }, { action: 1 /* Reduce */, productionIndex: 26 }, null, { action: 1 /* Reduce */, productionIndex: 26 }, null, null, { action: 1 /* Reduce */, productionIndex: 26 }, null, null, { action: 1 /* Reduce */, productionIndex: 26 }, null, { action: 1 /* Reduce */, productionIndex: 26 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 26 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 26 }, { action: 1 /* Reduce */, productionIndex: 26 }, null, { action: 1 /* Reduce */, productionIndex: 26 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 26 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 0 /* Shift */, nextState: 124 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 125 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 16 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 126 }, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 33 }, { action: 1 /* Reduce */, productionIndex: 33 }, { action: 1 /* Reduce */, productionIndex: 33 }, { action: 1 /* Reduce */, productionIndex: 33 }, { action: 1 /* Reduce */, productionIndex: 33 }, { action: 1 /* Reduce */, productionIndex: 33 }, { action: 1 /* Reduce */, productionIndex: 33 }, null, { action: 1 /* Reduce */, productionIndex: 33 }, { action: 1 /* Reduce */, productionIndex: 33 }, null, { action: 1 /* Reduce */, productionIndex: 33 }, { action: 1 /* Reduce */, productionIndex: 33 }, null, { action: 1 /* Reduce */, productionIndex: 33 }, null, null, { action: 1 /* Reduce */, productionIndex: 33 }, null, null, { action: 1 /* Reduce */, productionIndex: 33 }, null, { action: 1 /* Reduce */, productionIndex: 33 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 33 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 33 }, { action: 1 /* Reduce */, productionIndex: 33 }, null, { action: 1 /* Reduce */, productionIndex: 33 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 33 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 127 }, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 70 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 128 }, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 36 }, { action: 1 /* Reduce */, productionIndex: 36 }, { action: 1 /* Reduce */, productionIndex: 36 }, { action: 1 /* Reduce */, productionIndex: 36 }, { action: 1 /* Reduce */, productionIndex: 36 }, { action: 1 /* Reduce */, productionIndex: 36 }, { action: 1 /* Reduce */, productionIndex: 36 }, null, { action: 1 /* Reduce */, productionIndex: 36 }, { action: 1 /* Reduce */, productionIndex: 36 }, null, { action: 1 /* Reduce */, productionIndex: 36 }, { action: 1 /* Reduce */, productionIndex: 36 }, null, { action: 1 /* Reduce */, productionIndex: 36 }, null, null, { action: 1 /* Reduce */, productionIndex: 36 }, null, null, { action: 1 /* Reduce */, productionIndex: 36 }, null, { action: 1 /* Reduce */, productionIndex: 36 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 36 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 36 }, { action: 1 /* Reduce */, productionIndex: 36 }, null, { action: 1 /* Reduce */, productionIndex: 36 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 36 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 129 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 27 }, { action: 1 /* Reduce */, productionIndex: 27 }, { action: 1 /* Reduce */, productionIndex: 27 }, { action: 1 /* Reduce */, productionIndex: 27 }, { action: 1 /* Reduce */, productionIndex: 27 }, { action: 1 /* Reduce */, productionIndex: 27 }, { action: 1 /* Reduce */, productionIndex: 27 }, null, { action: 1 /* Reduce */, productionIndex: 27 }, { action: 1 /* Reduce */, productionIndex: 27 }, null, { action: 1 /* Reduce */, productionIndex: 27 }, { action: 1 /* Reduce */, productionIndex: 27 }, null, { action: 1 /* Reduce */, productionIndex: 27 }, null, null, { action: 1 /* Reduce */, productionIndex: 27 }, null, null, { action: 1 /* Reduce */, productionIndex: 27 }, null, { action: 1 /* Reduce */, productionIndex: 27 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 27 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 27 }, { action: 1 /* Reduce */, productionIndex: 27 }, null, { action: 1 /* Reduce */, productionIndex: 27 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 27 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, { action: 0 /* Shift */, nextState: 130 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 91 }, { action: 3 /* None */, nextState: 131 }, null, null, null, null, null, null, null],
+        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, { action: 0 /* Shift */, nextState: 132 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, { action: 0 /* Shift */, nextState: 133 }, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, null, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 20 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 21 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 134 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 28 }, { action: 1 /* Reduce */, productionIndex: 28 }, { action: 1 /* Reduce */, productionIndex: 28 }, { action: 1 /* Reduce */, productionIndex: 28 }, { action: 1 /* Reduce */, productionIndex: 28 }, { action: 1 /* Reduce */, productionIndex: 28 }, { action: 1 /* Reduce */, productionIndex: 28 }, null, { action: 1 /* Reduce */, productionIndex: 28 }, { action: 1 /* Reduce */, productionIndex: 28 }, null, { action: 1 /* Reduce */, productionIndex: 28 }, { action: 1 /* Reduce */, productionIndex: 28 }, null, { action: 1 /* Reduce */, productionIndex: 28 }, null, null, { action: 1 /* Reduce */, productionIndex: 28 }, null, null, { action: 1 /* Reduce */, productionIndex: 28 }, null, { action: 1 /* Reduce */, productionIndex: 28 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 28 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 28 }, { action: 1 /* Reduce */, productionIndex: 28 }, null, { action: 1 /* Reduce */, productionIndex: 28 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 28 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 0 /* Shift */, nextState: 135 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 32 }, { action: 1 /* Reduce */, productionIndex: 32 }, { action: 1 /* Reduce */, productionIndex: 32 }, { action: 1 /* Reduce */, productionIndex: 32 }, { action: 1 /* Reduce */, productionIndex: 32 }, { action: 1 /* Reduce */, productionIndex: 32 }, { action: 1 /* Reduce */, productionIndex: 32 }, null, { action: 1 /* Reduce */, productionIndex: 32 }, { action: 1 /* Reduce */, productionIndex: 32 }, null, { action: 1 /* Reduce */, productionIndex: 32 }, { action: 1 /* Reduce */, productionIndex: 32 }, null, { action: 1 /* Reduce */, productionIndex: 32 }, null, null, { action: 1 /* Reduce */, productionIndex: 32 }, null, null, { action: 1 /* Reduce */, productionIndex: 32 }, null, { action: 1 /* Reduce */, productionIndex: 32 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 32 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 32 }, { action: 1 /* Reduce */, productionIndex: 32 }, null, { action: 1 /* Reduce */, productionIndex: 32 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 32 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 70 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 136 }, null],
+        [null, { action: 0 /* Shift */, nextState: 47 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 42 }, null, null, null, { action: 0 /* Shift */, nextState: 51 }, null, { action: 0 /* Shift */, nextState: 38 }, null, null, { action: 0 /* Shift */, nextState: 48 }, { action: 0 /* Shift */, nextState: 44 }, { action: 0 /* Shift */, nextState: 41 }, null, { action: 0 /* Shift */, nextState: 43 }, { action: 0 /* Shift */, nextState: 46 }, { action: 0 /* Shift */, nextState: 37 }, null, null, { action: 0 /* Shift */, nextState: 49 }, null, { action: 0 /* Shift */, nextState: 50 }, null, { action: 0 /* Shift */, nextState: 39 }, { action: 0 /* Shift */, nextState: 40 }, null, { action: 0 /* Shift */, nextState: 45 }, null, null, { action: 3 /* None */, nextState: 137 }, null, null, null, null, null, null, null, null],
+        [null, null, { action: 1 /* Reduce */, productionIndex: 29 }, { action: 1 /* Reduce */, productionIndex: 29 }, { action: 1 /* Reduce */, productionIndex: 29 }, { action: 1 /* Reduce */, productionIndex: 29 }, { action: 1 /* Reduce */, productionIndex: 29 }, { action: 1 /* Reduce */, productionIndex: 29 }, { action: 1 /* Reduce */, productionIndex: 29 }, null, { action: 1 /* Reduce */, productionIndex: 29 }, { action: 1 /* Reduce */, productionIndex: 29 }, null, { action: 1 /* Reduce */, productionIndex: 29 }, { action: 1 /* Reduce */, productionIndex: 29 }, null, { action: 1 /* Reduce */, productionIndex: 29 }, null, null, { action: 1 /* Reduce */, productionIndex: 29 }, null, null, { action: 1 /* Reduce */, productionIndex: 29 }, null, { action: 1 /* Reduce */, productionIndex: 29 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 29 }, null, null, null, { action: 1 /* Reduce */, productionIndex: 29 }, { action: 1 /* Reduce */, productionIndex: 29 }, null, { action: 1 /* Reduce */, productionIndex: 29 }, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 29 }, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 22 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, { action: 0 /* Shift */, nextState: 58 }, { action: 0 /* Shift */, nextState: 56 }, null, { action: 0 /* Shift */, nextState: 57 }, { action: 0 /* Shift */, nextState: 54 }, { action: 0 /* Shift */, nextState: 59 }, null, { action: 0 /* Shift */, nextState: 138 }, { action: 0 /* Shift */, nextState: 60 }, null, { action: 0 /* Shift */, nextState: 61 }, { action: 0 /* Shift */, nextState: 62 }, null, { action: 0 /* Shift */, nextState: 55 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 23 }, null, null, null, null, null, null, null, null, null, null, null, { action: 0 /* Shift */, nextState: 112 }, null, null, null, null, null, null, null, null, null, null, { action: 3 /* None */, nextState: 139 }, null, null, null, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, { action: 1 /* Reduce */, productionIndex: 24 }, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+    ];
+    CoolToJS.productions = [
+        { popCount: 2, reduceResult: null },
+        { popCount: 2, reduceResult: 53 /* Program */ },
+        { popCount: 3, reduceResult: 53 /* Program */ },
+        { popCount: 2, reduceResult: 49 /* FeatureList */ },
+        { popCount: 3, reduceResult: 49 /* FeatureList */ },
+        { popCount: 7, reduceResult: 44 /* Class */ },
+        { popCount: 6, reduceResult: 44 /* Class */ },
+        { popCount: 5, reduceResult: 44 /* Class */ },
+        { popCount: 1, reduceResult: 51 /* FormalList */ },
+        { popCount: 3, reduceResult: 51 /* FormalList */ },
+        { popCount: 9, reduceResult: 48 /* Feature */ },
+        { popCount: 8, reduceResult: 48 /* Feature */ },
+        { popCount: 5, reduceResult: 48 /* Feature */ },
+        { popCount: 3, reduceResult: 48 /* Feature */ },
+        { popCount: 3, reduceResult: 50 /* Formal */ },
+        { popCount: 1, reduceResult: 46 /* ExpressionList */ },
+        { popCount: 3, reduceResult: 46 /* ExpressionList */ },
+        { popCount: 2, reduceResult: 47 /* ExpressionSeries */ },
+        { popCount: 3, reduceResult: 47 /* ExpressionSeries */ },
+        { popCount: 3, reduceResult: 52 /* LocalVariableDeclarationList */ },
+        { popCount: 5, reduceResult: 52 /* LocalVariableDeclarationList */ },
+        { popCount: 5, reduceResult: 52 /* LocalVariableDeclarationList */ },
+        { popCount: 7, reduceResult: 52 /* LocalVariableDeclarationList */ },
+        { popCount: 6, reduceResult: 43 /* CaseOption */ },
+        { popCount: 7, reduceResult: 43 /* CaseOption */ },
+        { popCount: 3, reduceResult: 45 /* Expression */ },
+        { popCount: 5, reduceResult: 45 /* Expression */ },
+        { popCount: 6, reduceResult: 45 /* Expression */ },
+        { popCount: 7, reduceResult: 45 /* Expression */ },
+        { popCount: 8, reduceResult: 45 /* Expression */ },
+        { popCount: 3, reduceResult: 45 /* Expression */ },
+        { popCount: 4, reduceResult: 45 /* Expression */ },
+        { popCount: 7, reduceResult: 45 /* Expression */ },
+        { popCount: 5, reduceResult: 45 /* Expression */ },
+        { popCount: 3, reduceResult: 45 /* Expression */ },
+        { popCount: 4, reduceResult: 45 /* Expression */ },
+        { popCount: 5, reduceResult: 45 /* Expression */ },
+        { popCount: 2, reduceResult: 45 /* Expression */ },
+        { popCount: 2, reduceResult: 45 /* Expression */ },
+        { popCount: 3, reduceResult: 45 /* Expression */ },
+        { popCount: 3, reduceResult: 45 /* Expression */ },
+        { popCount: 3, reduceResult: 45 /* Expression */ },
+        { popCount: 3, reduceResult: 45 /* Expression */ },
+        { popCount: 2, reduceResult: 45 /* Expression */ },
+        { popCount: 3, reduceResult: 45 /* Expression */ },
+        { popCount: 3, reduceResult: 45 /* Expression */ },
+        { popCount: 3, reduceResult: 45 /* Expression */ },
+        { popCount: 2, reduceResult: 45 /* Expression */ },
+        { popCount: 3, reduceResult: 45 /* Expression */ },
+        { popCount: 1, reduceResult: 45 /* Expression */ },
+        { popCount: 1, reduceResult: 45 /* Expression */ },
+        { popCount: 1, reduceResult: 45 /* Expression */ },
+        { popCount: 1, reduceResult: 45 /* Expression */ },
+        { popCount: 1, reduceResult: 45 /* Expression */ },
+    ];
+})(CoolToJS || (CoolToJS = {}));
+var CoolToJS;
+(function (CoolToJS) {
+    var SemanticAnalyzer = (function () {
+        function SemanticAnalyzer() {
+            var _this = this;
+            this.Analyze = function (astConvertOutput) {
+                var errorMessages = astConvertOutput.errorMessages || [];
+                var warningMessages = astConvertOutput.warningMessages || [];
+                _this.analyze(astConvertOutput.abstractSyntaxTree, errorMessages, warningMessages);
+                return {
+                    success: errorMessages.length === 0,
+                    errorMessages: errorMessages,
+                    warningMessages: warningMessages
+                };
+            };
+            this.analyze = function (ast, errorMessages, warningMessages) {
+                /* PROGRAM */
+                if (ast.type === 0 /* Program */) {
+                    var programNode = ast;
+                    // ensure that exactly 1 Main class is defined and that all class names are unique
+                    var mainClass;
+                    var duplicateClasses = [];
+                    for (var i = 0; i < programNode.classList.length; i++) {
+                        if (!mainClass && programNode.classList[i].className === 'Main') {
+                            mainClass = programNode.classList[i];
+                        }
+                        if (programNode.classList.map(function (c) {
+                            return c.className;
+                        }).slice(0, i).indexOf(programNode.classList[i].className) !== -1) {
+                            duplicateClasses.push(programNode.classList[i]);
+                        }
+                    }
+                    if (!mainClass) {
+                        errorMessages.push({
+                            location: null,
+                            message: 'Class "Main" is not defined'
+                        });
+                    }
+                    duplicateClasses.forEach(function (classNode) {
+                        errorMessages.push({
+                            location: classNode.token.location,
+                            message: 'Class "' + classNode.className + '" was previously defined'
+                        });
+                    });
+                    // ensure that at least one main() method is defined in class Main and 
+                    // that it takes no parameters
+                    if (mainClass) {
+                        var mainMethod;
+                        for (var i = 0; i < mainClass.methodList.length; i++) {
+                            if (mainClass.methodList[i].methodName === 'main') {
+                                mainMethod = mainClass.methodList[i];
+                                break;
+                            }
+                        }
+                        if (!mainMethod) {
+                            errorMessages.push({
+                                location: mainClass.token.location,
+                                message: 'No "main" method in class "Main"'
+                            });
+                        }
+                        else if (mainMethod.hasParameters) {
+                            errorMessages.push({
+                                location: mainMethod.token.location,
+                                message: '"main" method in class "Main" should have no arguments'
+                            });
+                        }
+                    }
+                }
+                else if (ast.type === 1 /* Class */) {
+                    var classNode = ast;
+                    // ensure that exactly all method names are unique
+                    var duplicateMethods = [];
+                    for (var i = 0; i < classNode.methodList.length; i++) {
+                        if (classNode.methodList.map(function (c) {
+                            return c.methodName;
+                        }).slice(0, i).indexOf(classNode.methodList[i].methodName) !== -1) {
+                            duplicateMethods.push(classNode.methodList[i]);
+                        }
+                    }
+                    duplicateMethods.forEach(function (methodNode) {
+                        errorMessages.push({
+                            location: methodNode.token.location,
+                            message: 'Method "' + methodNode.methodName + '" is multiply defined in class "' + classNode.className + '"'
+                        });
+                    });
+                    // ensure that exactly all property names are unique
+                    var duplicateProperties = [];
+                    for (var i = 0; i < classNode.propertyList.length; i++) {
+                        if (classNode.propertyList.map(function (c) {
+                            return c.propertyName;
+                        }).slice(0, i).indexOf(classNode.propertyList[i].propertyName) !== -1) {
+                            duplicateProperties.push(classNode.propertyList[i]);
+                        }
+                    }
+                    duplicateProperties.forEach(function (propertyNode) {
+                        errorMessages.push({
+                            location: propertyNode.token.location,
+                            message: 'Property "' + propertyNode.propertyName + '" is multiply defined in class "' + classNode.className + '"'
+                        });
+                    });
+                }
+                ast.children.forEach(function (node) {
+                    _this.analyze(node, errorMessages, warningMessages);
+                });
+            };
+        }
+        return SemanticAnalyzer;
+    })();
+    CoolToJS.SemanticAnalyzer = SemanticAnalyzer;
 })(CoolToJS || (CoolToJS = {}));
 var CoolToJS;
 (function (CoolToJS) {
@@ -1821,13 +1939,16 @@ _in_string(function(input) {\n\
                 elapsedTime: Date.now() - startTime
             };
         }
-        var astConverter = new CoolToJS.AST.AbstractSyntaxTreeConverter();
-        var ast = astConverter.Convert(parserOutput.syntaxTree);
+        var astConverter = new CoolToJS.AbstractSyntaxTreeConverter();
+        var astConvertOutput = astConverter.Convert(parserOutput);
         //console.log(Utility.stringify(ast));
+        var semanticAnalyzer = new CoolToJS.SemanticAnalyzer();
+        var semanticAnalyzerOutput = semanticAnalyzer.Analyze(astConvertOutput);
         return {
-            success: true,
-            generatedJavaScript: generatedJavaScriptExample,
+            success: semanticAnalyzerOutput.errorMessages.length === 0,
+            errorMessages: semanticAnalyzerOutput.errorMessages,
             warningMessages: parserOutput.warningMessages,
+            generatedJavaScript: generatedJavaScriptExample,
             elapsedTime: Date.now() - startTime
         };
     }

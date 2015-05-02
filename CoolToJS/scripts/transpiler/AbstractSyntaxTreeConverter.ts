@@ -1,8 +1,18 @@
-﻿module CoolToJS.AST {
+﻿module CoolToJS {
     'use strict';
 
     export class AbstractSyntaxTreeConverter {
-        Convert = (syntaxTree: SyntaxTree): AST.Node => {
+
+        public Convert = (parserOutput: ParserOutput): ASTConverterOutput => {
+            return {
+                success: true,
+                abstractSyntaxTree: this.convert(parserOutput.syntaxTree),
+                errorMessages: parserOutput.errorMessages,
+                warningMessages: parserOutput.warningMessages
+            }
+        }
+
+        private convert = (syntaxTree: SyntaxTree): Node => {
             var convertedNode: Node;
 
             // use a shallow copy of the provided tree so we
@@ -17,7 +27,7 @@
                 // create Class nodes for each class in this program
                 for (var i = 0; i < syntaxTree.children.length; i++) {
                     if (syntaxTree.children[i].syntaxKind === SyntaxKind.Class) {
-                        var childClassNode = this.Convert(syntaxTree.children[i]);
+                        var childClassNode = this.convert(syntaxTree.children[i]);
                         childClassNode.parent = convertedNode;
                         convertedNode.children.push(childClassNode);
                     }
@@ -27,6 +37,7 @@
             /* CLASS */
             else if (syntaxTree.syntaxKind === SyntaxKind.Class) {
                 var classNode = new ClassNode(syntaxTree.children[1].token.match);
+                classNode.token = syntaxTree.children[1].token;
                 if (syntaxTree.children[2].syntaxKind === SyntaxKind.InheritsKeyword) {
                     // if this class is a subclass
                     classNode.superClassName = syntaxTree.children[3].token.match;
@@ -39,7 +50,7 @@
                         this.flattenRecursion(syntaxTree.children[i]);
                         for (var j = 0; j < syntaxTree.children[i].children.length; j++) {
                             if (syntaxTree.children[i].children[j].syntaxKind === SyntaxKind.Feature) {
-                                var childFeatureNode = this.Convert(syntaxTree.children[i].children[j]);
+                                var childFeatureNode = this.convert(syntaxTree.children[i].children[j]);
                                 childFeatureNode.parent = classNode;
                                 classNode.children.push(childFeatureNode);
                             }
@@ -57,7 +68,9 @@
                 if (syntaxTree.children[1].syntaxKind === SyntaxKind.OpenParenthesis) {
                     // we should convert into a method
 
-                    var methodNode = new MethodNode(syntaxTree.children[0].token.match);
+                    var methodNode = new MethodNode();
+                    methodNode.methodName = syntaxTree.children[0].token.match;
+                    methodNode.token = syntaxTree.children[0].token;
 
                     if (syntaxTree.children[2].syntaxKind === SyntaxKind.FormalList) {
                         // this method has at least one parameter
@@ -73,7 +86,7 @@
                         }
 
                         // convert the method body
-                        var methodBodyNode = this.Convert(syntaxTree.children[7])
+                        var methodBodyNode = this.convert(syntaxTree.children[7])
                         methodBodyNode.parent = methodNode;
                         methodNode.children.push(methodBodyNode);
                     } else {
@@ -81,7 +94,7 @@
                         methodNode.returnTypeName = syntaxTree.children[4].token.match;
 
                         // convert the method body
-                        var methodBodyNode = this.Convert(syntaxTree.children[6])
+                        var methodBodyNode = this.convert(syntaxTree.children[6])
                         methodBodyNode.parent = methodNode;
                         methodNode.children.push(methodBodyNode);
                     }
@@ -90,14 +103,16 @@
                 } else if (syntaxTree.children[1].syntaxKind === SyntaxKind.Colon) {
                     // we should convert into a property
 
-                    var propertyNode = new PropertyNode(syntaxTree.children[0].token.match);
+                    var propertyNode = new PropertyNode();
+                    propertyNode.propertyName = syntaxTree.children[0].token.match;
+                    propertyNode.token = syntaxTree.children[0].token;
                     propertyNode.typeName = syntaxTree.children[2].token.match;
 
                     if (syntaxTree.children[4]) {
                         // if this property has an initializer
 
                         // convert the property initializer
-                        var propertyInitializerNode = this.Convert(syntaxTree.children[4])
+                        var propertyInitializerNode = this.convert(syntaxTree.children[4])
                         propertyInitializerNode.parent = propertyNode;
                         propertyNode.children.push(propertyInitializerNode);
                     }
@@ -116,10 +131,9 @@
                     var assignmentExprNode = new AssignmentExpressionNode();
                     assignmentExprNode.identifierName = syntaxTree.children[0].token.match;
                     
-                    var assignmentExpression = this.Convert(syntaxTree.children[2]);
+                    var assignmentExpression = this.convert(syntaxTree.children[2]);
                     assignmentExpression.parent = assignmentExprNode;
                     assignmentExprNode.children.push(assignmentExpression);
-
                     convertedNode = assignmentExprNode;
                 }
 
@@ -137,11 +151,13 @@
                         // standard method call on an expression
 
                         methodCallExprNode.methodName = syntaxTree.children[2].token.match;
+                        methodCallExprNode.token = syntaxTree.children[2].token;
                         expressionListIndex = 4;
 
                     } else if (syntaxTree.children[1].syntaxKind === SyntaxKind.AtSignOperator) {
                         // method call to parent class
                         methodCallExprNode.methodName = syntaxTree.children[4].token.match;
+                        methodCallExprNode.token = syntaxTree.children[4].token;
                         methodCallExprNode.isCallToParent = true;
                         expressionListIndex = 6;
 
@@ -149,6 +165,7 @@
                         // method call to implied "self"
 
                         methodCallExprNode.methodName = syntaxTree.children[0].token.match;
+                        methodCallExprNode.token = syntaxTree.children[0].token;
                         methodCallExprNode.isCallToSelf = true;
                         expressionListIndex = 2;
                     }
@@ -158,7 +175,7 @@
 
                         for (var i = 0; i < syntaxTree.children[expressionListIndex].children.length; i++) {
                             if (syntaxTree.children[expressionListIndex].children[i].syntaxKind === SyntaxKind.Expression) {
-                                var parameterExprNode = this.Convert(syntaxTree.children[expressionListIndex].children[i]);
+                                var parameterExprNode = this.convert(syntaxTree.children[expressionListIndex].children[i]);
                                 parameterExprNode.parent = methodCallExprNode;
                                 methodCallExprNode.children.push(parameterExprNode);
                             }
@@ -172,11 +189,11 @@
                 else if (syntaxTree.children[0].syntaxKind === SyntaxKind.IfKeyword) {
                     var ifThenElseExprNode = new IfThenElseExpressionNode();
 
-                    var predicateNode = this.Convert(syntaxTree.children[1]);
+                    var predicateNode = this.convert(syntaxTree.children[1]);
                     ifThenElseExprNode.children[0] = predicateNode;
-                    var consequentNode = this.Convert(syntaxTree.children[3]);
+                    var consequentNode = this.convert(syntaxTree.children[3]);
                     ifThenElseExprNode.children[1] = consequentNode;
-                    var alternativeNode = this.Convert(syntaxTree.children[5]);
+                    var alternativeNode = this.convert(syntaxTree.children[5]);
                     ifThenElseExprNode.children[2] = alternativeNode;
 
                     predicateNode.parent = ifThenElseExprNode;
@@ -190,9 +207,9 @@
                 else if (syntaxTree.children[0].syntaxKind === SyntaxKind.WhileKeyword) {
                     var whileExprNode = new WhileExpressionNode();
 
-                    var conditionNode = this.Convert(syntaxTree.children[1]);
+                    var conditionNode = this.convert(syntaxTree.children[1]);
                     whileExprNode.children[0] = conditionNode;
-                    var bodyExpressionNode = this.Convert(syntaxTree.children[3]);
+                    var bodyExpressionNode = this.convert(syntaxTree.children[3]);
                     whileExprNode.children[1] = bodyExpressionNode;
 
                     conditionNode.parent = whileExprNode;
@@ -208,7 +225,7 @@
                     this.flattenRecursion(syntaxTree.children[1]);
                     for (var i = 0; i < syntaxTree.children[1].children.length; i++) {
                         if (syntaxTree.children[1].children[i].syntaxKind === SyntaxKind.Expression) {
-                            var childExpressionNode = this.Convert(syntaxTree.children[1].children[i]);
+                            var childExpressionNode = this.convert(syntaxTree.children[1].children[i]);
                             childExpressionNode.parent = blockExpressionNode;
                             blockExpressionNode.children.push(childExpressionNode);
                         }
@@ -231,7 +248,7 @@
                             if (syntaxTree.children[1].children[i + 3]
                                 && syntaxTree.children[1].children[i + 3].syntaxKind == SyntaxKind.AssignmentOperator) {
 
-                                var localVarDeclInitExprNode = this.Convert(syntaxTree.children[1].children[i + 4]);
+                                var localVarDeclInitExprNode = this.convert(syntaxTree.children[1].children[i + 4]);
                                 localVarDeclInitExprNode.parent = localVarDeclaration;
 
                                 // Why are getters/setters not working?
@@ -245,7 +262,7 @@
                         }
                     }
 
-                    var expressionBodyNode = this.Convert(syntaxTree.children[3]);
+                    var expressionBodyNode = this.convert(syntaxTree.children[3]);
                     expressionBodyNode.parent = letExpressionNode;
                     letExpressionNode.children.push(expressionBodyNode);
 
@@ -262,7 +279,7 @@
                             caseOptionNode.identiferName = syntaxTree.children[3].children[i].token.match;
                             caseOptionNode.typeName = syntaxTree.children[3].children[i + 2].token.match;
 
-                            var caseOptionExpressionNode = this.Convert(syntaxTree.children[3].children[i + 4]);
+                            var caseOptionExpressionNode = this.convert(syntaxTree.children[3].children[i + 4]);
                             caseOptionExpressionNode.parent = caseOptionNode;
                             caseOptionNode.children[0] = caseOptionExpressionNode;
 
@@ -271,7 +288,7 @@
                         }
                     }
 
-                    var caseConditionNode = this.Convert(syntaxTree.children[1]);
+                    var caseConditionNode = this.convert(syntaxTree.children[1]);
                     caseConditionNode.parent = caseExpressionNode;
                     caseExpressionNode.condition = caseConditionNode;
 
@@ -288,7 +305,7 @@
                 /* ISVOID EXPRESSION */
                 else if (syntaxTree.children[0].syntaxKind === SyntaxKind.IsvoidKeyword) {
                     var isVoidExpressionNode = new IsVoidExpressionNode();
-                    var isVoidConditionNode = this.Convert(syntaxTree.children[1]);
+                    var isVoidConditionNode = this.convert(syntaxTree.children[1]);
                     isVoidExpressionNode.parent = isVoidExpressionNode;
                     isVoidExpressionNode.children[0] = isVoidConditionNode;
                     convertedNode = isVoidExpressionNode;
@@ -324,9 +341,9 @@
                             throw 'Unknown BinaryOperationType';
                     }
 
-                    var operand1Node = this.Convert(syntaxTree.children[0]);
+                    var operand1Node = this.convert(syntaxTree.children[0]);
                     operand1Node.parent = binaryOperationExprNode;
-                    var operand2Node = this.Convert(syntaxTree.children[0]);
+                    var operand2Node = this.convert(syntaxTree.children[0]);
                     operand2Node.parent = binaryOperationExprNode;
 
                     binaryOperationExprNode.children[0] = operand1Node;
@@ -338,7 +355,7 @@
                 /* UNARY OPERATION EXPRESSION */
                 else if (syntaxTree.children[0].syntaxKind === SyntaxKind.TildeOperator) {
                     var unaryOperationExprNode = new UnaryOperationExpressionNode();
-                    var operandNode = this.Convert(syntaxTree.children[1]);
+                    var operandNode = this.convert(syntaxTree.children[1]);
                     operandNode.parent = unaryOperationExprNode;
                     unaryOperationExprNode.children[0] = operandNode;
                     convertedNode = unaryOperationExprNode;
@@ -357,7 +374,7 @@
                         throw 'Unknown UnaryOperationType';
                     }
 
-                    var operandNode = this.Convert(syntaxTree.children[1]);
+                    var operandNode = this.convert(syntaxTree.children[1]);
                     operandNode.parent = unaryOperationExprNode;
                     unaryOperationExprNode.children[0] = operandNode;
                     convertedNode = unaryOperationExprNode;
@@ -366,7 +383,7 @@
                 /* UNARY OPERATION EXPRESSION */
                 else if (syntaxTree.children[0].syntaxKind === SyntaxKind.OpenParenthesis) {
                     var parExprNod = new ParantheticalExpressionNode();
-                    var innerExprNode = this.Convert(syntaxTree.children[1]);
+                    var innerExprNode = this.convert(syntaxTree.children[1]);
                     innerExprNode.parent = parExprNod;
                     parExprNod.children[0] = innerExprNode;
                     convertedNode = parExprNod;
