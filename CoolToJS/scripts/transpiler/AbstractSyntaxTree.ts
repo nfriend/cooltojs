@@ -281,6 +281,17 @@
         constructor() {
             super(NodeType.LocalVariableDeclaration);
         }
+
+        identifierName: string
+        typeName: string;
+
+        get initializerExpression(): ExpressionNode {
+            return this.children[0];
+        }
+
+        set initializerExpression(initializer: ExpressionNode) {
+            this.children[0] = initializer;
+        }
     }
 
     export class CaseExpressionNode extends ExpressionNode {
@@ -290,11 +301,11 @@
 
         condition: ExpressionNode;
 
-        get caseOptionList(): Array<CaseOptionNode> {
+        get caseOptionList(): Array<ExpressionNode> {
             return this.children;
         }
 
-        set caseOptionList(optionsList: Array<CaseOptionNode>) {
+        set caseOptionList(optionsList: Array<ExpressionNode>) {
             throw 'Setter for CaseExpressionNode.caseOptionList not yet implemented';
         }
     }
@@ -303,6 +314,9 @@
         constructor() {
             super(NodeType.CaseOption);
         }
+
+        identiferName: string;
+        typeName: string;
     }
 
     export class NewExpressionNode extends ExpressionNode {

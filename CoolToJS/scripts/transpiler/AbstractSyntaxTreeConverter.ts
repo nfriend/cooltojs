@@ -112,7 +112,7 @@
             else if (syntaxTree.syntaxKind === SyntaxKind.Expression) {
 
                 /* ASSIGNMENT EXPRESSION */
-                if (syntaxTree.children[1].syntaxKind === SyntaxKind.AssignmentOperator) {
+                if (syntaxTree.children[1] && syntaxTree.children[1].syntaxKind === SyntaxKind.AssignmentOperator) {
                     var assignmentExprNode = new AssignmentExpressionNode();
                     assignmentExprNode.identifierName = syntaxTree.children[0].token.match;
 
@@ -124,10 +124,11 @@
                 }
 
                 /* METHOD CALL EXPRESSION */
-                else if (syntaxTree.children[1].syntaxKind === SyntaxKind.DotOperator
-                    || syntaxTree.children[1].syntaxKind === SyntaxKind.AtSignOperator
-                    || (syntaxTree.children[0].syntaxKind === SyntaxKind.ObjectIdentifier
-                        && syntaxTree.children[1].syntaxKind === SyntaxKind.OpenParenthesis)) {
+                else if (syntaxTree.children[1]
+                    && (syntaxTree.children[1].syntaxKind === SyntaxKind.DotOperator
+                        || syntaxTree.children[1].syntaxKind === SyntaxKind.AtSignOperator
+                        || (syntaxTree.children[0].syntaxKind === SyntaxKind.ObjectIdentifier
+                            && syntaxTree.children[1].syntaxKind === SyntaxKind.OpenParenthesis))) {
 
                     var methodCallExprNode = new MethodCallExpressionNode(),
                         expressionListIndex: number;
@@ -149,14 +150,14 @@
 
                         methodCallExprNode.methodName = syntaxTree.children[0].token.match;
                         methodCallExprNode.isCallToSelf = true;
-                        expressionListIndex = 3;
+                        expressionListIndex = 2;
                     }
 
                     if (syntaxTree.children[expressionListIndex].syntaxKind === SyntaxKind.ExpressionList) {
                         this.flattenRecursion(syntaxTree.children[expressionListIndex]);
 
                         for (var i = 0; i < syntaxTree.children[expressionListIndex].children.length; i++) {
-                            if (syntaxTree.children[4].children[i].syntaxKind === SyntaxKind.Expression) {
+                            if (syntaxTree.children[expressionListIndex].children[i].syntaxKind === SyntaxKind.Expression) {
                                 var parameterExprNode = this.Convert(syntaxTree.children[expressionListIndex].children[i]);
                                 parameterExprNode.parent = methodCallExprNode;
                                 methodCallExprNode.children.push(parameterExprNode);
@@ -222,9 +223,26 @@
 
                     this.flattenRecursion(syntaxTree.children[1]);
                     for (var i = 0; i < syntaxTree.children[1].children.length; i++) {
-                        var localVarDeclaration = this.Convert(syntaxTree.children[1].children[i]);
-                        localVarDeclaration.parent = letExpressionNode;
-                        letExpressionNode.localVariableDeclarations.push(localVarDeclaration);
+                        if (syntaxTree.children[1].children[i].syntaxKind === SyntaxKind.ObjectIdentifier) {
+                            var localVarDeclaration = new LocalVariableDeclarationNode();
+                            localVarDeclaration.identifierName = syntaxTree.children[1].children[i].token.match;
+                            localVarDeclaration.typeName = syntaxTree.children[1].children[i + 2].token.match;
+
+                            if (syntaxTree.children[1].children[i + 3]
+                                && syntaxTree.children[1].children[i + 3].syntaxKind == SyntaxKind.AssignmentOperator) {
+
+                                var localVarDeclInitExprNode = this.Convert(syntaxTree.children[1].children[i + 4]);
+                                localVarDeclInitExprNode.parent = localVarDeclaration;
+
+                                // Why are getters/setters not working?
+                                //localVarDeclaration.initializerExpression = localVarDeclInitExprNode;
+                                localVarDeclaration.children[0] = localVarDeclInitExprNode;
+
+                            }
+
+                            localVarDeclaration.parent = letExpressionNode;
+                            letExpressionNode.localVariableDeclarations.push(localVarDeclaration);
+                        }
                     }
 
                     var expressionBodyNode = this.Convert(syntaxTree.children[3]);
@@ -239,9 +257,18 @@
                     var caseExpressionNode = new CaseExpressionNode();
                     this.flattenRecursion(syntaxTree.children[3]);
                     for (var i = 0; i < syntaxTree.children[3].children.length; i++) {
-                        var caseOptionNode = this.Convert(syntaxTree.children[3].children[i]);
-                        caseOptionNode.parent = caseExpressionNode;
-                        caseExpressionNode.caseOptionList.push(caseOptionNode);
+                        if (syntaxTree.children[3].children[i].syntaxKind === SyntaxKind.ObjectIdentifier) {
+                            var caseOptionNode = new CaseOptionNode();
+                            caseOptionNode.identiferName = syntaxTree.children[3].children[i].token.match;
+                            caseOptionNode.typeName = syntaxTree.children[3].children[i + 2].token.match;
+
+                            var caseOptionExpressionNode = this.Convert(syntaxTree.children[3].children[i + 4]);
+                            caseOptionExpressionNode.parent = caseOptionNode;
+                            caseOptionNode.children[0] = caseOptionExpressionNode;
+
+                            caseOptionNode.parent = caseExpressionNode;
+                            caseExpressionNode.caseOptionList.push(caseOptionNode);
+                        }
                     }
 
                     var caseConditionNode = this.Convert(syntaxTree.children[1]);
@@ -268,7 +295,7 @@
                 }
 
                 /* BINARY OPERATION EXPRESSION */
-                else if (this.isBinaryOperator(syntaxTree.children[1])) {
+                else if (syntaxTree.children[1] && this.isBinaryOperator(syntaxTree.children[1])) {
                     var binaryOperationExprNode = new BinaryOperationExpressionNode();
 
                     switch (syntaxTree.children[1].syntaxKind) {
@@ -355,6 +382,7 @@
                 /* STRING LITERAL EXPRESSION */
                 else if (syntaxTree.children[0].syntaxKind === SyntaxKind.String) {
                     var stringLiteralExprNode = new StringLiteralExpressionNode();
+                    // TODO: remove quotes
                     stringLiteralExprNode.value = syntaxTree.children[0].token.match;
                     convertedNode = stringLiteralExprNode;
                 }
@@ -370,16 +398,6 @@
                     var falseKeywordExprNode = new FalseKeywordExpressionNode();
                     convertedNode = falseKeywordExprNode;
                 }
-            }
-
-            /* LOCAL VARIABLE DECLARATION */
-            else if (syntaxTree.syntaxKind === SyntaxKind.LocalVariableDeclarationList) {
-
-            }
-
-            /* CASE OPTION */
-            else if (syntaxTree.syntaxKind === SyntaxKind.CaseOption) {
-
             }
 
             /* ERROR */

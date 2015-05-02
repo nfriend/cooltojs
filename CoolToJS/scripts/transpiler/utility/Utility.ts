@@ -19,6 +19,7 @@
     export function ShallowCopySyntaxTree(syntaxTree: SyntaxTree, parentTree: SyntaxTree = null): SyntaxTree {
         var newTree: SyntaxTree = {
             syntaxKind: syntaxTree.syntaxKind,
+            syntaxKindName: SyntaxKind[syntaxTree.syntaxKind],
             token: syntaxTree.token,
             children: [],
             parent: parentTree

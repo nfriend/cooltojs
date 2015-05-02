@@ -325,6 +325,16 @@ var CoolToJS;
             function LocalVariableDeclarationNode() {
                 _super.call(this, 10 /* LocalVariableDeclaration */);
             }
+            Object.defineProperty(LocalVariableDeclarationNode.prototype, "initializerExpression", {
+                get: function () {
+                    return this.children[0];
+                },
+                set: function (initializer) {
+                    this.children[0] = initializer;
+                },
+                enumerable: true,
+                configurable: true
+            });
             return LocalVariableDeclarationNode;
         })(Node);
         AST.LocalVariableDeclarationNode = LocalVariableDeclarationNode;
@@ -582,7 +592,7 @@ var CoolToJS;
                     }
                     else if (syntaxTree.syntaxKind === 45 /* Expression */) {
                         /* ASSIGNMENT EXPRESSION */
-                        if (syntaxTree.children[1].syntaxKind === 12 /* AssignmentOperator */) {
+                        if (syntaxTree.children[1] && syntaxTree.children[1].syntaxKind === 12 /* AssignmentOperator */) {
                             var assignmentExprNode = new AST.AssignmentExpressionNode();
                             assignmentExprNode.identifierName = syntaxTree.children[0].token.match;
                             var assignmentExpression = _this.Convert(syntaxTree.children[2]);
@@ -590,7 +600,7 @@ var CoolToJS;
                             assignmentExprNode.children.push(assignmentExpression);
                             convertedNode = assignmentExprNode;
                         }
-                        else if (syntaxTree.children[1].syntaxKind === 7 /* DotOperator */ || syntaxTree.children[1].syntaxKind === 16 /* AtSignOperator */ || (syntaxTree.children[0].syntaxKind === 32 /* ObjectIdentifier */ && syntaxTree.children[1].syntaxKind === 1 /* OpenParenthesis */)) {
+                        else if (syntaxTree.children[1] && (syntaxTree.children[1].syntaxKind === 7 /* DotOperator */ || syntaxTree.children[1].syntaxKind === 16 /* AtSignOperator */ || (syntaxTree.children[0].syntaxKind === 32 /* ObjectIdentifier */ && syntaxTree.children[1].syntaxKind === 1 /* OpenParenthesis */))) {
                             var methodCallExprNode = new AST.MethodCallExpressionNode(), expressionListIndex;
                             if (syntaxTree.children[1].syntaxKind === 7 /* DotOperator */) {
                                 // standard method call on an expression
@@ -607,12 +617,12 @@ var CoolToJS;
                                 // method call to implied "self"
                                 methodCallExprNode.methodName = syntaxTree.children[0].token.match;
                                 methodCallExprNode.isCallToSelf = true;
-                                expressionListIndex = 3;
+                                expressionListIndex = 2;
                             }
                             if (syntaxTree.children[expressionListIndex].syntaxKind === 46 /* ExpressionList */) {
                                 _this.flattenRecursion(syntaxTree.children[expressionListIndex]);
                                 for (var i = 0; i < syntaxTree.children[expressionListIndex].children.length; i++) {
-                                    if (syntaxTree.children[4].children[i].syntaxKind === 45 /* Expression */) {
+                                    if (syntaxTree.children[expressionListIndex].children[i].syntaxKind === 45 /* Expression */) {
                                         var parameterExprNode = _this.Convert(syntaxTree.children[expressionListIndex].children[i]);
                                         parameterExprNode.parent = methodCallExprNode;
                                         methodCallExprNode.children.push(parameterExprNode);
@@ -660,9 +670,20 @@ var CoolToJS;
                             var letExpressionNode = new AST.LetExpressionNode();
                             _this.flattenRecursion(syntaxTree.children[1]);
                             for (var i = 0; i < syntaxTree.children[1].children.length; i++) {
-                                var localVarDeclaration = _this.Convert(syntaxTree.children[1].children[i]);
-                                localVarDeclaration.parent = letExpressionNode;
-                                letExpressionNode.localVariableDeclarations.push(localVarDeclaration);
+                                if (syntaxTree.children[1].children[i].syntaxKind === 32 /* ObjectIdentifier */) {
+                                    var localVarDeclaration = new AST.LocalVariableDeclarationNode();
+                                    localVarDeclaration.identifierName = syntaxTree.children[1].children[i].token.match;
+                                    localVarDeclaration.typeName = syntaxTree.children[1].children[i + 2].token.match;
+                                    if (syntaxTree.children[1].children[i + 3] && syntaxTree.children[1].children[i + 3].syntaxKind == 12 /* AssignmentOperator */) {
+                                        var localVarDeclInitExprNode = _this.Convert(syntaxTree.children[1].children[i + 4]);
+                                        localVarDeclInitExprNode.parent = localVarDeclaration;
+                                        // Why are getters/setters not working?
+                                        //localVarDeclaration.initializerExpression = localVarDeclInitExprNode;
+                                        localVarDeclaration.children[0] = localVarDeclInitExprNode;
+                                    }
+                                    localVarDeclaration.parent = letExpressionNode;
+                                    letExpressionNode.localVariableDeclarations.push(localVarDeclaration);
+                                }
                             }
                             var expressionBodyNode = _this.Convert(syntaxTree.children[3]);
                             expressionBodyNode.parent = letExpressionNode;
@@ -673,9 +694,15 @@ var CoolToJS;
                             var caseExpressionNode = new AST.CaseExpressionNode();
                             _this.flattenRecursion(syntaxTree.children[3]);
                             for (var i = 0; i < syntaxTree.children[3].children.length; i++) {
-                                var caseOptionNode = _this.Convert(syntaxTree.children[3].children[i]);
-                                caseOptionNode.parent = caseExpressionNode;
-                                caseExpressionNode.caseOptionList.push(caseOptionNode);
+                                if (syntaxTree.children[3].children[i].syntaxKind === 32 /* ObjectIdentifier */) {
+                                    var caseOptionNode = new AST.CaseOptionNode();
+                                    caseOptionNode.identiferName = syntaxTree.children[3].children[i].token.match;
+                                    caseOptionNode.typeName = syntaxTree.children[3].children[i + 2].token.match;
+                                    var caseOptionExpressionNode = _this.Convert(syntaxTree.children[3].children[i + 4]);
+                                    caseOptionExpressionNode.parent = caseOptionNode;
+                                    caseOptionNode.parent = caseExpressionNode;
+                                    caseExpressionNode.caseOptionList.push(caseOptionNode);
+                                }
                             }
                             var caseConditionNode = _this.Convert(syntaxTree.children[1]);
                             caseConditionNode.parent = caseExpressionNode;
@@ -694,7 +721,7 @@ var CoolToJS;
                             isVoidExpressionNode.children[0] = isVoidConditionNode;
                             convertedNode = isVoidExpressionNode;
                         }
-                        else if (_this.isBinaryOperator(syntaxTree.children[1])) {
+                        else if (syntaxTree.children[1] && _this.isBinaryOperator(syntaxTree.children[1])) {
                             var binaryOperationExprNode = new AST.BinaryOperationExpressionNode();
                             switch (syntaxTree.children[1].syntaxKind) {
                                 case 4 /* AdditionOperator */:
@@ -763,24 +790,19 @@ var CoolToJS;
                             convertedNode = intLiteralExprNode;
                         }
                         else if (syntaxTree.children[0].syntaxKind === 35 /* String */) {
-                            var intLiteralExprNode = new AST.IntegerLiteralExpressionNode();
-                            intLiteralExprNode.value = parseInt(syntaxTree.children[0].token.match, 10);
-                            convertedNode = intLiteralExprNode;
+                            var stringLiteralExprNode = new AST.StringLiteralExpressionNode();
+                            // TODO: remove quotes
+                            stringLiteralExprNode.value = syntaxTree.children[0].token.match;
+                            convertedNode = stringLiteralExprNode;
                         }
                         else if (syntaxTree.children[0].syntaxKind === 37 /* TrueKeyword */) {
-                            var intLiteralExprNode = new AST.IntegerLiteralExpressionNode();
-                            intLiteralExprNode.value = parseInt(syntaxTree.children[0].token.match, 10);
-                            convertedNode = intLiteralExprNode;
+                            var trueKeywordExprNode = new AST.TrueKeywordExpressionNode();
+                            convertedNode = trueKeywordExprNode;
                         }
                         else if (syntaxTree.children[0].syntaxKind === 21 /* FalseKeyword */) {
-                            var intLiteralExprNode = new AST.IntegerLiteralExpressionNode();
-                            intLiteralExprNode.value = parseInt(syntaxTree.children[0].token.match, 10);
-                            convertedNode = intLiteralExprNode;
+                            var falseKeywordExprNode = new AST.FalseKeywordExpressionNode();
+                            convertedNode = falseKeywordExprNode;
                         }
-                    }
-                    else if (syntaxTree.syntaxKind === 52 /* LocalVariableDeclarationList */) {
-                    }
-                    else if (syntaxTree.syntaxKind === 43 /* CaseOption */) {
                     }
                     else {
                         throw 'Unknown syntaxTree kind!';
@@ -1061,6 +1083,7 @@ var CoolToJS;
                     if (tableEntry.action === 0 /* Shift */) {
                         stack.push({
                             syntaxKind: tokens[inputPointer].token,
+                            syntaxKindName: CoolToJS.SyntaxKind[tokens[inputPointer].token],
                             token: tokens[inputPointer],
                             parent: null,
                             children: [],
@@ -1072,6 +1095,7 @@ var CoolToJS;
                         var removedItems = stack.splice(-1 * production.popCount, production.popCount);
                         var newStackItem = {
                             syntaxKind: production.reduceResult,
+                            syntaxKindName: CoolToJS.SyntaxKind[production.reduceResult],
                             children: removedItems,
                             parent: null,
                         };
@@ -1826,6 +1850,7 @@ var CoolToJS;
             if (parentTree === void 0) { parentTree = null; }
             var newTree = {
                 syntaxKind: syntaxTree.syntaxKind,
+                syntaxKindName: CoolToJS.SyntaxKind[syntaxTree.syntaxKind],
                 token: syntaxTree.token,
                 children: [],
                 parent: parentTree

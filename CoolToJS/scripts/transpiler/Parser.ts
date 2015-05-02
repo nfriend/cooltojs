@@ -5,6 +5,9 @@
         token?: Token;
         parent: SyntaxTree;
         children: Array<SyntaxTree>;
+
+        // for debugging
+        syntaxKindName: string;
     }
 
     export class Parser {
@@ -134,6 +137,7 @@
                 if ((<ParseTableEntry>tableEntry).action === Action.Shift) {
                     stack.push({
                         syntaxKind: tokens[inputPointer].token,
+                        syntaxKindName: SyntaxKind[tokens[inputPointer].token],
                         token: tokens[inputPointer],
                         parent: null,
                         children: [],
@@ -143,8 +147,9 @@
                 } else if ((<ParseTableEntry>tableEntry).action === Action.Reduce) {
                     var production = productions[(<ParseTableEntry>tableEntry).productionIndex];
                     var removedItems = stack.splice(-1 * production.popCount, production.popCount);
-                    var newStackItem = {
+                    var newStackItem: SyntaxTree = {
                         syntaxKind: production.reduceResult,
+                        syntaxKindName: SyntaxKind[production.reduceResult],
                         children: removedItems,
                         parent: null,
                     };
