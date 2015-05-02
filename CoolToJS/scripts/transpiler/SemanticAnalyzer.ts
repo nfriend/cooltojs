@@ -235,11 +235,26 @@
                                 message: ('Method "' + methodCallExpressionNode.methodName + '" takes exactly '
                                     + typeEnvironment.methodScope[i].methodParameters.length + ' parameter'
                                     + (typeEnvironment.methodScope[i].methodParameters.length === 1 ? '' : 's')
-                                    + '. ' + methodCallExpressionNode.parameterExpressionList.length + ' parameter'
-                                    + (methodCallExpressionNode.parameterExpressionList.length === 1 ? '' : 's')
-                                    + ' were provided.')
+                                    + '. ' + methodCallExpressionNode.parameterExpressionList.length +
+                                    + (methodCallExpressionNode.parameterExpressionList.length === 1 ? ' parameter was' : ' parameters were')
+                                    + ' provided.')
                             });
                         }
+
+                        var parameterTypes: Array<string> = methodCallExpressionNode.parameterExpressionList.map((exprNode) => {
+                            return this.analyze(exprNode, typeEnvironment, errorMessages, warningMessages);
+                        });
+
+                        typeEnvironment.methodScope[i].methodParameters.forEach((param, paramIndex) => {
+                            if (parameterTypes[paramIndex] && !this.isAssignableFrom(param.parameterType, parameterTypes[paramIndex])) {
+                                errorMessages.push({
+                                    location: methodCallExpressionNode.token.location,
+                                    message: ('Parameter ' + (paramIndex + 1) + ' of method "' + methodCallExpressionNode.methodName
+                                        + '" must be of type "' + param.parameterType + '".  '
+                                        + 'A parameter of type "' + parameterTypes[paramIndex] + '" was provided instead')
+                                });
+                            }
+                        });
 
                         return typeEnvironment.methodScope[i].methodReturnType;
                     }

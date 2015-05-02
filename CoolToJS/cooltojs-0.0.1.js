@@ -1586,9 +1586,20 @@ var CoolToJS;
                             if (typeEnvironment.methodScope[i].methodParameters.length !== methodCallExpressionNode.parameterExpressionList.length) {
                                 errorMessages.push({
                                     location: methodCallExpressionNode.token.location,
-                                    message: ('Method "' + methodCallExpressionNode.methodName + '" takes exactly ' + typeEnvironment.methodScope[i].methodParameters.length + ' parameter' + (typeEnvironment.methodScope[i].methodParameters.length === 1 ? '' : 's') + '. ' + methodCallExpressionNode.parameterExpressionList.length + ' parameter' + (methodCallExpressionNode.parameterExpressionList.length === 1 ? '' : 's') + ' were provided.')
+                                    message: ('Method "' + methodCallExpressionNode.methodName + '" takes exactly ' + typeEnvironment.methodScope[i].methodParameters.length + ' parameter' + (typeEnvironment.methodScope[i].methodParameters.length === 1 ? '' : 's') + '. ' + methodCallExpressionNode.parameterExpressionList.length + +(methodCallExpressionNode.parameterExpressionList.length === 1 ? ' parameter was' : ' parameters were') + ' provided.')
                                 });
                             }
+                            var parameterTypes = methodCallExpressionNode.parameterExpressionList.map(function (exprNode) {
+                                return _this.analyze(exprNode, typeEnvironment, errorMessages, warningMessages);
+                            });
+                            typeEnvironment.methodScope[i].methodParameters.forEach(function (param, paramIndex) {
+                                if (parameterTypes[paramIndex] && !_this.isAssignableFrom(param.parameterType, parameterTypes[paramIndex])) {
+                                    errorMessages.push({
+                                        location: methodCallExpressionNode.token.location,
+                                        message: ('Parameter ' + (paramIndex + 1) + ' of method "' + methodCallExpressionNode.methodName + '" must be of type "' + param.parameterType + '".  ' + 'A parameter of type "' + parameterTypes[paramIndex] + '" was provided instead')
+                                    });
+                                }
+                            });
                             return typeEnvironment.methodScope[i].methodReturnType;
                         }
                     }
