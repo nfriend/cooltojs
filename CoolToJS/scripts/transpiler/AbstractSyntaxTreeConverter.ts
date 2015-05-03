@@ -398,6 +398,16 @@
                     convertedNode = parExprNod;
                 }
 
+                /* SELF EXPRESSION */
+                else if (syntaxTree.children[0].syntaxKind === SyntaxKind.ObjectIdentifier
+                    && syntaxTree.children.length === 1
+                    && syntaxTree.children[0].token.match === 'self') {
+
+                    var selfExpressionNode = new SelfExpressionNode();
+                    selfExpressionNode.token = syntaxTree.children[0].token;
+                    convertedNode = selfExpressionNode;
+                }
+
                 /* OBJECT IDENTIFIER EXPRESSION */
                 else if (syntaxTree.children[0].syntaxKind === SyntaxKind.ObjectIdentifier && syntaxTree.children.length === 1) {
                     var objIdentExprNode = new ObjectIdentifierExpressionNode();

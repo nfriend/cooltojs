@@ -20,11 +20,12 @@
         BinaryOperationExpression = 15,
         UnaryOperationExpression = 16,
         ParantheticalExpression = 17,
-        ObjectIdentifierExpression = 18,
-        IntegerLiteralExpression = 19,
-        StringLiteralExpression = 20,
-        TrueKeywordExpression = 21,
-        FalseKeywordExpression = 22
+        SelfExpression = 18,
+        ObjectIdentifierExpression = 19,
+        IntegerLiteralExpression = 20,
+        StringLiteralExpression = 21,
+        TrueKeywordExpression = 22,
+        FalseKeywordExpression = 23
     }
 
     export enum BinaryOperationType {
@@ -408,6 +409,12 @@
         }
     }
 
+    export class SelfExpressionNode extends ExpressionNode {
+        constructor() {
+            super(NodeType.SelfExpression);
+        }
+    }
+
     export class ObjectIdentifierExpressionNode extends ExpressionNode {
         constructor() {
             super(NodeType.ObjectIdentifierExpression);
@@ -415,6 +422,7 @@
 
         objectIdentifierName: string;
     }
+
 
     export class IntegerLiteralExpressionNode extends ExpressionNode {
         constructor() {

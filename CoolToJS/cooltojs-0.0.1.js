@@ -26,11 +26,12 @@ var CoolToJS;
         NodeType[NodeType["BinaryOperationExpression"] = 15] = "BinaryOperationExpression";
         NodeType[NodeType["UnaryOperationExpression"] = 16] = "UnaryOperationExpression";
         NodeType[NodeType["ParantheticalExpression"] = 17] = "ParantheticalExpression";
-        NodeType[NodeType["ObjectIdentifierExpression"] = 18] = "ObjectIdentifierExpression";
-        NodeType[NodeType["IntegerLiteralExpression"] = 19] = "IntegerLiteralExpression";
-        NodeType[NodeType["StringLiteralExpression"] = 20] = "StringLiteralExpression";
-        NodeType[NodeType["TrueKeywordExpression"] = 21] = "TrueKeywordExpression";
-        NodeType[NodeType["FalseKeywordExpression"] = 22] = "FalseKeywordExpression";
+        NodeType[NodeType["SelfExpression"] = 18] = "SelfExpression";
+        NodeType[NodeType["ObjectIdentifierExpression"] = 19] = "ObjectIdentifierExpression";
+        NodeType[NodeType["IntegerLiteralExpression"] = 20] = "IntegerLiteralExpression";
+        NodeType[NodeType["StringLiteralExpression"] = 21] = "StringLiteralExpression";
+        NodeType[NodeType["TrueKeywordExpression"] = 22] = "TrueKeywordExpression";
+        NodeType[NodeType["FalseKeywordExpression"] = 23] = "FalseKeywordExpression";
     })(CoolToJS.NodeType || (CoolToJS.NodeType = {}));
     var NodeType = CoolToJS.NodeType;
     (function (BinaryOperationType) {
@@ -467,10 +468,18 @@ var CoolToJS;
         return ParantheticalExpressionNode;
     })(ExpressionNode);
     CoolToJS.ParantheticalExpressionNode = ParantheticalExpressionNode;
+    var SelfExpressionNode = (function (_super) {
+        __extends(SelfExpressionNode, _super);
+        function SelfExpressionNode() {
+            _super.call(this, 18 /* SelfExpression */);
+        }
+        return SelfExpressionNode;
+    })(ExpressionNode);
+    CoolToJS.SelfExpressionNode = SelfExpressionNode;
     var ObjectIdentifierExpressionNode = (function (_super) {
         __extends(ObjectIdentifierExpressionNode, _super);
         function ObjectIdentifierExpressionNode() {
-            _super.call(this, 18 /* ObjectIdentifierExpression */);
+            _super.call(this, 19 /* ObjectIdentifierExpression */);
         }
         return ObjectIdentifierExpressionNode;
     })(ExpressionNode);
@@ -478,7 +487,7 @@ var CoolToJS;
     var IntegerLiteralExpressionNode = (function (_super) {
         __extends(IntegerLiteralExpressionNode, _super);
         function IntegerLiteralExpressionNode() {
-            _super.call(this, 19 /* IntegerLiteralExpression */);
+            _super.call(this, 20 /* IntegerLiteralExpression */);
         }
         return IntegerLiteralExpressionNode;
     })(ExpressionNode);
@@ -486,7 +495,7 @@ var CoolToJS;
     var StringLiteralExpressionNode = (function (_super) {
         __extends(StringLiteralExpressionNode, _super);
         function StringLiteralExpressionNode() {
-            _super.call(this, 20 /* StringLiteralExpression */);
+            _super.call(this, 21 /* StringLiteralExpression */);
         }
         return StringLiteralExpressionNode;
     })(ExpressionNode);
@@ -494,7 +503,7 @@ var CoolToJS;
     var TrueKeywordExpressionNode = (function (_super) {
         __extends(TrueKeywordExpressionNode, _super);
         function TrueKeywordExpressionNode() {
-            _super.call(this, 21 /* TrueKeywordExpression */);
+            _super.call(this, 22 /* TrueKeywordExpression */);
         }
         return TrueKeywordExpressionNode;
     })(ExpressionNode);
@@ -502,7 +511,7 @@ var CoolToJS;
     var FalseKeywordExpressionNode = (function (_super) {
         __extends(FalseKeywordExpressionNode, _super);
         function FalseKeywordExpressionNode() {
-            _super.call(this, 22 /* FalseKeywordExpression */);
+            _super.call(this, 23 /* FalseKeywordExpression */);
         }
         return FalseKeywordExpressionNode;
     })(ExpressionNode);
@@ -822,6 +831,11 @@ var CoolToJS;
                         innerExprNode.parent = parExprNod;
                         parExprNod.children[0] = innerExprNode;
                         convertedNode = parExprNod;
+                    }
+                    else if (syntaxTree.children[0].syntaxKind === 32 /* ObjectIdentifier */ && syntaxTree.children.length === 1 && syntaxTree.children[0].token.match === 'self') {
+                        var selfExpressionNode = new CoolToJS.SelfExpressionNode();
+                        selfExpressionNode.token = syntaxTree.children[0].token;
+                        convertedNode = selfExpressionNode;
                     }
                     else if (syntaxTree.children[0].syntaxKind === 32 /* ObjectIdentifier */ && syntaxTree.children.length === 1) {
                         var objIdentExprNode = new CoolToJS.ObjectIdentifierExpressionNode();
@@ -1501,6 +1515,7 @@ var CoolToJS;
                 else if (ast.type === 1 /* Class */) {
                     var classNode = ast;
                     typeEnvironment.currentClassType = classNode.className;
+                    typeEnvironment.variableScope = [];
                     // ensure that all method names are unique
                     var duplicateMethods = [];
                     for (var i = 0; i < classNode.methodList.length; i++) {
@@ -1523,6 +1538,12 @@ var CoolToJS;
                             return c.propertyName;
                         }).slice(0, i).indexOf(classNode.propertyList[i].propertyName) !== -1) {
                             duplicateProperties.push(classNode.propertyList[i]);
+                        }
+                        else {
+                            typeEnvironment.variableScope.push({
+                                variableName: classNode.propertyList[i].propertyName,
+                                variableType: classNode.propertyList[i].typeName
+                            });
                         }
                     }
                     duplicateProperties.forEach(function (propertyNode) {
@@ -1696,6 +1717,7 @@ var CoolToJS;
                             message: 'Right side of the "' + binOpNode.token.match + '" operator must be of type "Int"'
                         });
                     }
+                    return 'Int';
                 }
                 else if (ast.type === 16 /* UnaryOperationExpression */) {
                     var unaryOpNode = ast;
@@ -1707,6 +1729,7 @@ var CoolToJS;
                                 message: 'Expression following the "Not" operator must be of type "Bool"'
                             });
                         }
+                        return 'Bool';
                     }
                     else {
                         if (!_this.typeHeirarchy.isAssignableFrom('Int', unaryOperationType, typeEnvironment.currentClassType)) {
@@ -1715,12 +1738,16 @@ var CoolToJS;
                                 message: 'Expression following the "~" operator must be of type "Int"'
                             });
                         }
+                        return 'Int';
                     }
                 }
                 else if (ast.type === 17 /* ParantheticalExpression */) {
                     return _this.analyze(ast.innerExpression, typeEnvironment, errorMessages, warningMessages);
                 }
-                else if (ast.type === 18 /* ObjectIdentifierExpression */) {
+                else if (ast.type === 18 /* SelfExpression */) {
+                    return typeEnvironment.currentClassType;
+                }
+                else if (ast.type === 19 /* ObjectIdentifierExpression */) {
                     var objectIdExpressionNode = ast;
                     for (var i = typeEnvironment.variableScope.length - 1; i >= 0; i--) {
                         if (typeEnvironment.variableScope[i].variableName === objectIdExpressionNode.objectIdentifierName) {
@@ -1733,13 +1760,13 @@ var CoolToJS;
                     });
                     return CoolToJS.UnknownType;
                 }
-                else if (ast.type === 19 /* IntegerLiteralExpression */) {
+                else if (ast.type === 20 /* IntegerLiteralExpression */) {
                     return 'Int';
                 }
-                else if (ast.type === 20 /* StringLiteralExpression */) {
+                else if (ast.type === 21 /* StringLiteralExpression */) {
                     return 'String';
                 }
-                else if (ast.type === 21 /* TrueKeywordExpression */ || ast.type === 22 /* FalseKeywordExpression */) {
+                else if (ast.type === 22 /* TrueKeywordExpression */ || ast.type === 23 /* FalseKeywordExpression */) {
                     return 'Bool';
                 }
                 else

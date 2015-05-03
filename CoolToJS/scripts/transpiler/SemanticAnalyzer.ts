@@ -118,6 +118,7 @@
             else if (ast.type === NodeType.Class) {
                 var classNode = <ClassNode>ast;
                 typeEnvironment.currentClassType = classNode.className;
+                typeEnvironment.variableScope = [];
 
                 // ensure that all method names are unique
                 var duplicateMethods: Array<MethodNode> = [];
@@ -139,6 +140,11 @@
                 for (var i = 0; i < classNode.propertyList.length; i++) {
                     if (classNode.propertyList.map(c => { return c.propertyName }).slice(0, i).indexOf(classNode.propertyList[i].propertyName) !== -1) {
                         duplicateProperties.push(classNode.propertyList[i]);
+                    } else {
+                        typeEnvironment.variableScope.push({
+                            variableName: classNode.propertyList[i].propertyName,
+                            variableType: classNode.propertyList[i].typeName
+                        });
                     }
                 }
 
@@ -371,6 +377,8 @@
                         message: 'Right side of the "' + binOpNode.token.match + '" operator must be of type "Int"'
                     });
                 }
+
+                return 'Int';
             }
 
             /* UNARY OPERATION EXPRESSION */
@@ -385,6 +393,8 @@
                             message: 'Expression following the "Not" operator must be of type "Bool"'
                         });
                     }
+
+                    return 'Bool';
                 } else {
                     if (!this.typeHeirarchy.isAssignableFrom('Int', unaryOperationType, typeEnvironment.currentClassType)) {
                         errorMessages.push({
@@ -392,12 +402,19 @@
                             message: 'Expression following the "~" operator must be of type "Int"'
                         });
                     }
+
+                    return 'Int';
                 }
             }
 
             /* PARANTHETICAL EXPRESSION */
             else if (ast.type === NodeType.ParantheticalExpression) {
                 return this.analyze((<ParantheticalExpressionNode>ast).innerExpression, typeEnvironment, errorMessages, warningMessages);
+            }
+
+            /* SELF EXPRESSION */
+            else if (ast.type === NodeType.SelfExpression) {
+                return typeEnvironment.currentClassType;
             }
 
             /* OBJECT IDENTIFIER EXPRESSION */
