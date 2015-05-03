@@ -17,6 +17,8 @@
             }
         };
 
+        typeHeirarchy: TypeHeirarchy;
+
         // analyzes the current node and returns the inferred type name (if applicable)
         analyze = (ast: Node,
             typeEnvironment: TypeEnvironment,
@@ -26,9 +28,6 @@
             /* PROGRAM */
             if (ast.type === NodeType.Program) {
                 var programNode = <ProgramNode>ast;
-
-                this.addBuiltinObjects(programNode);
-                this.buildInheritanceGraph(programNode);
 
                 // ensure that exactly 1 Main class is defined and that all class names are unique
                 var mainClass: ClassNode;
@@ -40,6 +39,20 @@
 
                     if (programNode.classList.map(c => { return c.className }).slice(0, i).indexOf(programNode.classList[i].className) !== -1) {
                         duplicateClasses.push(programNode.classList[i]);
+                    }
+
+                    if (['String', 'Int', 'Bool'].indexOf(programNode.classList[i].superClassName) !== -1) {
+                        errorMessages.push({
+                            location: programNode.classList[i].token.location,
+                            message: 'Classes cannot inherit from "' + programNode.classList[i].superClassName + '"'
+                        });
+                    }
+
+                    if (['String', 'Int', 'Bool', 'Object', 'IO'].indexOf(programNode.classList[i].className) !== -1) {
+                        errorMessages.push({
+                            location: programNode.classList[i].token.location,
+                            message: 'Redefinition of basic class "' + programNode.classList[i].superClassName + '"'
+                        });
                     }
                 }
 
@@ -81,8 +94,23 @@
                     }
                 }
 
+                Utility.addBuiltinObjects(programNode);
+                this.typeHeirarchy = TypeHeirarchy.createHeirarchy(programNode);
+
+                // ensure that superclasses exist
+                programNode.classList.forEach(classNode => {
+                    if (classNode.superClassName && !this.typeHeirarchy.typeExists(classNode.superClassName)) {
+                        errorMessages.push({
+                            location: classNode.token.location,
+                            message: 'Inherited type "' + classNode.superClassName + '" does not exist'
+                        });
+                    }
+                });
+
                 ast.children.forEach(node => {
-                    this.analyze(node, typeEnvironment, errorMessages, warningMessages);
+                    if (['String', 'Int', 'Bool', 'Object', 'IO'].indexOf((<ClassNode>node).className) === -1) {
+                        this.analyze(node, typeEnvironment, errorMessages, warningMessages);
+                    }
                 });
             }
 
@@ -90,58 +118,12 @@
             else if (ast.type === NodeType.Class) {
                 var classNode = <ClassNode>ast;
                 typeEnvironment.currentClassType = classNode.className;
-                typeEnvironment.methodScope = [];
-
-                // add this class's superclass's methods to the methodscope
-                var superClass = this.findTypeHeirarchy(classNode.className).parent;
-                var methodsToAddToScope: Array<MethodScope> = [];
-                while (superClass) {
-                    superClass.classNode.methodList.forEach(methodNode => {
-
-                        var newMethodScopeItem: MethodScope = {
-                            methodName: methodNode.methodName,
-                            methodReturnType: methodNode.returnTypeName,
-                            methodParameters: []
-                        };
-
-                        methodNode.parameters.forEach(param => {
-                            newMethodScopeItem.methodParameters.push({
-                                parameterName: param.parameterName,
-                                parameterType: param.parameterTypeName
-                            });
-                        });
-
-                        methodsToAddToScope.push(newMethodScopeItem);
-                    });
-                    superClass = superClass.parent;
-                }
-
-                // add them to the methodscope in reverse order so the most basic methods
-                // appear on the bottom of the stack
-                typeEnvironment.methodScope = typeEnvironment.methodScope.concat(methodsToAddToScope.reverse());
 
                 // ensure that all method names are unique
                 var duplicateMethods: Array<MethodNode> = [];
                 for (var i = 0; i < classNode.methodList.length; i++) {
                     if (classNode.methodList.map(c => { return c.methodName }).slice(0, i).indexOf(classNode.methodList[i].methodName) !== -1) {
                         duplicateMethods.push(classNode.methodList[i]);
-                    } else {
-                        // add valid methods to the current methodScope
-
-                        var newMethodScopeItem: MethodScope = {
-                            methodName: classNode.methodList[i].methodName,
-                            methodReturnType: classNode.methodList[i].returnTypeName,
-                            methodParameters: []
-                        };
-
-                        classNode.methodList[i].parameters.forEach(param => {
-                            newMethodScopeItem.methodParameters.push({
-                                parameterName: param.parameterName,
-                                parameterType: param.parameterTypeName
-                            });
-                        });
-
-                        typeEnvironment.methodScope.push(newMethodScopeItem);
                     }
                 }
 
@@ -177,7 +159,7 @@
                 var propertyNode = <PropertyNode>ast;
                 if (propertyNode.hasInitializer) {
                     var initializerType = this.analyze(propertyNode.propertyInitializerExpression, typeEnvironment, errorMessages, warningMessages);
-                    if (!this.isAssignableFrom(propertyNode.typeName, initializerType)) {
+                    if (!this.typeHeirarchy.isAssignableFrom(propertyNode.typeName, initializerType, typeEnvironment.currentClassType)) {
                         this.addTypeError(propertyNode.typeName, initializerType, propertyNode.token.location, errorMessages);
                     }
                 }
@@ -185,7 +167,14 @@
 
             /* CLASS METHOD */
             else if (ast.type === NodeType.Method) {
-                return null;
+                var methodNode = <MethodNode>ast;
+                var methodReturnType = this.analyze(methodNode.methodBodyExpression, typeEnvironment, errorMessages, warningMessages);
+                if (!this.typeHeirarchy.isAssignableFrom(methodNode.returnTypeName, methodReturnType, typeEnvironment.currentClassType)) {
+                    errorMessages.push({
+                        location: methodNode.token.location,
+                        message: 'Return type "' + methodReturnType + '" of method "' + methodNode.methodName + '" is not assignable to the declared type of "' + methodNode.returnTypeName + '"'
+                    });
+                }
             }
 
             /* ASSIGNMENT EXPRESSION */
@@ -195,7 +184,7 @@
                     if (typeEnvironment.variableScope[i].variableName === assignmentExpressionNode.identifierName) {
                         var expressionType = this.analyze(assignmentExpressionNode.assignmentExpression, typeEnvironment, errorMessages, warningMessages);
 
-                        if (!this.isAssignableFrom(typeEnvironment.variableScope[i].variableType, expressionType)) {
+                        if (!this.typeHeirarchy.isAssignableFrom(typeEnvironment.variableScope[i].variableType, expressionType, typeEnvironment.currentClassType)) {
                             this.addTypeError(typeEnvironment.variableScope[i].variableType, expressionType, assignmentExpressionNode.token.location, errorMessages);
                         }
 
@@ -208,13 +197,13 @@
                     message: 'Assignment to undeclared variable "' + assignmentExpressionNode.identifierName + '"'
                 });
 
-                return this.unknownType;
+                return UnknownType;
             }
 
             /* METHOD CALL EXPRESSION */
             else if (ast.type === NodeType.MethodCallExpression) {
-                var methodCallExpressionNode = <MethodCallExpressionNode>ast;
-                var methodTargetType: string;
+                var methodCallExpressionNode = <MethodCallExpressionNode>ast,
+                    methodTargetType: string;
 
                 if (!methodCallExpressionNode.isCallToParent && !methodCallExpressionNode.isCallToSelf) {
                     methodTargetType = this.analyze(methodCallExpressionNode.targetExpression, typeEnvironment, errorMessages, warningMessages);
@@ -226,46 +215,66 @@
                     throw 'MethodCallExpressionNode should not have both isCallToParent = true AND isCallToSelf = true';
                 }
 
-                for (var i = typeEnvironment.methodScope.length - 1; i >= 0; i--) {
-                    if (typeEnvironment.methodScope[i].methodName === methodCallExpressionNode.methodName) {
+                var foundMethodNode = this.typeHeirarchy.findMethodOnType(methodCallExpressionNode.methodName, methodTargetType, !methodCallExpressionNode.isCallToParent);
 
-                        if (typeEnvironment.methodScope[i].methodParameters.length !== methodCallExpressionNode.parameterExpressionList.length) {
+                if (foundMethodNode) {
+                    if (foundMethodNode.parameters.length !== methodCallExpressionNode.parameterExpressionList.length) {
+                        errorMessages.push({
+                            location: methodCallExpressionNode.token.location,
+                            message: ('Method "' + methodCallExpressionNode.methodName + '" takes exactly '
+                                + foundMethodNode.parameters.length + ' parameter'
+                                + (foundMethodNode.parameters.length === 1 ? '' : 's')
+                                + '. ' + methodCallExpressionNode.parameterExpressionList.length
+                                + (methodCallExpressionNode.parameterExpressionList.length === 1 ? ' parameter was' : ' parameters were')
+                                + ' provided.')
+                        });
+                    }
+
+                    var parameterTypes: Array<string> = methodCallExpressionNode.parameterExpressionList.map((exprNode) => {
+                        return this.analyze(exprNode, typeEnvironment, errorMessages, warningMessages);
+                    });
+
+                    foundMethodNode.parameters.forEach((param, paramIndex) => {
+                        if (parameterTypes[paramIndex]
+                            && !this.typeHeirarchy.isAssignableFrom(param.parameterTypeName,
+                                parameterTypes[paramIndex],
+                                typeEnvironment.currentClassType)) {
+
                             errorMessages.push({
                                 location: methodCallExpressionNode.token.location,
-                                message: ('Method "' + methodCallExpressionNode.methodName + '" takes exactly '
-                                    + typeEnvironment.methodScope[i].methodParameters.length + ' parameter'
-                                    + (typeEnvironment.methodScope[i].methodParameters.length === 1 ? '' : 's')
-                                    + '. ' + methodCallExpressionNode.parameterExpressionList.length +
-                                    + (methodCallExpressionNode.parameterExpressionList.length === 1 ? ' parameter was' : ' parameters were')
-                                    + ' provided.')
+                                message: ('Parameter ' + (paramIndex + 1) + ' of method "' + methodCallExpressionNode.methodName
+                                    + '" must be of type "' + param.parameterTypeName + '".  '
+                                    + 'A parameter of type "' + parameterTypes[paramIndex] + '" was provided instead')
                             });
                         }
+                    });
 
-                        var parameterTypes: Array<string> = methodCallExpressionNode.parameterExpressionList.map((exprNode) => {
-                            return this.analyze(exprNode, typeEnvironment, errorMessages, warningMessages);
-                        });
-
-                        typeEnvironment.methodScope[i].methodParameters.forEach((param, paramIndex) => {
-                            if (parameterTypes[paramIndex] && !this.isAssignableFrom(param.parameterType, parameterTypes[paramIndex])) {
-                                errorMessages.push({
-                                    location: methodCallExpressionNode.token.location,
-                                    message: ('Parameter ' + (paramIndex + 1) + ' of method "' + methodCallExpressionNode.methodName
-                                        + '" must be of type "' + param.parameterType + '".  '
-                                        + 'A parameter of type "' + parameterTypes[paramIndex] + '" was provided instead')
-                                });
-                            }
-                        });
-
-                        return typeEnvironment.methodScope[i].methodReturnType;
-                    }
+                    return foundMethodNode.returnTypeName;
                 }
 
                 errorMessages.push({
                     location: methodCallExpressionNode.token.location,
-                    message: 'Call to undefined method "' + methodCallExpressionNode.methodName + '"'
+                    message: 'Method "' + methodCallExpressionNode.methodName + '" does not exist on type "' + methodTargetType + '"'
                 });
 
-                return this.unknownType;
+                return UnknownType;
+            }
+
+            /* IF/THEN/ELSE EXPRESSION */
+            else if (ast.type === NodeType.IfThenElseExpression) {
+                var ifThenElseNode = <IfThenElseExpressionNode>ast;
+                var predicateType = this.analyze(ifThenElseNode.predicate, typeEnvironment, errorMessages, warningMessages);
+                if (!this.typeHeirarchy.isAssignableFrom('Bool', predicateType, typeEnvironment.currentClassType)) {
+                    errorMessages.push({
+                        location: ifThenElseNode.token.location,
+                        message: 'The condition expression of an "if" statement must return a "Bool"'
+                    });
+                }
+                var consequentType = this.analyze(ifThenElseNode.consequent, typeEnvironment, errorMessages, warningMessages);
+                var alternativeType = this.analyze(ifThenElseNode.alternative, typeEnvironment, errorMessages, warningMessages);
+
+                var closestCommonType = this.typeHeirarchy.closetCommonParent(consequentType, alternativeType);
+                return closestCommonType;
             }
 
             /* BLOCK EXPRESSION */
@@ -288,6 +297,7 @@
                         variableName: varDeclarationNode.identifierName,
                         variableType: varDeclarationNode.typeName
                     });
+                    this.analyze(varDeclarationNode, typeEnvironment, errorMessages, warningMessages);
                 });
                 var returnType = this.analyze(letExpressionNode.letBodyExpression, typeEnvironment, errorMessages, warningMessages);
 
@@ -299,10 +309,83 @@
                 return returnType;
             }
 
+            /* LOCAL VARIABLE DECLARAION */
+            else if (ast.type === NodeType.LocalVariableDeclaration) {
+                var lvdNode = <LocalVariableDeclarationNode>ast;
+                if (lvdNode.initializerExpression) {
+                    var initializerType = this.analyze(lvdNode.initializerExpression, typeEnvironment, errorMessages, warningMessages);
+                    if (!this.typeHeirarchy.isAssignableFrom(lvdNode.typeName, initializerType, typeEnvironment.currentClassType)) {
+                        this.addTypeError(lvdNode.typeName, initializerType, lvdNode.token.location, errorMessages);
+                    }
+                }
+            }
+
+            /* CASE EXPRESSION */
+            else if (ast.type === NodeType.CaseExpression) {
+            }
+
+            /* CASE OPTION */
+            else if (ast.type === NodeType.CaseOption) {
+            }
+
             /* NEW EXPRESSION */
             else if (ast.type === NodeType.NewExpression) {
                 var newExpressionNode = <NewExpressionNode>ast;
                 return newExpressionNode.typeName;
+            }
+
+            /* ISVOID EXPRESSION */
+            else if (ast.type === NodeType.IsvoidExpression) {
+                this.analyze((<IsVoidExpressionNode>ast).isVoidCondition, typeEnvironment, errorMessages, warningMessages);
+                return 'Bool';
+            }
+
+            /* BINARY OPERATION EXPRESSION */
+            else if (ast.type === NodeType.BinaryOperationExpression) {
+                var binOpNode = <BinaryOperationExpressionNode>ast;
+                var leftSideType = this.analyze(binOpNode.operand1, typeEnvironment, errorMessages, warningMessages);
+                var rightSideType = this.analyze(binOpNode.operand2, typeEnvironment, errorMessages, warningMessages);
+
+                if (!this.typeHeirarchy.isAssignableFrom('Int', leftSideType, typeEnvironment.currentClassType)) {
+                    errorMessages.push({
+                        location: binOpNode.token.location,
+                        message: 'Left side of the "' + binOpNode.token.match + '" operator must be of type "Int"'
+                    });
+                }
+
+                if (!this.typeHeirarchy.isAssignableFrom('Int', rightSideType, typeEnvironment.currentClassType)) {
+                    errorMessages.push({
+                        location: binOpNode.token.location,
+                        message: 'Right side of the "' + binOpNode.token.match + '" operator must be of type "Int"'
+                    });
+                }
+            }
+
+            /* UNARY OPERATION EXPRESSION */
+            else if (ast.type === NodeType.UnaryOperationExpression) {
+                var unaryOpNode = <UnaryOperationExpressionNode>ast;
+                var unaryOperationType = this.analyze(unaryOpNode.operand, typeEnvironment, errorMessages, warningMessages);
+
+                if (unaryOpNode.operationType === UnaryOperationType.Not) {
+                    if (!this.typeHeirarchy.isAssignableFrom('Bool', unaryOperationType, typeEnvironment.currentClassType)) {
+                        errorMessages.push({
+                            location: unaryOpNode.token.location,
+                            message: 'Expression following the "Not" operator must be of type "Bool"'
+                        });
+                    }
+                } else {
+                    if (!this.typeHeirarchy.isAssignableFrom('Int', unaryOperationType, typeEnvironment.currentClassType)) {
+                        errorMessages.push({
+                            location: unaryOpNode.token.location,
+                            message: 'Expression following the "~" operator must be of type "Int"'
+                        });
+                    }
+                }
+            }
+
+            /* PARANTHETICAL EXPRESSION */
+            else if (ast.type === NodeType.ParantheticalExpression) {
+                return this.analyze((<ParantheticalExpressionNode>ast).innerExpression, typeEnvironment, errorMessages, warningMessages);
             }
 
             /* OBJECT IDENTIFIER EXPRESSION */
@@ -320,7 +403,7 @@
                     message: 'Undeclared variable "' + objectIdExpressionNode.objectIdentifierName + '"'
                 });
 
-                return this.unknownType;
+                return UnknownType;
             }
 
             /* INTEGER LITERAL */
@@ -338,66 +421,7 @@
                 return 'Bool';
             }
 
-            // TODO
-            else return this.unknownType;
-        }
-
-        private typeExists(typeName: string): boolean {
-            return this.findTypeHeirarchy(typeName) !== null;
-        }
-
-        private findTypeHeirarchy(typeName: string): TypeHeirarchy {
-            var findTypeHeirarchy = (typeHeirachy: TypeHeirarchy) => {
-                if (typeHeirachy.typeName === typeName) {
-                    return typeHeirachy;
-                } else {
-                    for (var i = 0; i < typeHeirachy.children.length; i++) {
-                        var findTypeResult = findTypeHeirarchy(typeHeirachy.children[i])
-                        if (findTypeResult) {
-                            return findTypeResult;
-                        }
-                    }
-                }
-
-                return null;
-            }
-
-            return findTypeHeirarchy(this.inheritanceGraph);
-        }
-
-        // determines whether one class either inherits or is another
-        // examples:
-        // isAssignableFrom('BaseClass', 'SubClass') => true
-        // isAssignableFrom('SubClass', 'BaseClass') => false
-        // isAssignableFrom('SubClass', 'SubClass') => true
-        private isAssignableFrom(type1Name: string, type2Name: string): boolean {
-            // shortcut for performance
-            if (type1Name === type2Name) {
-                return true;
-            }
-
-            if (type1Name === this.unknownType || type2Name === this.unknownType) {
-                return true;
-            }
-
-            //temporary
-            if (type1Name === 'SELF_TYPE' || type2Name === 'SELF_TYPE') {
-                return true;
-            }
-
-            var typeHeirarchy2 = this.findTypeHeirarchy(type2Name);
-
-            if (typeHeirarchy2) {
-                while (typeHeirarchy2 != null) {
-                    if (typeHeirarchy2.typeName === type1Name) {
-                        return true;
-                    }
-                    typeHeirarchy2 = typeHeirarchy2.parent;
-                }
-                return false;
-            }
-
-            throw 'Type "' + type2Name + '" does not exist!';
+            else throw "Unrecognized Abstract Syntax Tree type!";
         }
 
         private addTypeError(type1Name: string, type2Name: string, location: SourceLocation, errorMessages: Array<ErrorMessage>) {
@@ -406,170 +430,15 @@
                 message: 'Type "' + type2Name + '" is not assignable to type "' + type1Name + '"'
             });
         }
-
-        // adds the implied classes (Object, IO, Integer, etc.)
-        // to our program node's class list
-        private addBuiltinObjects(programNode: ProgramNode): void {
-
-            // Object class
-            var objectClass = new ClassNode('Object');
-
-            var abortMethodNode = new MethodNode();
-            abortMethodNode.methodName = 'abort';
-            abortMethodNode.returnTypeName = 'Object'
-            objectClass.children.push(abortMethodNode);
-
-            var typeNameMethodNode = new MethodNode();
-            typeNameMethodNode.methodName = 'type_name';
-            typeNameMethodNode.returnTypeName = 'String'
-            objectClass.children.push(typeNameMethodNode);
-
-            var copyMethodNode = new MethodNode();
-            copyMethodNode.methodName = 'copy';
-            copyMethodNode.returnTypeName = 'SELF_TYPE'
-            objectClass.children.push(copyMethodNode);
-
-            programNode.children.push(objectClass);
-
-            // IO Class
-            var ioClass = new ClassNode('IO');
-
-            var outStringMethodNode = new MethodNode();
-            outStringMethodNode.methodName = 'out_string';
-            outStringMethodNode.returnTypeName = 'SELF_TYPE';
-            outStringMethodNode.parameters.push({
-                parameterName: 'x',
-                parameterTypeName: 'String'
-            });
-            ioClass.children.push(outStringMethodNode);
-
-            var outIntMethodNode = new MethodNode();
-            outIntMethodNode.methodName = 'out_int';
-            outIntMethodNode.returnTypeName = 'SELF_TYPE';
-            outIntMethodNode.parameters.push({
-                parameterName: 'x',
-                parameterTypeName: 'Int'
-            });
-            ioClass.children.push(outIntMethodNode);
-
-            var inStringMethodNode = new MethodNode();
-            inStringMethodNode.methodName = 'in_string';
-            inStringMethodNode.returnTypeName = 'String';
-            ioClass.children.push(inStringMethodNode);
-
-            var inIntMethodNode = new MethodNode();
-            inIntMethodNode.methodName = 'in_int';
-            inIntMethodNode.returnTypeName = 'Int';
-            ioClass.children.push(inIntMethodNode);
-
-            programNode.children.push(ioClass);
-
-            // Int
-            var intClass = new ClassNode('Int');
-            programNode.children.push(intClass);
-
-            // String
-            var stringClass = new ClassNode('String');
-
-            var lengthMethodNode = new MethodNode();
-            lengthMethodNode.methodName = 'length';
-            lengthMethodNode.returnTypeName = 'String';
-            stringClass.children.push(lengthMethodNode);
-
-            var concatMethodNode = new MethodNode();
-            concatMethodNode.methodName = 'concat';
-            concatMethodNode.returnTypeName = 'String';
-            concatMethodNode.parameters.push({
-                parameterName: 's',
-                parameterTypeName: 'String'
-            });
-            stringClass.children.push(concatMethodNode);
-
-            var substrMethodNode = new MethodNode();
-            substrMethodNode.methodName = 'substr';
-            substrMethodNode.returnTypeName = 'String';
-            substrMethodNode.parameters.push({
-                parameterName: 'i',
-                parameterTypeName: 'Int'
-            });
-            substrMethodNode.parameters.push({
-                parameterName: 'l',
-                parameterTypeName: 'Int'
-            });
-            stringClass.children.push(substrMethodNode);
-
-            programNode.children.push(stringClass);
-
-            // Bool
-            var boolClass = new ClassNode('Bool');
-            programNode.children.push(boolClass);
-        }
-
-        private inheritanceGraph: TypeHeirarchy;
-
-        private unknownType: string = '$UnknownType$';
-
-        // constructs a heirarchy of all referenced classes
-        // to allow for future inheritance checking
-        private buildInheritanceGraph(programNode: ProgramNode): void {
-
-            // create TypeHierarchy objects for every class defined in this program
-            var allTypes = programNode.classList.map((c) => {
-                return {
-                    parentName: c.superClassName || 'Object',
-                    typeHeirarchy: new TypeHeirarchy(c)
-                };
-            });
-
-            // assemble a tree out of the list of TypeHierarchy's from above
-            allTypes.forEach((typeAndParent, i) => {
-                if (typeAndParent.typeHeirarchy.typeName === 'Object') {
-                    this.inheritanceGraph = typeAndParent.typeHeirarchy;
-                }
-
-                for (var j = 0; j < allTypes.length; j++) {
-                    if (j === i) continue;
-
-                    if (typeAndParent.parentName === allTypes[j].typeHeirarchy.typeName) {
-                        typeAndParent.typeHeirarchy.parent = allTypes[j].typeHeirarchy;
-                        allTypes[j].typeHeirarchy.children.push(typeAndParent.typeHeirarchy);
-                    }
-                }
-            });
-        }
-    }
-
-    class TypeHeirarchy {
-        constructor(classNode: ClassNode) {
-            this.classNode = classNode;
-        }
-
-        get typeName(): string {
-            return this.classNode.className;
-        }
-
-        classNode: ClassNode;
-        parent: TypeHeirarchy;
-        children: Array<TypeHeirarchy> = [];
     }
 
     interface TypeEnvironment {
         currentClassType: string;
         variableScope: Array<VariableScope>;
-        methodScope: Array<MethodScope>;
     }
 
     interface VariableScope {
         variableName: string;
         variableType: string
-    }
-
-    interface MethodScope {
-        methodName: string;
-        methodReturnType: string;
-        methodParameters: Array<{
-            parameterName: string;
-            parameterType: string;
-        }>;
     }
 }

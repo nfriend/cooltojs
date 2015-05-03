@@ -214,19 +214,19 @@
         }
 
         get consequent(): ExpressionNode {
-            return this.children[0];
+            return this.children[1];
         }
 
         set consequent(consequent: ExpressionNode) {
-            this.children[0] = consequent;
+            this.children[1] = consequent;
         }
 
         get alternative(): ExpressionNode {
-            return this.children[0];
+            return this.children[2];
         }
 
         set alternative(alternative: ExpressionNode) {
-            this.children[0] = alternative;
+            this.children[2] = alternative;
         }
     }
 

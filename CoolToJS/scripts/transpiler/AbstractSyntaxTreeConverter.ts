@@ -162,6 +162,7 @@
                         methodCallExprNode.token = syntaxTree.children[4].token;
                         methodCallExprNode.targetExpression = this.convert(syntaxTree.children[0]);
                         methodCallExprNode.isCallToParent = true;
+                        methodCallExprNode.explicitParentCallTypeName = syntaxTree.children[2].token.match;
                         expressionListIndex = 6;
 
                     } else if (syntaxTree.children[1].syntaxKind === SyntaxKind.OpenParenthesis) {
@@ -193,6 +194,7 @@
                 /* IF/THEN/ELSE EXPRESSION */
                 else if (syntaxTree.children[0].syntaxKind === SyntaxKind.IfKeyword) {
                     var ifThenElseExprNode = new IfThenElseExpressionNode();
+                    ifThenElseExprNode.token = syntaxTree.children[0].token;
 
                     var predicateNode = this.convert(syntaxTree.children[1]);
                     ifThenElseExprNode.children[0] = predicateNode;
@@ -248,6 +250,7 @@
                         if (syntaxTree.children[1].children[i].syntaxKind === SyntaxKind.ObjectIdentifier) {
                             var localVarDeclaration = new LocalVariableDeclarationNode();
                             localVarDeclaration.identifierName = syntaxTree.children[1].children[i].token.match;
+                            localVarDeclaration.token = syntaxTree.children[1].children[i].token;
                             localVarDeclaration.typeName = syntaxTree.children[1].children[i + 2].token.match;
 
                             if (syntaxTree.children[1].children[i + 3]
@@ -319,6 +322,7 @@
                 /* BINARY OPERATION EXPRESSION */
                 else if (syntaxTree.children[1] && this.isBinaryOperator(syntaxTree.children[1])) {
                     var binaryOperationExprNode = new BinaryOperationExpressionNode();
+                    binaryOperationExprNode.token = syntaxTree.children[1].token;
 
                     switch (syntaxTree.children[1].syntaxKind) {
                         case SyntaxKind.AdditionOperator:

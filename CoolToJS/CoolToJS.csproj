@@ -69,6 +69,7 @@
     <TypeScriptCompile Include="scripts\transpiler\SimpleSyntaxKind.ts" />
     <TypeScriptCompile Include="scripts\transpiler\SyntaxKind.ts" />
     <TypeScriptCompile Include="scripts\transpiler\Transpiler.ts" />
+    <TypeScriptCompile Include="scripts\transpiler\TypeHeirarchy.ts" />
     <TypeScriptCompile Include="scripts\transpiler\utility\Utility.ts" />
   </ItemGroup>
   <ItemGroup>
