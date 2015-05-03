@@ -39,8 +39,7 @@
                         return;
                     }
 
-                    var warningMessage = 'Line ' + warningToken.location.line + ', column ' + warningToken.location.column + ':\t'
-                        + 'Ambiguous shift/reduce detected in parse table.  Automatically took shift option. '
+                    var warningMessage = 'Ambiguous shift/reduce detected in parse table.  Automatically took shift option. '
                         + 'To remove abiguity and ensure proper parsing, ensure all "let" blocks surround their contents in curly brackets.'
 
                     warnings.push({
@@ -106,19 +105,9 @@
                     // TODO: better error reporting
                     var errorMessage = '';
                     if (tokens[inputPointer].token === SyntaxKind.EndOfInput) {
-                        errorMessage = 'Line '
-                        + tokens[inputPointer].location.line
-                        + ', column '
-                        + tokens[inputPointer].location.column
-                        + ':\tParse error: unexpected end of input';
+                        errorMessage = 'Parse error: unexpected end of input';
                     } else {
-                        errorMessage = 'Line '
-                        + tokens[inputPointer].location.line
-                        + ', column '
-                        + tokens[inputPointer].location.column
-                        + ':\tParse error: unexpected token: "'
-                        + tokens[inputPointer].match
-                        + '"';
+                        errorMessage = 'Parse error: unexpected token: "' + tokens[inputPointer].match + '"';
                     }
 
                     return {
@@ -163,13 +152,7 @@
                 } else {
                     // Parse error!
                     // TODO: does this always mean "unexpected end of program"?
-                    var errorMessage = 'Line '
-                        + tokens[inputPointer].location.line
-                        + ', column '
-                        + tokens[inputPointer].location.column
-                        + ':\tParse error: expected end of program, but instead saw "'
-                        + tokens[inputPointer].match
-                        + '"';
+                    var errorMessage = 'Parse error: expected end of program, but instead saw "' + tokens[inputPointer].match + '"';
 
                     return {
                         success: false,

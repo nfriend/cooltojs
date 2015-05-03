@@ -213,6 +213,7 @@
                 /* WHILE EXPRESSION */
                 else if (syntaxTree.children[0].syntaxKind === SyntaxKind.WhileKeyword) {
                     var whileExprNode = new WhileExpressionNode();
+                    whileExprNode.token = syntaxTree.children[0].token;
 
                     var conditionNode = this.convert(syntaxTree.children[1]);
                     whileExprNode.children[0] = conditionNode;

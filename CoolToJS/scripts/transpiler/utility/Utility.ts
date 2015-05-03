@@ -121,7 +121,7 @@
 
         var lengthMethodNode = new MethodNode();
         lengthMethodNode.methodName = 'length';
-        lengthMethodNode.returnTypeName = 'String';
+        lengthMethodNode.returnTypeName = 'Int';
         stringClass.children.push(lengthMethodNode);
 
         var concatMethodNode = new MethodNode();

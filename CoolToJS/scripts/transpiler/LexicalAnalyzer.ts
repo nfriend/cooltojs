@@ -86,11 +86,7 @@
                 } else {
                     // we weren't able to find a match
 
-                    var errorMessage = 'Line '
-                        + currentLineNumber
-                        + ', column '
-                        + currentColumnNumber
-                        + ':\tSyntax error: Unexpected character sequence near "'
+                    var errorMessage = 'Syntax error: Unexpected character sequence near "'
                         + coolProgramSource.slice(0, 20).replace(/\r\n|\r|\n|\t|[\s]+/g, ' ')
                         + '..."';
 

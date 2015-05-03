@@ -689,6 +689,7 @@ var CoolToJS;
                     }
                     else if (syntaxTree.children[0].syntaxKind === 39 /* WhileKeyword */) {
                         var whileExprNode = new CoolToJS.WhileExpressionNode();
+                        whileExprNode.token = syntaxTree.children[0].token;
                         var conditionNode = _this.convert(syntaxTree.children[1]);
                         whileExprNode.children[0] = conditionNode;
                         var bodyExpressionNode = _this.convert(syntaxTree.children[3]);
@@ -1000,7 +1001,7 @@ var CoolToJS;
                     }
                     else {
                         // we weren't able to find a match
-                        var errorMessage = 'Line ' + currentLineNumber + ', column ' + currentColumnNumber + ':\tSyntax error: Unexpected character sequence near "' + coolProgramSource.slice(0, 20).replace(/\r\n|\r|\n|\t|[\s]+/g, ' ') + '..."';
+                        var errorMessage = 'Syntax error: Unexpected character sequence near "' + coolProgramSource.slice(0, 20).replace(/\r\n|\r|\n|\t|[\s]+/g, ' ') + '..."';
                         // figure out an approximate length of the error token
                         var untilWhitespaceMatch = /^([^\s]*)/.exec(coolProgramSource);
                         if (untilWhitespaceMatch === null || typeof untilWhitespaceMatch[1] === 'undefined') {
@@ -1070,7 +1071,7 @@ var CoolToJS;
                     if (alreadyWarnedTokens.indexOf(warningToken) !== -1) {
                         return;
                     }
-                    var warningMessage = 'Line ' + warningToken.location.line + ', column ' + warningToken.location.column + ':\t' + 'Ambiguous shift/reduce detected in parse table.  Automatically took shift option. ' + 'To remove abiguity and ensure proper parsing, ensure all "let" blocks surround their contents in curly brackets.';
+                    var warningMessage = 'Ambiguous shift/reduce detected in parse table.  Automatically took shift option. ' + 'To remove abiguity and ensure proper parsing, ensure all "let" blocks surround their contents in curly brackets.';
                     warnings.push({
                         message: warningMessage,
                         location: {
@@ -1121,10 +1122,10 @@ var CoolToJS;
                         // TODO: better error reporting
                         var errorMessage = '';
                         if (tokens[inputPointer].token === 0 /* EndOfInput */) {
-                            errorMessage = 'Line ' + tokens[inputPointer].location.line + ', column ' + tokens[inputPointer].location.column + ':\tParse error: unexpected end of input';
+                            errorMessage = 'Parse error: unexpected end of input';
                         }
                         else {
-                            errorMessage = 'Line ' + tokens[inputPointer].location.line + ', column ' + tokens[inputPointer].location.column + ':\tParse error: unexpected token: "' + tokens[inputPointer].match + '"';
+                            errorMessage = 'Parse error: unexpected token: "' + tokens[inputPointer].match + '"';
                         }
                         return {
                             success: false,
@@ -1165,7 +1166,7 @@ var CoolToJS;
                     else {
                         // Parse error!
                         // TODO: does this always mean "unexpected end of program"?
-                        var errorMessage = 'Line ' + tokens[inputPointer].location.line + ', column ' + tokens[inputPointer].location.column + ':\tParse error: expected end of program, but instead saw "' + tokens[inputPointer].match + '"';
+                        var errorMessage = 'Parse error: expected end of program, but instead saw "' + tokens[inputPointer].match + '"';
                         return {
                             success: false,
                             errorMessages: [{
@@ -1567,7 +1568,16 @@ var CoolToJS;
                 }
                 else if (ast.type === 3 /* Method */) {
                     var methodNode = ast;
+                    // add method parameters to the current scope
+                    methodNode.parameters.forEach(function (param) {
+                        typeEnvironment.variableScope.push({
+                            variableName: param.parameterName,
+                            variableType: param.parameterTypeName
+                        });
+                    });
                     var methodReturnType = _this.analyze(methodNode.methodBodyExpression, typeEnvironment, errorMessages, warningMessages);
+                    // remove the added variables from the scope
+                    typeEnvironment.variableScope.splice(typeEnvironment.variableScope.length - methodNode.parameters.length, methodNode.parameters.length);
                     if (!_this.typeHeirarchy.isAssignableFrom(methodNode.returnTypeName, methodReturnType, typeEnvironment.currentClassType)) {
                         errorMessages.push({
                             location: methodNode.token.location,
@@ -1647,6 +1657,17 @@ var CoolToJS;
                     var closestCommonType = _this.typeHeirarchy.closetCommonParent(consequentType, alternativeType);
                     return closestCommonType;
                 }
+                else if (ast.type === 7 /* WhileExpression */) {
+                    var whileExpressionNode = ast;
+                    var predicateType = _this.analyze(whileExpressionNode.whileConditionExpression, typeEnvironment, errorMessages, warningMessages);
+                    if (!_this.typeHeirarchy.isAssignableFrom('Bool', predicateType, typeEnvironment.currentClassType)) {
+                        errorMessages.push({
+                            location: whileExpressionNode.token.location,
+                            message: 'The condition expression of a "while" statement must return a "Bool"'
+                        });
+                    }
+                    return 'Object';
+                }
                 else if (ast.type === 8 /* BlockExpression */) {
                     var blockExpressionNode = ast;
                     var returnType;
@@ -1705,19 +1726,37 @@ var CoolToJS;
                     var binOpNode = ast;
                     var leftSideType = _this.analyze(binOpNode.operand1, typeEnvironment, errorMessages, warningMessages);
                     var rightSideType = _this.analyze(binOpNode.operand2, typeEnvironment, errorMessages, warningMessages);
-                    if (!_this.typeHeirarchy.isAssignableFrom('Int', leftSideType, typeEnvironment.currentClassType)) {
-                        errorMessages.push({
-                            location: binOpNode.token.location,
-                            message: 'Left side of the "' + binOpNode.token.match + '" operator must be of type "Int"'
-                        });
+                    if (binOpNode.operationType !== 4 /* Comparison */) {
+                        if (!_this.typeHeirarchy.isAssignableFrom('Int', leftSideType, typeEnvironment.currentClassType)) {
+                            errorMessages.push({
+                                location: binOpNode.token.location,
+                                message: 'Left side of the "' + binOpNode.token.match + '" operator must be of type "Int"'
+                            });
+                        }
+                        if (!_this.typeHeirarchy.isAssignableFrom('Int', rightSideType, typeEnvironment.currentClassType)) {
+                            errorMessages.push({
+                                location: binOpNode.token.location,
+                                message: 'Right side of the "' + binOpNode.token.match + '" operator must be of type "Int"'
+                            });
+                        }
+                        if (binOpNode.operationType === 4 /* LessThanOrEqualTo */ || binOpNode.operationType === 4 /* LessThan */) {
+                            return 'Bool';
+                        }
+                        else {
+                            return 'Int';
+                        }
                     }
-                    if (!_this.typeHeirarchy.isAssignableFrom('Int', rightSideType, typeEnvironment.currentClassType)) {
-                        errorMessages.push({
-                            location: binOpNode.token.location,
-                            message: 'Right side of the "' + binOpNode.token.match + '" operator must be of type "Int"'
-                        });
+                    else {
+                        if (['Int', 'String', 'Bool'].indexOf(leftSideType) !== -1 || ['Int', 'String', 'Bool'].indexOf(rightSideType) !== -1) {
+                            if (leftSideType !== rightSideType) {
+                                errorMessages.push({
+                                    location: binOpNode.token.location,
+                                    message: 'Illegal comparison between type "' + leftSideType + '" and type "' + rightSideType + '"'
+                                });
+                            }
+                        }
+                        return 'Bool';
                     }
-                    return 'Int';
                 }
                 else if (ast.type === 16 /* UnaryOperationExpression */) {
                     var unaryOpNode = ast;
@@ -2327,12 +2366,12 @@ var CoolToJS;
         // isAssignableFrom('BaseClass', 'SubClass') => true
         // isAssignableFrom('SubClass', 'BaseClass') => false
         // isAssignableFrom('SubClass', 'SubClass') => true
-        TypeHeirarchy.prototype.isAssignableFrom = function (type1Name, type2Name, currentClass) {
+        TypeHeirarchy.prototype.isAssignableFrom = function (type1Name, type2Name, selfTypeClass) {
             if (type1Name === 'SELF_TYPE') {
-                type1Name = currentClass;
+                type1Name = selfTypeClass;
             }
             if (type2Name === 'SELF_TYPE') {
-                type2Name = currentClass;
+                type2Name = selfTypeClass;
             }
             // shortcut for performance
             if (type1Name === type2Name) {
@@ -2518,7 +2557,7 @@ var CoolToJS;
             var stringClass = new CoolToJS.ClassNode('String');
             var lengthMethodNode = new CoolToJS.MethodNode();
             lengthMethodNode.methodName = 'length';
-            lengthMethodNode.returnTypeName = 'String';
+            lengthMethodNode.returnTypeName = 'Int';
             stringClass.children.push(lengthMethodNode);
             var concatMethodNode = new CoolToJS.MethodNode();
             concatMethodNode.methodName = 'concat';

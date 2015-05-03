@@ -205,9 +205,12 @@
 
         // display the error messages as comments in the JavaScript editor 
         if (transpilerOutput.errorMessages && transpilerOutput.errorMessages.length > 0) {
-            var editorOutput = '/*\n\nThe following errors occured while transpiling:\n\n';
+            editorOutput += '/*\n\nThe following errors occured while transpiling:\n\n';
             for (var i = 0; i < transpilerOutput.errorMessages.length; i++) {
-                editorOutput += '• ' + transpilerOutput.errorMessages[i].message + '\n';
+                editorOutput += '• ';
+                editorOutput += 'Line ' + transpilerOutput.errorMessages[i].location.line + ', '
+                    + 'column ' + transpilerOutput.errorMessages[i].location.column + ':\t'
+                    + transpilerOutput.errorMessages[i].message + '\n';
 
                 // underline the error in the Cool editor
                 if (transpilerOutput.errorMessages[i].location) {
@@ -221,9 +224,12 @@
 
         // display the transpiler warnings as comments in the JavaScript editor 
         if (transpilerOutput.warningMessages && transpilerOutput.warningMessages.length > 0) {
-            var editorOutput = '/*\n\nThe following warnings occured while transpiling:\n\n';
+            editorOutput += '/*\n\nThe following warnings occured while transpiling:\n\n';
             for (var i = 0; i < transpilerOutput.warningMessages.length; i++) {
-                editorOutput += '• ' + transpilerOutput.warningMessages[i].message + '\n';
+                editorOutput += '• ';
+                editorOutput += 'Line ' + transpilerOutput.warningMessages[i].location.line + ', '
+                    + 'column ' + transpilerOutput.warningMessages[i].location.column + ':\t'
+                    + transpilerOutput.warningMessages[i].message + '\n';
 
                 // underline the error in the Cool editor
                 addUnderlineToCoolEditor(transpilerOutput.warningMessages[i].location.line - 1,

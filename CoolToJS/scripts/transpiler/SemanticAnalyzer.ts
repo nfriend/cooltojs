@@ -174,7 +174,20 @@
             /* CLASS METHOD */
             else if (ast.type === NodeType.Method) {
                 var methodNode = <MethodNode>ast;
+
+                // add method parameters to the current scope
+                methodNode.parameters.forEach(param => {
+                    typeEnvironment.variableScope.push({
+                        variableName: param.parameterName,
+                        variableType: param.parameterTypeName
+                    });
+                });
+
                 var methodReturnType = this.analyze(methodNode.methodBodyExpression, typeEnvironment, errorMessages, warningMessages);
+
+                // remove the added variables from the scope
+                typeEnvironment.variableScope.splice(typeEnvironment.variableScope.length - methodNode.parameters.length, methodNode.parameters.length);
+
                 if (!this.typeHeirarchy.isAssignableFrom(methodNode.returnTypeName, methodReturnType, typeEnvironment.currentClassType)) {
                     errorMessages.push({
                         location: methodNode.token.location,
@@ -283,6 +296,20 @@
                 return closestCommonType;
             }
 
+            /* WHILE EXPRESSION */
+            else if (ast.type === NodeType.WhileExpression) {
+                var whileExpressionNode = <WhileExpressionNode>ast;
+                var predicateType = this.analyze(whileExpressionNode.whileConditionExpression, typeEnvironment, errorMessages, warningMessages);
+                if (!this.typeHeirarchy.isAssignableFrom('Bool', predicateType, typeEnvironment.currentClassType)) {
+                    errorMessages.push({
+                        location: whileExpressionNode.token.location,
+                        message: 'The condition expression of a "while" statement must return a "Bool"'
+                    });
+                }
+
+                return 'Object';
+            }
+
             /* BLOCK EXPRESSION */
             else if (ast.type === NodeType.BlockExpression) {
                 var blockExpressionNode = <BlockExpressionNode>ast;
@@ -364,21 +391,43 @@
                 var leftSideType = this.analyze(binOpNode.operand1, typeEnvironment, errorMessages, warningMessages);
                 var rightSideType = this.analyze(binOpNode.operand2, typeEnvironment, errorMessages, warningMessages);
 
-                if (!this.typeHeirarchy.isAssignableFrom('Int', leftSideType, typeEnvironment.currentClassType)) {
-                    errorMessages.push({
-                        location: binOpNode.token.location,
-                        message: 'Left side of the "' + binOpNode.token.match + '" operator must be of type "Int"'
-                    });
-                }
+                if (binOpNode.operationType !== BinaryOperationType.Comparison) {
+                    if (!this.typeHeirarchy.isAssignableFrom('Int', leftSideType, typeEnvironment.currentClassType)) {
+                        errorMessages.push({
+                            location: binOpNode.token.location,
+                            message: 'Left side of the "' + binOpNode.token.match + '" operator must be of type "Int"'
+                        });
+                    }
 
-                if (!this.typeHeirarchy.isAssignableFrom('Int', rightSideType, typeEnvironment.currentClassType)) {
-                    errorMessages.push({
-                        location: binOpNode.token.location,
-                        message: 'Right side of the "' + binOpNode.token.match + '" operator must be of type "Int"'
-                    });
-                }
+                    if (!this.typeHeirarchy.isAssignableFrom('Int', rightSideType, typeEnvironment.currentClassType)) {
+                        errorMessages.push({
+                            location: binOpNode.token.location,
+                            message: 'Right side of the "' + binOpNode.token.match + '" operator must be of type "Int"'
+                        });
+                    }
+                    
+                    if (binOpNode.operationType === BinaryOperationType.LessThanOrEqualTo
+                        || binOpNode.operationType === BinaryOperationType.LessThan) {
 
-                return 'Int';
+                        return 'Bool';
+                    } else {
+                        return 'Int';
+                    }
+
+                } else {
+                    if (['Int', 'String', 'Bool'].indexOf(leftSideType) !== -1
+                        || ['Int', 'String', 'Bool'].indexOf(rightSideType) !== -1) {
+
+                        if (leftSideType !== rightSideType) {
+                            errorMessages.push({
+                                location: binOpNode.token.location,
+                                message: 'Illegal comparison between type "' + leftSideType + '" and type "' + rightSideType + '"'
+                            });
+                        }
+                    }
+
+                    return 'Bool';
+                }
             }
 
             /* UNARY OPERATION EXPRESSION */

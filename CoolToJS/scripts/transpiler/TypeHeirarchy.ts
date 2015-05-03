@@ -51,13 +51,13 @@
         // isAssignableFrom('BaseClass', 'SubClass') => true
         // isAssignableFrom('SubClass', 'BaseClass') => false
         // isAssignableFrom('SubClass', 'SubClass') => true
-        public isAssignableFrom(type1Name: string, type2Name: string, currentClass: string): boolean {
+        public isAssignableFrom(type1Name: string, type2Name: string, selfTypeClass: string): boolean {
             if (type1Name === 'SELF_TYPE') {
-                type1Name = currentClass;
+                type1Name = selfTypeClass;
             }
 
             if (type2Name === 'SELF_TYPE') {
-                type2Name = currentClass;
+                type2Name = selfTypeClass;
             }
 
             // shortcut for performance
