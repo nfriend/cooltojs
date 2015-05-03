@@ -114,7 +114,7 @@
         }
 
         // finds a type in the current TypeHeirarchy Tree
-        private findTypeHeirarchy = (typeName: string): TypeHeirarchy => {
+        public findTypeHeirarchy = (typeName: string): TypeHeirarchy => {
             var findTypeHeirarchy = (typeHeirachy: TypeHeirarchy) => {
                 if (typeHeirachy.typeName === typeName) {
                     return typeHeirachy;

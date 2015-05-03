@@ -208,9 +208,11 @@
             editorOutput += '/*\n\nThe following errors occured while transpiling:\n\n';
             for (var i = 0; i < transpilerOutput.errorMessages.length; i++) {
                 editorOutput += '• ';
-                editorOutput += 'Line ' + transpilerOutput.errorMessages[i].location.line + ', '
-                    + 'column ' + transpilerOutput.errorMessages[i].location.column + ':\t'
-                    + transpilerOutput.errorMessages[i].message + '\n';
+                if (transpilerOutput.errorMessages[i].location) {
+                    editorOutput += 'Line ' + transpilerOutput.errorMessages[i].location.line + ', '
+                    + 'column ' + transpilerOutput.errorMessages[i].location.column + ':\t';
+                }
+                editorOutput += transpilerOutput.errorMessages[i].message + '\n';
 
                 // underline the error in the Cool editor
                 if (transpilerOutput.errorMessages[i].location) {
@@ -223,22 +225,24 @@
         }
 
         // display the transpiler warnings as comments in the JavaScript editor 
-        if (transpilerOutput.warningMessages && transpilerOutput.warningMessages.length > 0) {
-            editorOutput += '/*\n\nThe following warnings occured while transpiling:\n\n';
-            for (var i = 0; i < transpilerOutput.warningMessages.length; i++) {
-                editorOutput += '• ';
-                editorOutput += 'Line ' + transpilerOutput.warningMessages[i].location.line + ', '
-                    + 'column ' + transpilerOutput.warningMessages[i].location.column + ':\t'
-                    + transpilerOutput.warningMessages[i].message + '\n';
+        //if (transpilerOutput.warningMessages && transpilerOutput.warningMessages.length > 0) {
+        //    editorOutput += '/*\n\nThe following warnings occured while transpiling:\n\n';
+        //    for (var i = 0; i < transpilerOutput.warningMessages.length; i++) {
+        //        editorOutput += '• ';
+        //        if (transpilerOutput.warningMessages[i].location) {
+        //            editorOutput += 'Line ' + transpilerOutput.warningMessages[i].location.line + ', '
+        //                + 'column ' + transpilerOutput.warningMessages[i].location.column + ':\t'
+        //        }
+        //        editorOutput += transpilerOutput.warningMessages[i].message + '\n';
 
-                // underline the error in the Cool editor
-                addUnderlineToCoolEditor(transpilerOutput.warningMessages[i].location.line - 1,
-                                         transpilerOutput.warningMessages[i].location.column - 1,
-                                         transpilerOutput.warningMessages[i].location.length,
-                                         'warning');
-            }
-            editorOutput += '\n*/\n\n';
-        }
+        //        // underline the error in the Cool editor
+        //        addUnderlineToCoolEditor(transpilerOutput.warningMessages[i].location.line - 1,
+        //                                 transpilerOutput.warningMessages[i].location.column - 1,
+        //                                 transpilerOutput.warningMessages[i].location.length,
+        //                                 'warning');
+        //    }
+        //    editorOutput += '\n*/\n\n';
+        //}
 
         if (transpilerOutput.success) {
             editorOutput += transpilerOutput.generatedJavaScript;

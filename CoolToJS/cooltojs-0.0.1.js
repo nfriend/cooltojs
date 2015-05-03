@@ -1532,6 +1532,21 @@ var CoolToJS;
                             message: 'Method "' + methodNode.methodName + '" is multiply defined in class "' + classNode.className + '"'
                         });
                     });
+                    // add all superclass properties to the scope
+                    var addedSuperClassProperties = [];
+                    var parentTypeHeirarchy = _this.typeHeirarchy.findTypeHeirarchy(classNode.className).parent;
+                    while (parentTypeHeirarchy) {
+                        parentTypeHeirarchy.classNode.propertyList.forEach(function (pn) {
+                            addedSuperClassProperties.push({
+                                variableName: pn.propertyName,
+                                variableType: pn.typeName
+                            });
+                        });
+                        parentTypeHeirarchy = parentTypeHeirarchy.parent;
+                    }
+                    // add the properties to the stack in reverse order so that the closest
+                    // properties to the current scope are at the top of the stack
+                    typeEnvironment.variableScope = typeEnvironment.variableScope.concat(addedSuperClassProperties.reverse());
                     // ensure that all property names are unique
                     var duplicateProperties = [];
                     for (var i = 0; i < classNode.propertyList.length; i++) {
@@ -1635,7 +1650,12 @@ var CoolToJS;
                                 });
                             }
                         });
-                        return foundMethodNode.returnTypeName;
+                        if (foundMethodNode.returnTypeName === 'SELF_TYPE') {
+                            return methodTargetType;
+                        }
+                        else {
+                            return foundMethodNode.returnTypeName;
+                        }
                     }
                     errorMessages.push({
                         location: methodCallExpressionNode.token.location,
@@ -1703,7 +1723,12 @@ var CoolToJS;
                 else if (ast.type === 11 /* CaseExpression */) {
                     var caseExpressionNode = ast;
                     var caseOptionTypes = caseExpressionNode.caseOptionList.map(function (co) {
+                        typeEnvironment.variableScope.push({
+                            variableName: co.identiferName,
+                            variableType: co.typeName
+                        });
                         return _this.analyze(co.caseOptionExpression, typeEnvironment, errorMessages, warningMessages);
+                        typeEnvironment.variableScope.pop();
                     });
                     while (caseOptionTypes.length > 1) {
                         var commonParent = _this.typeHeirarchy.closetCommonParent(caseOptionTypes[0], caseOptionTypes[1]);
