@@ -306,11 +306,11 @@
 
         condition: ExpressionNode;
 
-        get caseOptionList(): Array<ExpressionNode> {
-            return this.children;
+        get caseOptionList(): Array<CaseOptionNode> {
+            return <Array<CaseOptionNode>>this.children;
         }
 
-        set caseOptionList(optionsList: Array<ExpressionNode>) {
+        set caseOptionList(optionsList: Array<CaseOptionNode>) {
             throw 'Setter for CaseExpressionNode.caseOptionList not yet implemented';
         }
     }
@@ -322,6 +322,14 @@
 
         identiferName: string;
         typeName: string;
+
+        get caseOptionExpression(): ExpressionNode {
+            return this.children[0];
+        }
+
+        set caseOptionExpression(expression: ExpressionNode){
+            this.children[0] = expression;
+        }
     }
 
     export class NewExpressionNode extends ExpressionNode {

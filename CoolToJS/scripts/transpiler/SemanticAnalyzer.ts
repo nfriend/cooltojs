@@ -322,10 +322,22 @@
 
             /* CASE EXPRESSION */
             else if (ast.type === NodeType.CaseExpression) {
+                var caseExpressionNode = <CaseExpressionNode>ast;
+                var caseOptionTypes = caseExpressionNode.caseOptionList.map(co => {
+                    return this.analyze(co.caseOptionExpression, typeEnvironment, errorMessages, warningMessages);
+                });
+
+                while (caseOptionTypes.length > 1) {
+                    var commonParent = this.typeHeirarchy.closetCommonParent(caseOptionTypes[0], caseOptionTypes[1]);
+                    caseOptionTypes.splice(0, 2, commonParent);
+                }
+
+                return caseOptionTypes[0];
             }
 
             /* CASE OPTION */
             else if (ast.type === NodeType.CaseOption) {
+                throw 'Analysis of Case Option nodes happens inside of the Case Expression block.  We should never be here.'
             }
 
             /* NEW EXPRESSION */

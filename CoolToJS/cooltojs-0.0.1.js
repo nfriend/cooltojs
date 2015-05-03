@@ -364,6 +364,16 @@ var CoolToJS;
         function CaseOptionNode() {
             _super.call(this, 12 /* CaseOption */);
         }
+        Object.defineProperty(CaseOptionNode.prototype, "caseOptionExpression", {
+            get: function () {
+                return this.children[0];
+            },
+            set: function (expression) {
+                this.children[0] = expression;
+            },
+            enumerable: true,
+            configurable: true
+        });
         return CaseOptionNode;
     })(Node);
     CoolToJS.CaseOptionNode = CaseOptionNode;
@@ -1649,8 +1659,18 @@ var CoolToJS;
                     }
                 }
                 else if (ast.type === 11 /* CaseExpression */) {
+                    var caseExpressionNode = ast;
+                    var caseOptionTypes = caseExpressionNode.caseOptionList.map(function (co) {
+                        return _this.analyze(co.caseOptionExpression, typeEnvironment, errorMessages, warningMessages);
+                    });
+                    while (caseOptionTypes.length > 1) {
+                        var commonParent = _this.typeHeirarchy.closetCommonParent(caseOptionTypes[0], caseOptionTypes[1]);
+                        caseOptionTypes.splice(0, 2, commonParent);
+                    }
+                    return caseOptionTypes[0];
                 }
                 else if (ast.type === 12 /* CaseOption */) {
+                    throw 'Analysis of Case Option nodes happens inside of the Case Expression block.  We should never be here.';
                 }
                 else if (ast.type === 13 /* NewExpression */) {
                     var newExpressionNode = ast;
