@@ -43,6 +43,11 @@ div.CodeMirror span.CodeMirror-matchingbracket {
     background: rgb(169, 210, 188);
 }
 
+div.CodeMirror span.CodeMirror-nonmatchingbracket {
+    color: #FFFFFF;
+    background: rgb(197, 80, 80);
+}
+
 .squiggly-underline {
     position: absolute;
     background-repeat: repeat-x;
