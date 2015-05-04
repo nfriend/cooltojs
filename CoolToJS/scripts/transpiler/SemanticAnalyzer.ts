@@ -12,6 +12,7 @@
 
             return {
                 success: errorMessages.length === 0,
+                abstractSyntaxTree: astConvertOutput.abstractSyntaxTree,
                 errorMessages: errorMessages,
                 warningMessages: warningMessages
             }

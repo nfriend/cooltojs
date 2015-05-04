@@ -61,6 +61,7 @@
     <TypeScriptCompile Include="scripts\transpiler\AbstractSyntaxTreeConverter.ts" />
     <TypeScriptCompile Include="scripts\transpiler\AbstractSyntaxTree.ts" />
     <TypeScriptCompile Include="scripts\transpiler\cooltojs.ts" />
+    <TypeScriptCompile Include="scripts\transpiler\JavaScriptGenerator.ts" />
     <TypeScriptCompile Include="scripts\transpiler\ParseTable.ts" />
     <TypeScriptCompile Include="scripts\transpiler\LexicalAnalyzer.ts" />
     <TypeScriptCompile Include="scripts\transpiler\OutputInterfaces.ts" />

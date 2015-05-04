@@ -161,26 +161,29 @@
     //#endregion
 
     //#region IO methods
-    var out_string = function (output) {
-        window.consoleController.report([{
-            msg: output,
-            className: "jquery-console-output"
-        }]);
-    };
+    // indented funny to make the output look nicer
+    {
+        var out_string = function (output) {
+            window.consoleController.report([{
+                msg: output,
+                className: "jquery-console-output"
+            }]);
+        };
 
-    var out_int = out_string;
+        var out_int = out_string;
 
-    var isInputRestrictedToNumbers = false;
+        var isInputRestrictedToNumbers = false;
 
-    var in_string = function (onInput) {
-        isInputRestrictedToNumbers = false;
-        window.inputFunction = onInput;
-    };
+        var in_string = function (onInput) {
+            isInputRestrictedToNumbers = false;
+            window.inputFunction = onInput;
+        };
 
-    var in_int = function (onInput) {
-        isInputRestrictedToNumbers = true;
-        window.inputFunction = onInput;
-    };
+        var in_int = function (onInput) {
+            isInputRestrictedToNumbers = true;
+            window.inputFunction = onInput;
+        };
+    }
 
     // the function that will actually be called when input is entered.
     // global so as to be available to the Cool program

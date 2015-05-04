@@ -47,7 +47,15 @@
 
     export interface SemanticAnalyzerOutput {
         success: boolean;
+        abstractSyntaxTree: Node;
         errorMessages?: Array<ErrorMessage>;
         warningMessages?: Array<WarningMessage>;
+    }
+
+    export interface JavaScriptGeneratorOutput {
+        success: boolean;
+        errorMessages?: Array<ErrorMessage>;
+        warningMessages?: Array<WarningMessage>;
+        generatedJavaScript: string;
     }
 }

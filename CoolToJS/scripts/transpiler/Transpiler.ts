@@ -100,16 +100,31 @@ _in_string(function(input) {\n\
         var astConverter = new AbstractSyntaxTreeConverter();
         var astConvertOutput = astConverter.Convert(parserOutput);
 
-        //console.log(Utility.stringify(ast));
-
         var semanticAnalyzer = new SemanticAnalyzer();
         var semanticAnalyzerOutput = semanticAnalyzer.Analyze(astConvertOutput);
 
+        if (!semanticAnalyzerOutput.success) {
+            return {
+                success: false,
+                errorMessages: semanticAnalyzerOutput.errorMessages,
+                warningMessages: semanticAnalyzerOutput.warningMessages,
+                elapsedTime: Date.now() - startTime
+            };
+        }
+
+        var codeGenerator = new JavaScriptGenerator();
+        var codeGeneratorOutput = codeGenerator.Generate(semanticAnalyzerOutput, {
+            in_int: in_int,
+            in_string: in_string,
+            out_int: out_int,
+            out_string: out_string
+        });
+
         return {
-            success: semanticAnalyzerOutput.errorMessages.length === 0,
-            errorMessages: semanticAnalyzerOutput.errorMessages,
-            warningMessages: parserOutput.warningMessages,
-            generatedJavaScript: generatedJavaScriptExample,
+            success: true,
+            errorMessages: codeGeneratorOutput.errorMessages,
+            warningMessages: codeGeneratorOutput.warningMessages,
+            generatedJavaScript: codeGeneratorOutput.generatedJavaScript,
             elapsedTime: Date.now() - startTime
         };
     }
