@@ -16,6 +16,7 @@
         lineNumbers: true,
         indentUnit: 4,
         matchBrackets: true,
+        autoCloseBrackets: '(){}',
         extraKeys: {
             'Ctrl-Enter': transpile,
             'F5': transpile
