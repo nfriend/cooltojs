@@ -34,6 +34,7 @@
     <Content Include="lib\bootstrap-3.3.4-dist\js\bootstrap.js" />
     <Content Include="lib\bootstrap-3.3.4-dist\js\bootstrap.min.js" />
     <Content Include="lib\bootstrap-3.3.4-dist\js\npm.js" />
+    <Content Include="lib\codemirror-5.2\addon\edit\matchbrackets.js" />
     <Content Include="lib\codemirror-5.2\addon\mode\simple.js" />
     <Content Include="lib\codemirror-5.2\lib\codemirror.css" />
     <Content Include="lib\codemirror-5.2\lib\codemirror.js" />

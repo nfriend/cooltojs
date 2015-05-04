@@ -5,7 +5,7 @@
     // TODO: clean this up.  This is getting a little unruly.
 
     var programIndexToUse = 9,
-        liveErrorChecking = false;
+        liveErrorChecking = true;
 
     $('[data-toggle="tooltip"]').tooltip();
 
@@ -15,6 +15,7 @@
         mode: 'cool',
         lineNumbers: true,
         indentUnit: 4,
+        matchBrackets: true,
         extraKeys: {
             'Ctrl-Enter': transpile,
             'F5': transpile
@@ -108,6 +109,7 @@
         mode: 'javascript',
         lineNumbers: true,
         indentUnit: 4,
+        matchBrackets: true,
         readOnly: true
     });
 
