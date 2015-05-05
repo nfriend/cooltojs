@@ -2,8 +2,9 @@
 (function (CoolToJSDemo) {
     'use strict';
 
-    var programIndexToUse = 9,
-        liveErrorChecking = true;
+    var isDebug = document.location.hostname === "localhost",
+        programIndexToUse = 9,
+        liveErrorChecking = !isDebug;
 
     $('[data-toggle="tooltip"]').tooltip();
 
@@ -136,7 +137,7 @@
         lineNumbers: true,
         indentUnit: 4,
         matchBrackets: true,
-        readOnly: false
+        readOnly: !isDebug
     });
 
     var generatedEs5JavaScriptEditor = CodeMirror(document.getElementById('generated-es5-javascript'), {
@@ -144,7 +145,7 @@
         lineNumbers: true,
         indentUnit: 4,
         matchBrackets: true,
-        readOnly: false
+        readOnly: !isDebug
     });
 
     // global so we can access it inside a Cool program
@@ -389,7 +390,7 @@
 
             // i'm tired of scrolling down while developing this thing
             setTimeout(function () {
-                if (document.location.hostname == "localhost") {
+                if (isDebug) {
                     $(document).scrollTop($(document).height());
                 }
             }, 0);
