@@ -27,7 +27,6 @@
         window.location = "old-browser.html";
     </script><![endif]-->
 
-
 </head>
 <body>
     <div class="jumbotron">
@@ -95,7 +94,7 @@
                 <div id="generated-es6-javascript" class="editor javascript-theme"></div>
                 <br />
             </div>
-            <div class="editor-container es5-container col-md-4 col-sm-12" style="display: none">
+            <div class="editor-container es5-container col-md-4 col-sm-12">
                 <p class="output-label pull-left">Generated ES5 JavaScript:</p>
                 <button id="es5-play-button" type="button" class="btn btn-default btn-sm pull-right">
                     <span class="glyphicon glyphicon-play" style="color: #5cb85c"></span> Run
@@ -104,7 +103,7 @@
                 <div id="generated-es5-javascript" class="editor javascript-theme"></div>
                 <br />
             </div>
-            <div class="editor-container console-container col-md-4 col-sm-12">
+            <div class="editor-container console-container col-md-4 col-sm-12" style="display: none">
                 <p class="output-label pull-left">Console:</p>
                 <button id="clear-button" type="button" class="btn btn-default btn-sm pull-right">
                     <span class="glyphicon glyphicon-remove" style="color: #d9534f"></span> Clear
@@ -134,6 +133,7 @@
     <script src="lib/jquery-console-master/jquery.console.js"></script>
 
     <script src="lib/bootstrap-3.3.4-dist/js/bootstrap.min.js"></script>
+    <script src="lib/babel/browser-polyfill.js"></script>
     <script src="lib/babel/browser.js"></script>
 
     <script src="cooltojs-0.0.1.js"></script>

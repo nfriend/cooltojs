@@ -112,7 +112,7 @@
         }
 
         get isSubClass(): boolean {
-            return Utility.isNullUndefinedOrWhitespace(this.superClassName);
+            return !Utility.isNullUndefinedOrWhitespace(this.superClassName);
         }
     }
 

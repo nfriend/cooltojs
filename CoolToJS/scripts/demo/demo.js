@@ -136,7 +136,7 @@
         lineNumbers: true,
         indentUnit: 4,
         matchBrackets: true,
-        readOnly: true
+        readOnly: false
     });
 
     var generatedEs5JavaScriptEditor = CodeMirror(document.getElementById('generated-es5-javascript'), {
@@ -144,7 +144,7 @@
         lineNumbers: true,
         indentUnit: 4,
         matchBrackets: true,
-        readOnly: true
+        readOnly: false
     });
 
     // global so we can access it inside a Cool program
@@ -166,7 +166,12 @@
                     // to appear *after* the entered text, so schedule
                     // it after this function returns
                     setTimeout(function () {
-                        window.inputFunction(line);
+                        if (window.inputFunction.next) {
+                            window.inputFunction.next(line);
+                        } else {
+                            window.inputFunction(line);
+                        }
+                        
                         window.inputFunction = null;
                     }, 0)
 
@@ -197,29 +202,27 @@
     //#endregion
 
     //#region IO methods
-    // indented funny to make the output look nicer
-    {
-        var out_string = function (output) {
-            window.consoleController.report([{
-                msg: output,
-                className: "jquery-console-output"
-            }]);
-        };
+    var out_string = function (output) {
+        window.consoleController.report([{
+            msg: output,
+            className: "jquery-console-output"
+        }]);
+    };
 
-        var out_int = out_string;
+    var out_int = out_string;
 
-        var isInputRestrictedToNumbers = false;
+    var isInputRestrictedToNumbers = false;
 
-        var in_string = function (onInput) {
-            isInputRestrictedToNumbers = false;
-            window.inputFunction = onInput;
-        };
+    var in_string = function (onInput) {
+        isInputRestrictedToNumbers = false;
+        window.inputFunction = onInput;
+    };
 
-        var in_int = function (onInput) {
-            isInputRestrictedToNumbers = true;
-            window.inputFunction = onInput;
-        };
-    }
+    var in_int = function (onInput) {
+        isInputRestrictedToNumbers = true;
+        window.inputFunction = onInput;
+    };
+
 
     // the function that will actually be called when input is entered.
     // global so as to be available to the Cool program
@@ -267,7 +270,14 @@
         if (transpilerOutput.success) {
             editorOutput += transpilerOutput.generatedJavaScript;
 
-            generatedEs5JavaScriptEditor.setValue(babel.transform(transpilerOutput.generatedJavaScript).code);
+            try {
+                var es5Code = babel.transform(transpilerOutput.generatedJavaScript, {
+                    stage: 0
+                }).code;
+                generatedEs5JavaScriptEditor.setValue(es5Code);
+            } catch (e) {
+                generatedEs5JavaScriptEditor.setValue('/*\n\nES6 to ES5 conversion error:\n\n ' + e + '\n\n*/');
+            }
         }
 
         generatedEs6JavaScriptEditor.setValue(editorOutput);
@@ -278,7 +288,7 @@
     function run() {
         $('.console').click();
         try {
-            eval(generatedEs6JavaScriptEditor.getValue());
+            eval(generatedEs5JavaScriptEditor.getValue());
         } catch (data) {
             window.consoleController.report([{
                 msg: data,
