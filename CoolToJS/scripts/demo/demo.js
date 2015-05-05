@@ -360,6 +360,9 @@
         $editorContainer.not(viewsToShow.join(', ')).css('display', 'none');
         $(viewsToShow.join(', ')).addClass(classToAdd).css('display', '');
 
+        generatedEs6JavaScriptEditor.refresh();
+        generatedEs5JavaScriptEditor.refresh();
+
     });
 
     // populate the "sources" dropdown with the example programs
