@@ -266,6 +266,8 @@
 
         if (transpilerOutput.success) {
             editorOutput += transpilerOutput.generatedJavaScript;
+
+            generatedEs5JavaScriptEditor.setValue(babel.transform(transpilerOutput.generatedJavaScript).code);
         }
 
         generatedEs6JavaScriptEditor.setValue(editorOutput);

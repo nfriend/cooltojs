@@ -26,6 +26,7 @@
     <Content Include="img\coolToJsLogo-with-margin.png" />
     <Content Include="img\coolToJsLogo.png" />
     <Content Include="index.html" />
+    <Content Include="lib\babel\browser.js" />
     <Content Include="lib\bootstrap-3.3.4-dist\css\bootstrap-theme.css" />
     <Content Include="lib\bootstrap-3.3.4-dist\css\bootstrap-theme.min.css" />
     <Content Include="lib\bootstrap-3.3.4-dist\css\bootstrap.css" />
