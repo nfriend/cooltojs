@@ -32,6 +32,14 @@
     border: 1px solid #DDD;
 }
 
+.view-options-container .btn-group > .btn:first-child:not(:last-child):not(.dropdown-toggle) {
+    border-bottom-left-radius: 0;
+}
+
+.view-options-container .btn-group > .btn:last-child:not(:first-child), .btn-group > .dropdown-toggle:not(:first-child) {
+    border-bottom-right-radius: 0;
+}
+
 /* match cool's comment color */
 .javascript-theme .cm-comment {
     font-style: italic;
@@ -134,3 +142,17 @@ div.console {
 }
 
 /* /console styles */
+
+@media (max-width: 767px) {
+    .view-options-container {
+        margin-top: 20px;
+        margin-bottom: -30px;
+    }
+}
+
+@media (min-width: 768px) {
+    .view-options-container {
+        margin-top: 20px;
+        margin-bottom: -48px;
+    }
+}

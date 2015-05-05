@@ -2,8 +2,6 @@
 (function (CoolToJSDemo) {
     'use strict';
 
-    // TODO: clean this up.  This is getting a little unruly.
-
     var programIndexToUse = 9,
         liveErrorChecking = true;
 
@@ -23,7 +21,7 @@
         }
     });
 
-    function addUnderlineToCoolEditor(line, column, length, errorLevel) {
+    function addErrorVisualsToCoolEditor(line, column, length, message, errorLevel) {
 
         errorLevel = errorLevel || 'error';
 
@@ -45,14 +43,39 @@
             ch: column
         }, elementToAdd, false);
         underlineElements.push(elementToAdd);
+
+        textMarkers.push(coolEditor.markText({
+            line: line,
+            ch: column
+        }, {
+            line: line,
+            ch: column + length
+        }, {
+            className: 'tooltip-token-' + textMarkerUniqueId
+        }));
+
+        $('.tooltip-token-' + textMarkerUniqueId).tooltip({
+            title: message,
+            container: 'body',
+            delay: { 'show': 500, 'hide': '100' },
+            animation: false
+        })
+        textMarkerUniqueId++;
     }
 
     var underlineElements = [];
-    function removeAllUnderlinesFromCoolEditor() {
+    var textMarkers = [];
+    var textMarkerUniqueId = 0;
+    function removeAllErrorVisualsFromCoolEditor() {
         for (var i = 0; i < underlineElements.length; i++) {
             $(underlineElements[i]).remove();
         }
         underlineElements.length = 0;
+
+        textMarkers.forEach(function (tm, index) {
+            textMarkers[index].clear();
+        });
+        textMarkers.length = 0;
     }
 
     function checkForErrors() {
@@ -62,17 +85,19 @@
 
         if (transpilerOutput.errorMessages && transpilerOutput.errorMessages.length > 0) {
             for (var i = 0; i < transpilerOutput.errorMessages.length; i++) {
-                addUnderlineToCoolEditor(transpilerOutput.errorMessages[i].location.line - 1,
+                addErrorVisualsToCoolEditor(transpilerOutput.errorMessages[i].location.line - 1,
                                          transpilerOutput.errorMessages[i].location.column - 1,
-                                         transpilerOutput.errorMessages[i].location.length);
+                                         transpilerOutput.errorMessages[i].location.length,
+                                         transpilerOutput.errorMessages[i].message);
             }
         }
 
         if (transpilerOutput.warningMessages && transpilerOutput.warningMessages.length > 0) {
             for (var i = 0; i < transpilerOutput.warningMessages.length; i++) {
-                addUnderlineToCoolEditor(transpilerOutput.warningMessages[i].location.line - 1,
+                addErrorVisualsToCoolEditor(transpilerOutput.warningMessages[i].location.line - 1,
                                          transpilerOutput.warningMessages[i].location.column - 1,
                                          transpilerOutput.warningMessages[i].location.length,
+                                         transpilerOutput.warningMessages[i].message,
                                          'warning');
             }
         }
@@ -88,7 +113,7 @@
     var errorCheckerTimer,
         errorCheckerTimerDuration = 200;
     coolEditor.on('change', function () {
-        removeAllUnderlinesFromCoolEditor();
+        removeAllErrorVisualsFromCoolEditor();
 
         if (liveErrorChecking) {
             if (!errorCheckerTimer) {
@@ -106,7 +131,15 @@
         }
     });
 
-    var generatedJavaScriptEditor = CodeMirror(document.getElementById('generated-javascript'), {
+    var generatedEs6JavaScriptEditor = CodeMirror(document.getElementById('generated-es6-javascript'), {
+        mode: 'javascript',
+        lineNumbers: true,
+        indentUnit: 4,
+        matchBrackets: true,
+        readOnly: true
+    });
+
+    var generatedEs5JavaScriptEditor = CodeMirror(document.getElementById('generated-es5-javascript'), {
         mode: 'javascript',
         lineNumbers: true,
         indentUnit: 4,
@@ -197,7 +230,7 @@
     $('#transpile-button').click(transpile);
 
     function transpile() {
-        removeAllUnderlinesFromCoolEditor();
+        removeAllErrorVisualsFromCoolEditor();
 
         var transpilerOutput = CoolToJS.Transpile({
             coolProgramSources: coolEditor.getValue(),
@@ -222,47 +255,28 @@
 
                 // underline the error in the Cool editor
                 if (transpilerOutput.errorMessages[i].location) {
-                    addUnderlineToCoolEditor(transpilerOutput.errorMessages[i].location.line - 1,
+                    addErrorVisualsToCoolEditor(transpilerOutput.errorMessages[i].location.line - 1,
                                              transpilerOutput.errorMessages[i].location.column - 1,
-                                             transpilerOutput.errorMessages[i].location.length);
+                                             transpilerOutput.errorMessages[i].location.length,
+                                             transpilerOutput.errorMessages[i].message);
                 }
             }
             editorOutput += '\n*/\n\n';
         }
 
-        // display the transpiler warnings as comments in the JavaScript editor 
-        //if (transpilerOutput.warningMessages && transpilerOutput.warningMessages.length > 0) {
-        //    editorOutput += '/*\n\nThe following warnings occured while transpiling:\n\n';
-        //    for (var i = 0; i < transpilerOutput.warningMessages.length; i++) {
-        //        editorOutput += '• ';
-        //        if (transpilerOutput.warningMessages[i].location) {
-        //            editorOutput += 'Line ' + transpilerOutput.warningMessages[i].location.line + ', '
-        //                + 'column ' + transpilerOutput.warningMessages[i].location.column + ':\t'
-        //        }
-        //        editorOutput += transpilerOutput.warningMessages[i].message + '\n';
-
-        //        // underline the error in the Cool editor
-        //        addUnderlineToCoolEditor(transpilerOutput.warningMessages[i].location.line - 1,
-        //                                 transpilerOutput.warningMessages[i].location.column - 1,
-        //                                 transpilerOutput.warningMessages[i].location.length,
-        //                                 'warning');
-        //    }
-        //    editorOutput += '\n*/\n\n';
-        //}
-
         if (transpilerOutput.success) {
             editorOutput += transpilerOutput.generatedJavaScript;
         }
 
-        generatedJavaScriptEditor.setValue(editorOutput);
+        generatedEs6JavaScriptEditor.setValue(editorOutput);
     }
 
-    $('#play-button').click(run);
+    $('#es6-play-button, #es5-play-button').click(run);
 
     function run() {
         $('.console').click();
         try {
-            eval(generatedJavaScriptEditor.getValue());
+            eval(generatedEs6JavaScriptEditor.getValue());
         } catch (data) {
             window.consoleController.report([{
                 msg: data,
@@ -276,6 +290,64 @@
         window.consoleController.reset();
     });
 
+    var $coolEditorOption = $('#cool-editor-option'),
+        $es6Option = $('#es6-option'),
+        $es5Option = $('#es5-option'),
+        $consoleOption = $('#console-option'),
+        $es5RunButton = $('#es5-play-button'),
+        $es6RunButton = $('#es6-play-button'),
+        $transpileButtonText = $('#transpile-button-text');
+    $('.view-options-container input').change(function () {
+        var viewsToShow = [];
+        if ($coolEditorOption.is(':checked')) {
+            viewsToShow.push('.editor-container.' + $coolEditorOption.attr('editor'));
+        }
+        if ($es6Option.is(':checked')) {
+            viewsToShow.push('.editor-container.' + $es6Option.attr('editor'));
+        }
+        if ($es5Option.is(':checked')) {
+            viewsToShow.push('.editor-container.' + $es5Option.attr('editor'));
+        }
+        if ($consoleOption.is(':checked')) {
+            viewsToShow.push('.editor-container.' + $consoleOption.attr('editor'));
+        }
+
+        if ($es6Option.is(':checked') && $es5Option.is(':checked')) {
+            $es5RunButton.css('display', '');
+            $es6RunButton.css('display', 'none');
+            $transpileButtonText.html(' Transpile');
+        } else {
+            if (!$es6Option.is(':checked') && !$es5Option.is(':checked')) {
+                $transpileButtonText.html(' Transpile and Run');
+            } else {
+                $transpileButtonText.html(' Transpile');
+            }
+
+            $($es5RunButton).add($es6RunButton).css('display', '');
+        }
+
+        switch (viewsToShow.length) {
+            case 0:
+                return;
+            case 1:
+                var classToAdd = 'col-md-12';
+                break;
+            case 2:
+                var classToAdd = 'col-md-6';
+                break;
+            case 3:
+                var classToAdd = 'col-md-4';
+                break;
+            case 4:
+                var classToAdd = 'col-md-3';
+                break;
+        }
+        var $editorContainer = $('.editor-container');
+        $editorContainer.removeClass('col-md-3 col-md-4 col-md-6 col-md-12');
+        $editorContainer.not(viewsToShow.join(', ')).css('display', 'none');
+        $(viewsToShow.join(', ')).addClass(classToAdd).css('display', '');
+
+    });
 
     // populate the "sources" dropdown with the example programs
     var options = '';
@@ -318,6 +390,7 @@
 
     window.onresize();
     coolEditor.refresh();
-    generatedJavaScriptEditor.refresh();
+    generatedEs6JavaScriptEditor.refresh();
+    generatedEs5JavaScriptEditor.refresh();
 
 })(CoolToJSDemo || (CoolToJSDemo = {}));
