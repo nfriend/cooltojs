@@ -40,6 +40,20 @@
     border-bottom-right-radius: 0;
 }
 
+#loading {
+    text-align: center;
+    font-size: 25px;
+}
+
+    #loading > div {
+        display: inline-block;
+        text-align: center;
+    }
+
+    #loading .loading-text {
+        float: left;
+    }
+
 /* match cool's comment color */
 .javascript-theme .cm-comment {
     font-style: italic;
@@ -154,5 +168,35 @@ div.console {
     .view-options-container {
         margin-top: 20px;
         margin-bottom: -48px;
+    }
+}
+
+
+.glyphicon-spin {
+    -webkit-animation: spin 1200ms infinite linear;
+    animation: spin 1200ms infinite linear;
+}
+
+@-webkit-keyframes spin {
+    0% {
+        -webkit-transform: rotate(0deg);
+        transform: rotate(0deg);
+    }
+
+    100% {
+        -webkit-transform: rotate(359deg);
+        transform: rotate(359deg);
+    }
+}
+
+@keyframes spin {
+    0% {
+        -webkit-transform: rotate(0deg);
+        transform: rotate(0deg);
+    }
+
+    100% {
+        -webkit-transform: rotate(359deg);
+        transform: rotate(359deg);
     }
 }

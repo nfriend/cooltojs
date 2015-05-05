@@ -6,6 +6,10 @@
         programIndexToUse = 9,
         liveErrorChecking = !isDebug;
 
+    // remove the splash screen;
+    $('.cooltojs-content').css('display', '');
+    $('#loading').css('display', 'none');
+
     $('[data-toggle="tooltip"]').tooltip();
 
     //#region set up editors and the console
