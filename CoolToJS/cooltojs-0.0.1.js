@@ -129,6 +129,8 @@ var CoolToJS;
         function MethodNode() {
             _super.call(this, 3 /* Method */);
             this.parameters = [];
+            this.isAsync = false;
+            this.isUsed = false;
         }
         Object.defineProperty(MethodNode.prototype, "hasParameters", {
             get: function () {
@@ -154,6 +156,7 @@ var CoolToJS;
         __extends(PropertyNode, _super);
         function PropertyNode() {
             _super.call(this, 2 /* Property */);
+            this.isUsed = false;
         }
         Object.defineProperty(PropertyNode.prototype, "hasInitializer", {
             get: function () {
@@ -951,17 +954,27 @@ var CoolToJS;
         JavaScriptGenerator.prototype.generate = function (ast, ioFunctions, errorMessages, warningMessages) {
             var _this = this;
             var output = [];
-            output.push('let inputGenerator;\n\n');
+            output.push('let inputGenerators = [];\n\n');
             output.push(this.generateIOClass(ioFunctions, 0));
             output.push('\n');
+            var isInputNeeded = false;
             ast.classList.forEach(function (classNode) {
                 if (['Object', 'IO', 'Int', 'String', 'Bool'].indexOf(classNode.className) === -1) {
                     output.push(_this.generateClass(classNode, 0));
                     output.push('\n');
+                    if (!isInputNeeded) {
+                        isInputNeeded = classNode.methodList.some(function (mn) { return mn.isAsync; });
+                    }
                 }
             });
-            output.push('inputGenerator = (new Main()).main();\n');
-            output.push('inputGenerator.next()\n');
+            if (isInputNeeded) {
+                output.push('let mainGenerator = new Main().main();\n');
+                output.push('inputGenerators.push(mainGenerator)\n');
+                output.push('mainGenerator.next();\n');
+            }
+            else {
+                output.push('new Main().main();\n');
+            }
             return output.join('');
         };
         JavaScriptGenerator.prototype.generateIOClass = function (ioFunctions, indentLevel) {
@@ -983,7 +996,7 @@ var CoolToJS;
                 output.push(_this.generateClassProperty(propertyNode, indentLevel + 1));
             });
             classNode.methodList.forEach(function (methodNode) {
-                output.push(_this.generateClassMethod(methodNode, classNode, indentLevel + 1));
+                output.push(_this.generateClassMethod(methodNode, indentLevel + 1));
             });
             output.push(this.indent(indentLevel) + '}\n');
             return output.join('');
@@ -993,10 +1006,10 @@ var CoolToJS;
             output.push(this.indent(indentLevel) + propertyNode.propertyName + ';\n');
             return output.join('');
         };
-        JavaScriptGenerator.prototype.generateClassMethod = function (methodNode, classNode, indentLevel) {
-            if (classNode.className === 'Main' && methodNode.methodName === 'main') {
-                var output = [];
-                output.push(this.indent(indentLevel) + '*main() {\n');
+        JavaScriptGenerator.prototype.generateClassMethod = function (methodNode, indentLevel) {
+            /*if ((<ClassNode>methodNode.parent).className === 'Main' && methodNode.methodName === 'main') {
+                var output: Array<string> = [];
+                output.push(this.indent(indentLevel) + (methodNode.isAsync ? '*' : '') + 'main() {\n');
                 output.push(this.indent(indentLevel + 1) + '{\n');
                 output.push(this.indent(indentLevel + 2) + '// the following is hardcoded while the\n');
                 output.push(this.indent(indentLevel + 2) + '// transpiler is being built\n');
@@ -1007,13 +1020,109 @@ var CoolToJS;
                 output.push(this.indent(indentLevel + 2) + 'name = yield in_string(inputGenerator);\n');
                 output.push(this.indent(indentLevel + 2) + 'out_string(hello + name + ending);\n');
                 output.push(this.indent(indentLevel + 1) + '}\n');
+
                 output.push(this.indent(indentLevel) + '};\n');
                 return output.join('');
-            }
+            }*/
             var output = [];
-            output.push(this.indent(indentLevel) + methodNode.methodName + '() {\n');
+            output.push(this.indent(indentLevel) + (methodNode.isAsync ? '*' : '') + methodNode.methodName + '() {\n');
+            output.push(this.generateExpression(methodNode.methodBodyExpression, indentLevel + 1));
             output.push(this.indent(indentLevel) + '};\n');
             return output.join('');
+        };
+        JavaScriptGenerator.prototype.generateExpression = function (expressionNode, indentLevel) {
+            switch (expressionNode.type) {
+                case 9 /* LetExpression */:
+                    return this.generateLetExpression(expressionNode, indentLevel);
+                    break;
+                case 21 /* StringLiteralExpression */:
+                    return expressionNode.value;
+                    break;
+                case 5 /* MethodCallExpression */:
+                    return this.generateMethodCallExpression(expressionNode, indentLevel);
+                    break;
+                case 8 /* BlockExpression */:
+                    return this.generateBlockExpression(expressionNode, indentLevel);
+                    break;
+                case 4 /* AssignmentExpression */:
+                    return this.generateAssignmentExpression(expressionNode, indentLevel);
+                    break;
+                case 19 /* ObjectIdentifierExpression */:
+                    return this.generateObjectIdentifierExpression(expressionNode, indentLevel);
+                    break;
+                default:
+                    throw 'Unrecognized ExpressionNode type!';
+            }
+        };
+        JavaScriptGenerator.prototype.generateLetExpression = function (letExpressionNode, indentLevel) {
+            var _this = this;
+            var output = [];
+            if (letExpressionNode.parent.type !== 3 /* Method */) {
+                output.push(this.indent(indentLevel) + '{\n');
+                indentLevel++;
+            }
+            letExpressionNode.localVariableDeclarations.forEach(function (lvdn, index) {
+                var isFirst = index === 0, isLast = index === letExpressionNode.localVariableDeclarations.length - 1;
+                output.push(_this.indent(indentLevel) + (isFirst ? 'var ' : _this.indent(1)) + lvdn.identifierName);
+                if (lvdn.initializerExpression) {
+                    output.push(' = ' + _this.generateExpression(lvdn.initializerExpression, 0));
+                }
+                output.push((isLast ? ';' : ',') + '\n');
+            });
+            output.push(this.generateExpression(letExpressionNode.letBodyExpression, indentLevel));
+            if (letExpressionNode.parent.type !== 3 /* Method */) {
+                indentLevel--;
+                output.push(this.indent(indentLevel) + '}\n');
+            }
+            return output.join('');
+        };
+        JavaScriptGenerator.prototype.generateMethodCallExpression = function (methodCallExpression, indentLevel) {
+            var _this = this;
+            var output = [];
+            if (methodCallExpression.isAsync) {
+                output.push(this.indent(indentLevel) + 'yield ');
+            }
+            if (methodCallExpression.targetExpression) {
+                output.push(this.generateExpression(methodCallExpression.targetExpression, 0));
+            }
+            if (methodCallExpression.isCallToSelf) {
+            }
+            else if (methodCallExpression.isCallToParent) {
+                throw 'Explicit parent calls not yet implemented';
+            }
+            else {
+                output.push('.');
+            }
+            output.push(methodCallExpression.methodName + '(');
+            methodCallExpression.parameterExpressionList.forEach(function (p, index) {
+                output.push(_this.generateExpression(p, 0));
+                if (index !== methodCallExpression.parameterExpressionList.length - 1) {
+                    output.push(',');
+                }
+            });
+            // TODO: what if this is a different in_string method?
+            if (methodCallExpression.methodName === 'in_string') {
+                output.push('inputGenerators[inputGenerators.length - 1]');
+            }
+            output.push(')');
+            return output.join('');
+        };
+        JavaScriptGenerator.prototype.generateBlockExpression = function (blockExpressionNode, indentLevel) {
+            var _this = this;
+            var output = [];
+            blockExpressionNode.expressionList.forEach(function (en) {
+                output.push(_this.indent(indentLevel) + _this.generateExpression(en, 0) + ';\n');
+            });
+            return output.join('');
+        };
+        JavaScriptGenerator.prototype.generateAssignmentExpression = function (assignmentExpressionNode, indentLevel) {
+            var output = [];
+            output.push(this.indent(indentLevel) + assignmentExpressionNode.identifierName + ' = ');
+            output.push(this.generateExpression(assignmentExpressionNode.assignmentExpression, 0));
+            return output.join('');
+        };
+        JavaScriptGenerator.prototype.generateObjectIdentifierExpression = function (objectIdentifierExpressionNode, indentLevel) {
+            return this.indent(indentLevel) + objectIdentifierExpressionNode.objectIdentifierName;
         };
         JavaScriptGenerator.prototype.indent = function (indentCount) {
             if (typeof this.indentCache[indentCount] === 'undefined') {
@@ -1749,6 +1858,15 @@ var CoolToJS;
                                 });
                             }
                         });
+                        if ((foundMethodNode.methodName === 'in_string' || foundMethodNode.methodName === 'in_int') && _this.typeHeirarchy.isAssignableFrom('IO', methodTargetType, typeEnvironment.currentClassType)) {
+                            methodCallExpressionNode.isAsync = true;
+                            var parentClassMethodNode = methodCallExpressionNode.parent;
+                            while (parentClassMethodNode.type !== 3 /* Method */) {
+                                parentClassMethodNode = parentClassMethodNode.parent;
+                            }
+                            parentClassMethodNode.isAsync = true;
+                        }
+                        foundMethodNode.isUsed = true;
                         if (foundMethodNode.returnTypeName === 'SELF_TYPE') {
                             return methodTargetType;
                         }

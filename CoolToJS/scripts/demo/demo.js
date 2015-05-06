@@ -175,19 +175,14 @@
                     className: "jquery-console-error"
                 }];
             } else {
-                if (window.inputFunction) {
+                if (window.inputGenerator) {
 
                     // we want any output that results from this callback
                     // to appear *after* the entered text, so schedule
                     // it after this function returns
                     setTimeout(function () {
-                        if (window.inputFunction.next) {
-                            window.inputFunction.next(line);
-                        } else {
-                            window.inputFunction(line);
-                        }
-
-                        window.inputFunction = null;
+                        window.inputGenerator.next(line);
+                        window.inputGenerator = null;
                     }, 0)
 
                     return [{
@@ -228,16 +223,15 @@
 
     var isInputRestrictedToNumbers = false;
 
-    var in_string = function (onInput) {
+    var in_string = function (generator) {
         isInputRestrictedToNumbers = false;
-        window.inputFunction = onInput;
+        window.inputGenerator = generator;
     };
 
-    var in_int = function (onInput) {
+    var in_int = function (generator) {
         isInputRestrictedToNumbers = true;
-        window.inputFunction = onInput;
+        window.inputGenerator = generator;
     };
-
 
     // the function that will actually be called when input is entered.
     // global so as to be available to the Cool program

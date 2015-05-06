@@ -286,6 +286,19 @@
                         }
                     });
 
+                    if ((foundMethodNode.methodName === 'in_string' || foundMethodNode.methodName === 'in_int')
+                        && this.typeHeirarchy.isAssignableFrom('IO', methodTargetType, typeEnvironment.currentClassType)) {
+
+                        methodCallExpressionNode.isAsync = true;
+                        var parentClassMethodNode = methodCallExpressionNode.parent;
+                        while (parentClassMethodNode.type !== NodeType.Method) {
+                            parentClassMethodNode = parentClassMethodNode.parent;
+                        }
+                        (<MethodNode>parentClassMethodNode).isAsync = true;
+                    }
+
+                    foundMethodNode.isUsed = true;
+
                     if (foundMethodNode.returnTypeName === 'SELF_TYPE') {
                         return methodTargetType;
                     } else {

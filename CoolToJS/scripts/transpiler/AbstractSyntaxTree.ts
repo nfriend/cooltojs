@@ -124,6 +124,8 @@
         methodName: string;
         returnTypeName: string;
         parameters: Array<{ parameterName: string; parameterTypeName: string }> = [];
+        isAsync: boolean = false;
+        isUsed: boolean = false;
 
         get hasParameters(): boolean {
             return this.parameters.length > 0;
@@ -145,6 +147,7 @@
 
         propertyName: string;
         typeName: string;
+        isUsed: boolean = false;
 
         get hasInitializer(): boolean {
             return typeof this.propertyInitializerExpression !== 'undefined'
@@ -191,6 +194,7 @@
         explicitParentCallTypeName: string;
         isCallToSelf: boolean = false;
         targetExpression: ExpressionNode;
+        isAsync: boolean;
 
         get parameterExpressionList(): Array<ExpressionNode> {
             return this.children;

@@ -25,18 +25,28 @@
 
         private generate(ast: Node, ioFunctions: IOFunctionDefinitions, errorMessages: Array<ErrorMessage>, warningMessages: Array<WarningMessage>): string {
             var output: Array<string> = [];
-            output.push('let inputGenerator;\n\n')
+            output.push('let inputGenerators = [];\n\n')
             output.push(this.generateIOClass(ioFunctions, 0));
             output.push('\n');
 
+            var isInputNeeded = false;
             (<ProgramNode>ast).classList.forEach(classNode => {
                 if (['Object', 'IO', 'Int', 'String', 'Bool'].indexOf(classNode.className) === -1) {
                     output.push(this.generateClass(classNode, 0));
                     output.push('\n');
+                    if (!isInputNeeded) {
+                        isInputNeeded = classNode.methodList.some(mn => mn.isAsync);
+                    }
                 }
             });
-            output.push('inputGenerator = (new Main()).main();\n');
-            output.push('inputGenerator.next()\n');
+
+            if (isInputNeeded) {
+                output.push('let mainGenerator = new Main().main();\n');
+                output.push('inputGenerators.push(mainGenerator)\n');
+                output.push('mainGenerator.next();\n');
+            } else {
+                output.push('new Main().main();\n');
+            }
             return output.join('');
         }
 
@@ -62,7 +72,7 @@
             });
 
             classNode.methodList.forEach(methodNode => {
-                output.push(this.generateClassMethod(methodNode, classNode, indentLevel + 1));
+                output.push(this.generateClassMethod(methodNode, indentLevel + 1));
             });
 
             output.push(this.indent(indentLevel) + '}\n');
@@ -76,10 +86,10 @@
             return output.join('');
         }
 
-        private generateClassMethod(methodNode: MethodNode, classNode: ClassNode, indentLevel: number): string {
-            if (classNode.className === 'Main' && methodNode.methodName === 'main') {
+        private generateClassMethod(methodNode: MethodNode, indentLevel: number): string {
+            /*if ((<ClassNode>methodNode.parent).className === 'Main' && methodNode.methodName === 'main') {
                 var output: Array<string> = [];
-                output.push(this.indent(indentLevel) + '*main() {\n');
+                output.push(this.indent(indentLevel) + (methodNode.isAsync ? '*' : '') + 'main() {\n');
                 output.push(this.indent(indentLevel + 1) + '{\n');
                 output.push(this.indent(indentLevel + 2) + '// the following is hardcoded while the\n');
                 output.push(this.indent(indentLevel + 2) + '// transpiler is being built\n');
@@ -93,12 +103,122 @@
 
                 output.push(this.indent(indentLevel) + '};\n');
                 return output.join('');
-            }
+            }*/
 
             var output: Array<string> = [];
-            output.push(this.indent(indentLevel) + methodNode.methodName + '() {\n');
+            output.push(this.indent(indentLevel) + (methodNode.isAsync ? '*' : '') + methodNode.methodName + '() {\n');
+            output.push(this.generateExpression(methodNode.methodBodyExpression, indentLevel + 1));
             output.push(this.indent(indentLevel) + '};\n');
             return output.join('');
+        }
+
+        private generateExpression(expressionNode: ExpressionNode, indentLevel: number): string {
+            switch (expressionNode.type) {
+                case NodeType.LetExpression:
+                    return this.generateLetExpression(<LetExpressionNode>expressionNode, indentLevel);
+                    break;
+                case NodeType.StringLiteralExpression:
+                    return (<StringLiteralExpressionNode>expressionNode).value;
+                    break;
+                case NodeType.MethodCallExpression:
+                    return this.generateMethodCallExpression(<MethodCallExpressionNode>expressionNode, indentLevel);
+                    break;
+                case NodeType.BlockExpression:
+                    return this.generateBlockExpression(<BlockExpressionNode>expressionNode, indentLevel);
+                    break;
+                case NodeType.AssignmentExpression:
+                    return this.generateAssignmentExpression(<AssignmentExpressionNode>expressionNode, indentLevel);
+                    break;
+                case NodeType.ObjectIdentifierExpression:
+                    return this.generateObjectIdentifierExpression(<ObjectIdentifierExpressionNode>expressionNode, indentLevel);
+                    break;
+                default:
+                    throw 'Unrecognized ExpressionNode type!';
+            }
+        }
+
+        private generateLetExpression(letExpressionNode: LetExpressionNode, indentLevel: number): string {
+            var output: Array<string> = [];
+            if (letExpressionNode.parent.type !== NodeType.Method) {
+                output.push(this.indent(indentLevel) + '{\n');
+                indentLevel++;
+            }
+
+            letExpressionNode.localVariableDeclarations.forEach((lvdn, index) => {
+                var isFirst = index === 0,
+                    isLast = index === letExpressionNode.localVariableDeclarations.length - 1;
+
+                output.push(this.indent(indentLevel) + (isFirst ? 'var ' : this.indent(1)) + lvdn.identifierName);
+                if (lvdn.initializerExpression) {
+                    output.push(' = ' + this.generateExpression(lvdn.initializerExpression, 0));
+                }
+
+                output.push((isLast ? ';' : ',') + '\n');
+            });
+
+            output.push(this.generateExpression(letExpressionNode.letBodyExpression, indentLevel));
+
+            if (letExpressionNode.parent.type !== NodeType.Method) {
+                indentLevel--;
+                output.push(this.indent(indentLevel) + '}\n');
+            }
+            return output.join('');
+        }
+
+        private generateMethodCallExpression(methodCallExpression: MethodCallExpressionNode, indentLevel: number): string {
+            var output: Array<string> = [];
+
+            if (methodCallExpression.isAsync) {
+                output.push(this.indent(indentLevel) + 'yield ');
+            }
+
+            if (methodCallExpression.targetExpression) {
+                output.push(this.generateExpression(methodCallExpression.targetExpression, 0));
+            }
+
+            if (methodCallExpression.isCallToSelf) {
+                // no output
+            } else if (methodCallExpression.isCallToParent) {
+                throw 'Explicit parent calls not yet implemented';
+            } else {
+                output.push('.');
+            }
+
+            output.push(methodCallExpression.methodName + '(');
+            methodCallExpression.parameterExpressionList.forEach((p, index) => {
+                output.push(this.generateExpression(p, 0));
+                if (index !== methodCallExpression.parameterExpressionList.length - 1) {
+                    output.push(',');
+                }
+            });
+
+            // TODO: what if this is a different in_string method?
+            if (methodCallExpression.methodName === 'in_string') {
+                output.push('inputGenerators[inputGenerators.length - 1]');
+            }
+
+            output.push(')');
+
+            return output.join('');
+        }
+
+        private generateBlockExpression(blockExpressionNode: BlockExpressionNode, indentLevel: number): string {
+            var output: Array<string> = [];
+            blockExpressionNode.expressionList.forEach(en => {
+                output.push(this.indent(indentLevel) + this.generateExpression(en, 0) + ';\n');
+            });
+            return output.join('');
+        }
+
+        private generateAssignmentExpression(assignmentExpressionNode: AssignmentExpressionNode, indentLevel: number): string {
+            var output: Array<string> = [];
+            output.push(this.indent(indentLevel) + assignmentExpressionNode.identifierName + ' = ');
+            output.push(this.generateExpression(assignmentExpressionNode.assignmentExpression, 0));
+            return output.join('');
+        }
+
+        private generateObjectIdentifierExpression(objectIdentifierExpressionNode: ObjectIdentifierExpressionNode, indentLevel: number): string {
+            return this.indent(indentLevel) + objectIdentifierExpressionNode.objectIdentifierName;
         }
 
         private indentCache: Array<string> = [];
