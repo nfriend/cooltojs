@@ -998,6 +998,8 @@ var CoolToJS;
                 var output = [];
                 output.push(this.indent(indentLevel) + '*main() {\n');
                 output.push(this.indent(indentLevel + 1) + '{\n');
+                output.push(this.indent(indentLevel + 2) + '// the following is hardcoded while the\n');
+                output.push(this.indent(indentLevel + 2) + '// transpiler is being built\n');
                 output.push(this.indent(indentLevel + 2) + 'let hello = "Hello, ";\n');
                 output.push(this.indent(indentLevel + 2) + 'let name = "";\n');
                 output.push(this.indent(indentLevel + 2) + 'let ending = "!\\n";\n');

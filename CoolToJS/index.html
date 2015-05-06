@@ -43,29 +43,6 @@
                     <p>Source: <a class="" href="https://github.com/nfriend/cooltojs">https://<wbr>github<wbr>.<wbr>com<wbr>/<wbr>nfriend<wbr>/<wbr>cooltojs<wbr></a></p>
                 </div>
             </div>
-
-            <div class="view-options-container" data-toggle="buttons">
-                <div class="btn-group">
-                    <label class="btn btn-default active">
-                        <input id="cool-editor-option" editor="cool-editor-container" type="checkbox" autocomplete="off" checked />
-                        <span class="hidden-sm hidden-md hidden-lg">Cool</span>
-                        <span class="hidden-xs">Cool Editor</span>
-                    </label>
-                    <label class="btn btn-default active">
-                        <input id="es6-option" editor="es6-container" type="checkbox" autocomplete="off" checked />
-                        <span class="hidden-sm hidden-md hidden-lg">ES6</span>
-                        <span class="hidden-xs">ES6 Output</span>
-                    </label>
-                    <label class="btn btn-default">
-                        <input id="es5-option" editor="es5-container" type="checkbox" autocomplete="off" />
-                        <span class="hidden-sm hidden-md hidden-lg">ES5</span>
-                        <span class="hidden-xs">ES5 Output</span>
-                    </label>
-                    <label class="btn btn-default active">
-                        <input id="console-option" editor="console-container" type="checkbox" autocomplete="off" checked />Console
-                    </label>
-                </div>
-            </div>
         </div>
     </div>
     <div id="loading" class="container">
@@ -75,10 +52,32 @@
         </div>
     </div>
     <div class="container-fluid cooltojs-content" style="display: none;">
+        <div class="view-options-container" data-toggle="buttons" style="text-align: center">
+            <div class="btn-group">
+                <label class="btn btn-default active">
+                    <input id="cool-editor-option" editor="cool-editor-container" type="checkbox" autocomplete="off" checked />
+                    <span class="hidden-sm hidden-md hidden-lg">Cool</span>
+                    <span class="hidden-xs">Cool Editor</span>
+                </label>
+                <label class="btn btn-default active">
+                    <input id="es6-option" editor="es6-container" type="checkbox" autocomplete="off" checked />
+                    <span class="hidden-sm hidden-md hidden-lg">ES6</span>
+                    <span class="hidden-xs">ES6 Output</span>
+                </label>
+                <label class="btn btn-default">
+                    <input id="es5-option" editor="es5-container" type="checkbox" autocomplete="off" />
+                    <span class="hidden-sm hidden-md hidden-lg">ES5</span>
+                    <span class="hidden-xs">ES5 Output</span>
+                </label>
+                <label class="btn btn-default active">
+                    <input id="console-option" editor="console-container" type="checkbox" autocomplete="off" checked />Console
+                </label>
+            </div>
+        </div>
         <div class="row">
             <div class="editor-container cool-editor-container col-md-4 col-sm-12">
-                <p class="output-label pull-left hidden-md hidden-xs">Cool Source:</p>
-                <p class="output-label pull-left hidden-lg hidden-sm">Source:</p>
+                <p class="output-label pull-left hidden-md hidden-xs">Cool:</p>
+                <p class="output-label pull-left hidden-lg hidden-sm">Cool:</p>
                 <div class="form-inline pull-right" style="display: inline-block">
                     <select id="source-dropdown" class="form-control" style="height: 30px"></select>
                     <button id="transpile-button" type="button" class="btn btn-default btn-sm" data-toggle="tooltip"

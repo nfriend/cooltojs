@@ -22,7 +22,8 @@
         autoCloseBrackets: '(){}',
         extraKeys: {
             'Ctrl-Enter': transpile,
-            'F5': transpile
+            'F5': transpile,
+            'F6': transpile,
         }
     });
 
@@ -59,28 +60,32 @@
             className: 'tooltip-token-' + textMarkerUniqueId
         }));
 
-        $('.tooltip-token-' + textMarkerUniqueId).tooltip({
-            title: message,
-            container: 'body',
-            delay: { 'show': 500, 'hide': '100' },
-            animation: false
-        })
-        textMarkerUniqueId++;
+        setTimeout(function () {
+            $('.tooltip-token-' + textMarkerUniqueId).tooltip({
+                title: message,
+                container: 'body',
+                delay: { 'show': 500, 'hide': '100' },
+                animation: false
+            })
+            textMarkerUniqueId++;
+        }, 0)
     }
 
     var underlineElements = [];
     var textMarkers = [];
     var textMarkerUniqueId = 0;
     function removeAllErrorVisualsFromCoolEditor() {
-        for (var i = 0; i < underlineElements.length; i++) {
-            $(underlineElements[i]).remove();
-        }
+        underlineElements.forEach(function (ue) {
+            $(ue).remove();
+        });
         underlineElements.length = 0;
 
-        textMarkers.forEach(function (tm, index) {
-            textMarkers[index].clear();
-        });
-        textMarkers.length = 0;
+        // apparently these DOM elements get replaced when the 
+        // text is changed, so no need to clear them manually
+        //textMarkers.forEach(function (tm, index) {
+        //    tm.clear();
+        //});
+        //textMarkers.length = 0;
     }
 
     function checkForErrors() {
@@ -141,7 +146,12 @@
         lineNumbers: true,
         indentUnit: 4,
         matchBrackets: true,
-        readOnly: !isDebug
+        readOnly: !isDebug,
+        extraKeys: (isDebug ? {
+            'Ctrl-Enter': convertES6toES5,
+            'F5': convertES6toES5,
+            'F6': convertES6toES5,
+        } : { })
     });
 
     var generatedEs5JavaScriptEditor = CodeMirror(document.getElementById('generated-es5-javascript'), {
@@ -176,7 +186,7 @@
                         } else {
                             window.inputFunction(line);
                         }
-                        
+
                         window.inputFunction = null;
                     }, 0)
 
@@ -235,9 +245,11 @@
 
     //#endregion
 
-    $('#transpile-button').click(transpile);
+    $('#transpile-button').click(function () {
+        transpile();
+    });
 
-    function transpile() {
+    function transpile(andRun) {
         removeAllErrorVisualsFromCoolEditor();
 
         var transpilerOutput = CoolToJS.Transpile({
@@ -248,44 +260,57 @@
             in_int: in_int
         });
 
-        var editorOutput = ''
-
         // display the error messages as comments in the JavaScript editor 
         if (transpilerOutput.errorMessages && transpilerOutput.errorMessages.length > 0) {
-            editorOutput += '/*\n\nThe following errors occured while transpiling:\n\n';
-            for (var i = 0; i < transpilerOutput.errorMessages.length; i++) {
-                editorOutput += '• ';
-                if (transpilerOutput.errorMessages[i].location) {
-                    editorOutput += 'Line ' + transpilerOutput.errorMessages[i].location.line + ', '
-                    + 'column ' + transpilerOutput.errorMessages[i].location.column + ':\t';
-                }
-                editorOutput += transpilerOutput.errorMessages[i].message + '\n';
+            transpilerOutput.errorMessages.forEach(function (em) {
+                window.consoleController.report([{
+                    msg: (em.location ? '(' + em.location.line + ':' + em.location.column + ') ' : '') + em.message,
+                    className: 'jquery-console-error'
+                }]);
 
                 // underline the error in the Cool editor
-                if (transpilerOutput.errorMessages[i].location) {
-                    addErrorVisualsToCoolEditor(transpilerOutput.errorMessages[i].location.line - 1,
-                                             transpilerOutput.errorMessages[i].location.column - 1,
-                                             transpilerOutput.errorMessages[i].location.length,
-                                             transpilerOutput.errorMessages[i].message);
+                if (em.location) {
+                    addErrorVisualsToCoolEditor(em.location.line - 1,
+                                                em.location.column - 1,
+                                                em.location.length,
+                                                em.message);
                 }
-            }
-            editorOutput += '\n*/\n\n';
+            });
         }
 
         if (transpilerOutput.success) {
-            editorOutput += transpilerOutput.generatedJavaScript;
-
-            try {
-                var es5Code = babel.transform(transpilerOutput.generatedJavaScript, {
-                    stage: 0
-                }).code;
-                generatedEs5JavaScriptEditor.setValue(es5Code);
-            } catch (e) {
-                generatedEs5JavaScriptEditor.setValue('/*\n\nES6 to ES5 conversion error:\n\n ' + e + '\n\n*/');
+            generatedEs6JavaScriptEditor.setValue(transpilerOutput.generatedJavaScript);
+            convertES6toES5();
+            if (andRun) {
+                run();
             }
         }
+    }
 
-        generatedEs6JavaScriptEditor.setValue(editorOutput);
+    function convertES6toES5() {
+        try {
+            var es5Code = babel.transform(generatedEs6JavaScriptEditor.getValue(), {
+                stage: 0
+            }).code;
+            if (es5Code) {
+                es5Code = "/* ES6 to ES5 conversion by Babel: http://babeljs.io */\n" + es5Code;
+            }
+            generatedEs5JavaScriptEditor.setValue(es5Code);
+            window.consoleController.report([{
+                msg: 'Transpilation successful!',
+                className: 'jquery-console-success'
+            }]);
+            return true;
+        } catch (e) {
+            window.consoleController.report([{
+                msg: 'ES6 to ES5 conversion error:',
+                className: 'jquery-console-error'
+            }, {
+                msg: e,
+                className: 'jquery-console-error'
+            }]);
+            return false;
+        }
     }
 
     $('#es6-play-button, #es5-play-button').click(run);
@@ -313,6 +338,7 @@
         $consoleOption = $('#console-option'),
         $es5RunButton = $('#es5-play-button'),
         $es6RunButton = $('#es6-play-button'),
+        $transpileButton = $('#transpile-button'),
         $transpileButtonText = $('#transpile-button-text');
     $('.view-options-container input').change(function () {
         var viewsToShow = [];
@@ -335,8 +361,14 @@
             $transpileButtonText.html(' Transpile');
         } else {
             if (!$es6Option.is(':checked') && !$es5Option.is(':checked')) {
+                $transpileButton.off('click').click(function () {
+                    transpile(true);
+                });
                 $transpileButtonText.html(' Transpile and Run');
             } else {
+                $transpileButton.off('click').click(function () {
+                    transpile();
+                });
                 $transpileButtonText.html(' Transpile');
             }
 
@@ -392,7 +424,7 @@
         var $window = $(window);
         if ($window.innerWidth() > 991) {
             $('.CodeMirror, div.console div.jquery-console-inner').css({
-                height: $window.height() - 85 + 'px'
+                height: $window.height() - 111 + 'px'
             });
 
             // i'm tired of scrolling down while developing this thing
