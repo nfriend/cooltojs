@@ -130,6 +130,7 @@ var CoolToJS;
             _super.call(this, 3 /* Method */);
             this.parameters = [];
             this.isAsync = false;
+            this.isInStringOrInInt = false;
             this.isUsed = false;
         }
         Object.defineProperty(MethodNode.prototype, "hasParameters", {
@@ -210,6 +211,7 @@ var CoolToJS;
             _super.call(this, 5 /* MethodCallExpression */);
             this.isCallToParent = false;
             this.isCallToSelf = false;
+            this.isInStringOrInInt = false;
         }
         Object.defineProperty(MethodCallExpressionNode.prototype, "parameterExpressionList", {
             get: function () {
@@ -939,12 +941,16 @@ var CoolToJS;
     var JavaScriptGenerator = (function () {
         function JavaScriptGenerator() {
             var _this = this;
+            this.errorMessages = [];
+            this.warningMessages = [];
             this.Generate = function (semanticAnalysisOutput, ioFunctions) {
-                var errorMessages = semanticAnalysisOutput.errorMessages || [], warningMessages = semanticAnalysisOutput.warningMessages || [], success = errorMessages.length === 0, output = _this.generate(semanticAnalysisOutput.abstractSyntaxTree, ioFunctions, errorMessages, warningMessages);
+                _this.errorMessages = semanticAnalysisOutput.errorMessages || [];
+                _this.warningMessages = semanticAnalysisOutput.warningMessages || [];
+                var output = _this.generate(semanticAnalysisOutput.abstractSyntaxTree, ioFunctions, _this.errorMessages, _this.warningMessages);
                 return {
-                    success: success,
-                    errorMessages: errorMessages,
-                    warningMessages: warningMessages,
+                    success: _this.errorMessages.length === 0,
+                    errorMessages: _this.errorMessages,
+                    warningMessages: _this.warningMessages,
                     generatedJavaScript: output
                 };
             };
@@ -955,6 +961,7 @@ var CoolToJS;
             var _this = this;
             var output = [];
             output.push('let inputGenerators = [];\n\n');
+            output.push(CoolToJS.Utility.baseObjectClass);
             output.push(this.generateIOClass(ioFunctions, 0));
             output.push('\n');
             var isInputNeeded = false;
@@ -968,30 +975,44 @@ var CoolToJS;
                 }
             });
             if (isInputNeeded) {
-                output.push('let mainGenerator = new Main().main();\n');
+                output.push('let mainGenerator = new Main("Main").main();\n');
                 output.push('inputGenerators.push(mainGenerator)\n');
                 output.push('mainGenerator.next();\n');
             }
             else {
-                output.push('new Main().main();\n');
+                output.push('new Main("Main").main();\n');
             }
             return output.join('');
         };
         JavaScriptGenerator.prototype.generateIOClass = function (ioFunctions, indentLevel) {
+            var _this = this;
             var output = [];
-            output.push(this.indent(indentLevel) + 'class IO {\n');
-            output.push(this.indent(indentLevel + 1) + 'out_string = ' + ioFunctions.out_string + ';\n');
-            output.push(this.indent(indentLevel + 1) + 'out_int = ' + ioFunctions.out_int + ';\n');
-            output.push(this.indent(indentLevel + 1) + 'in_string = ' + ioFunctions.in_string + ';\n');
-            output.push(this.indent(indentLevel + 1) + 'in_int = ' + ioFunctions.in_int + ';\n');
+            output.push(this.indent(indentLevel) + 'class IO extends _BaseObject {\n');
+            output.push(this.indent(indentLevel + 1) + 'constructor(typeName) {\n');
+            output.push(this.indent(indentLevel + 2) + 'super(typeName);\n');
+            output.push(this.indent(indentLevel + 1) + '}\n\n');
+            ['out_string', 'out_int', 'in_string', 'in_int'].forEach(function (methodname) {
+                var outStringDetails = CoolToJS.Utility.getFunctionDetails(ioFunctions[methodname]);
+                output.push(_this.indent(indentLevel + 1) + methodname + '(');
+                outStringDetails.parameters.forEach(function (p, index) {
+                    var isLast = outStringDetails.parameters.length - 1 === index;
+                    output.push(p + (isLast ? '' : ', '));
+                });
+                output.push(') {');
+                output.push(outStringDetails.body);
+                output.push('};\n');
+            });
             output.push(this.indent(indentLevel) + '}\n');
             return output.join('');
         };
         JavaScriptGenerator.prototype.generateClass = function (classNode, indentLevel) {
             var _this = this;
             var output = [];
-            var extendsPhrase = classNode.isSubClass ? (' extends ' + classNode.superClassName) : '';
+            var extendsPhrase = ' extends ' + (classNode.isSubClass ? classNode.superClassName : '_BaseObject');
             output.push(this.indent(indentLevel) + 'class ' + classNode.className + extendsPhrase + ' {\n');
+            output.push(this.indent(indentLevel + 1) + 'constructor(typeName) {\n');
+            output.push(this.indent(indentLevel + 2) + 'super(typeName);\n');
+            output.push(this.indent(indentLevel + 1) + '}\n\n');
             classNode.propertyList.forEach(function (propertyNode) {
                 output.push(_this.generateClassProperty(propertyNode, indentLevel + 1));
             });
@@ -1007,23 +1028,6 @@ var CoolToJS;
             return output.join('');
         };
         JavaScriptGenerator.prototype.generateClassMethod = function (methodNode, indentLevel) {
-            /*if ((<ClassNode>methodNode.parent).className === 'Main' && methodNode.methodName === 'main') {
-                var output: Array<string> = [];
-                output.push(this.indent(indentLevel) + (methodNode.isAsync ? '*' : '') + 'main() {\n');
-                output.push(this.indent(indentLevel + 1) + '{\n');
-                output.push(this.indent(indentLevel + 2) + '// the following is hardcoded while the\n');
-                output.push(this.indent(indentLevel + 2) + '// transpiler is being built\n');
-                output.push(this.indent(indentLevel + 2) + 'let hello = "Hello, ";\n');
-                output.push(this.indent(indentLevel + 2) + 'let name = "";\n');
-                output.push(this.indent(indentLevel + 2) + 'let ending = "!\\n";\n');
-                output.push(this.indent(indentLevel + 2) + 'out_string("Please enter your name:\\n");\n');
-                output.push(this.indent(indentLevel + 2) + 'name = yield in_string(inputGenerator);\n');
-                output.push(this.indent(indentLevel + 2) + 'out_string(hello + name + ending);\n');
-                output.push(this.indent(indentLevel + 1) + '}\n');
-
-                output.push(this.indent(indentLevel) + '};\n');
-                return output.join('');
-            }*/
             var output = [];
             output.push(this.indent(indentLevel) + (methodNode.isAsync ? '*' : '') + methodNode.methodName + '() {\n');
             output.push(this.generateExpression(methodNode.methodBodyExpression, indentLevel + 1));
@@ -1050,8 +1054,17 @@ var CoolToJS;
                 case 19 /* ObjectIdentifierExpression */:
                     return this.generateObjectIdentifierExpression(expressionNode, indentLevel);
                     break;
+                case 18 /* SelfExpression */:
+                    return this.generateSelfExpression(expressionNode, indentLevel);
+                    break;
+                case 13 /* NewExpression */:
+                    return this.generateNewExpression(expressionNode, indentLevel);
+                    break;
                 default:
-                    throw 'Unrecognized ExpressionNode type!';
+                    this.errorMessages.push({
+                        location: null,
+                        message: 'Node type "' + expressionNode.nodeTypeName + '" not yet implemented!'
+                    });
             }
         };
         JavaScriptGenerator.prototype.generateLetExpression = function (letExpressionNode, indentLevel) {
@@ -1063,7 +1076,7 @@ var CoolToJS;
             }
             letExpressionNode.localVariableDeclarations.forEach(function (lvdn, index) {
                 var isFirst = index === 0, isLast = index === letExpressionNode.localVariableDeclarations.length - 1;
-                output.push(_this.indent(indentLevel) + (isFirst ? 'var ' : _this.indent(1)) + lvdn.identifierName);
+                output.push(_this.indent(indentLevel) + (isFirst ? 'let ' : _this.indent(1)) + lvdn.identifierName);
                 if (lvdn.initializerExpression) {
                     output.push(' = ' + _this.generateExpression(lvdn.initializerExpression, 0));
                 }
@@ -1079,31 +1092,33 @@ var CoolToJS;
         JavaScriptGenerator.prototype.generateMethodCallExpression = function (methodCallExpression, indentLevel) {
             var _this = this;
             var output = [];
-            if (methodCallExpression.isAsync) {
-                output.push(this.indent(indentLevel) + 'yield ');
+            output.push(this.indent(indentLevel));
+            if (methodCallExpression.isInStringOrInInt) {
+                output.push('yield in_string(inputGenerators[inputGenerators.length - 1])');
+                return output.join('');
             }
-            if (methodCallExpression.targetExpression) {
+            if (methodCallExpression.method.isAsync) {
+                // TODO
+                output.push('let newGenerator = ' + methodCallExpression + '();');
+                output.push('inputGenerators.push(newGenerator);');
+                output.push('inputGenerators.next();');
+            }
+            if (methodCallExpression.targetExpression && !methodCallExpression.isCallToParent) {
                 output.push(this.generateExpression(methodCallExpression.targetExpression, 0));
             }
-            if (methodCallExpression.isCallToSelf) {
-            }
-            else if (methodCallExpression.isCallToParent) {
-                throw 'Explicit parent calls not yet implemented';
+            if (methodCallExpression.isCallToParent) {
+                output.push(methodCallExpression.explicitParentCallTypeName + '.prototype.' + methodCallExpression.methodName + '.call(this, ');
             }
             else {
-                output.push('.');
+                output.push(methodCallExpression.isCallToSelf ? 'this.' : '.');
+                output.push(methodCallExpression.methodName + '(');
             }
-            output.push(methodCallExpression.methodName + '(');
             methodCallExpression.parameterExpressionList.forEach(function (p, index) {
                 output.push(_this.generateExpression(p, 0));
                 if (index !== methodCallExpression.parameterExpressionList.length - 1) {
                     output.push(',');
                 }
             });
-            // TODO: what if this is a different in_string method?
-            if (methodCallExpression.methodName === 'in_string') {
-                output.push('inputGenerators[inputGenerators.length - 1]');
-            }
             output.push(')');
             return output.join('');
         };
@@ -1123,6 +1138,12 @@ var CoolToJS;
         };
         JavaScriptGenerator.prototype.generateObjectIdentifierExpression = function (objectIdentifierExpressionNode, indentLevel) {
             return this.indent(indentLevel) + objectIdentifierExpressionNode.objectIdentifierName;
+        };
+        JavaScriptGenerator.prototype.generateSelfExpression = function (selfExpressionNode, indentLevel) {
+            return this.indent(indentLevel) + 'this';
+        };
+        JavaScriptGenerator.prototype.generateNewExpression = function (newExpressionNode, indentLevel) {
+            return this.indent(indentLevel) + 'new ' + newExpressionNode.typeName + '("' + newExpressionNode.typeName + '")';
         };
         JavaScriptGenerator.prototype.indent = function (indentCount) {
             if (typeof this.indentCache[indentCount] === 'undefined') {
@@ -1841,6 +1862,7 @@ var CoolToJS;
                     }
                     var foundMethodNode = _this.typeHeirarchy.findMethodOnType(methodCallExpressionNode.methodName, methodTargetType, !methodCallExpressionNode.isCallToParent);
                     if (foundMethodNode) {
+                        methodCallExpressionNode.method = foundMethodNode;
                         if (foundMethodNode.parameters.length !== methodCallExpressionNode.parameterExpressionList.length) {
                             errorMessages.push({
                                 location: methodCallExpressionNode.token.location,
@@ -1858,8 +1880,9 @@ var CoolToJS;
                                 });
                             }
                         });
-                        if ((foundMethodNode.methodName === 'in_string' || foundMethodNode.methodName === 'in_int') && _this.typeHeirarchy.isAssignableFrom('IO', methodTargetType, typeEnvironment.currentClassType)) {
-                            methodCallExpressionNode.isAsync = true;
+                        // mark the current class method as "async" since it makes calls to one of the IO functions
+                        if (foundMethodNode.isInStringOrInInt) {
+                            methodCallExpressionNode.isInStringOrInInt = true;
                             var parentClassMethodNode = methodCallExpressionNode.parent;
                             while (parentClassMethodNode.type !== 3 /* Method */) {
                                 parentClassMethodNode = parentClassMethodNode.parent;
@@ -2545,7 +2568,7 @@ _in_string(function(input) {\n\
             out_string: out_string
         });
         return {
-            success: true,
+            success: codeGeneratorOutput.success,
             errorMessages: codeGeneratorOutput.errorMessages,
             warningMessages: codeGeneratorOutput.warningMessages,
             generatedJavaScript: codeGeneratorOutput.generatedJavaScript,
@@ -2800,10 +2823,14 @@ var CoolToJS;
             var inStringMethodNode = new CoolToJS.MethodNode();
             inStringMethodNode.methodName = 'in_string';
             inStringMethodNode.returnTypeName = 'String';
+            inStringMethodNode.isAsync = true;
+            inStringMethodNode.isInStringOrInInt = true;
             ioClass.children.push(inStringMethodNode);
             var inIntMethodNode = new CoolToJS.MethodNode();
             inIntMethodNode.methodName = 'in_int';
             inIntMethodNode.returnTypeName = 'Int';
+            inStringMethodNode.isAsync = true;
+            inStringMethodNode.isInStringOrInInt = true;
             ioClass.children.push(inIntMethodNode);
             programNode.children.push(ioClass);
             // Int
@@ -2841,6 +2868,47 @@ var CoolToJS;
             programNode.children.push(boolClass);
         }
         Utility.addBuiltinObjects = addBuiltinObjects;
+        function getFunctionDetails(func) {
+            return {
+                body: getFunctionBody(func),
+                parameters: getFunctionParameters(func)
+            };
+        }
+        Utility.getFunctionDetails = getFunctionDetails;
+        function getFunctionBody(func) {
+            return func.toString().slice(func.toString().indexOf("{") + 1, func.toString().lastIndexOf("}"));
+        }
+        Utility.getFunctionBody = getFunctionBody;
+        var stripComments = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg;
+        var argumentNames = /([^\s,]+)/g;
+        function getFunctionParameters(func) {
+            var fnStr = func.toString().replace(stripComments, '');
+            var result = fnStr.slice(fnStr.indexOf('(') + 1, fnStr.indexOf(')')).match(argumentNames);
+            if (result === null)
+                result = [];
+            return result;
+        }
+        Utility.getFunctionParameters = getFunctionParameters;
+        Utility.baseObjectClass = "\
+class _BaseObject {\n\
+    constructor(typeName) {\n\
+        this._type_name = typeName;\n\
+    }\n\
+    \n\
+    abort() {\n\
+        throw 'Program was aborted.';\n\
+    }\n\
+    type_name() {\n\
+        return this._type_name;\n\
+    }\n\
+    copy() {\n\
+        var copiedObject = Object.create(this.constructor);\n\
+        for (var prop in this) {\n\
+            copiedObject[prop] = this[prop];\n\
+        }\n\
+        return copiedObject;\n\
+    }\n\
+}\n\n";
     })(Utility = CoolToJS.Utility || (CoolToJS.Utility = {}));
 })(CoolToJS || (CoolToJS = {}));
 //# sourceMappingURL=cooltojs-0.0.1.js.map

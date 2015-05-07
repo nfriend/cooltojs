@@ -125,6 +125,7 @@
         returnTypeName: string;
         parameters: Array<{ parameterName: string; parameterTypeName: string }> = [];
         isAsync: boolean = false;
+        isInStringOrInInt: boolean = false;
         isUsed: boolean = false;
 
         get hasParameters(): boolean {
@@ -194,7 +195,8 @@
         explicitParentCallTypeName: string;
         isCallToSelf: boolean = false;
         targetExpression: ExpressionNode;
-        isAsync: boolean;
+        method: MethodNode;
+        isInStringOrInInt: boolean = false;
 
         get parameterExpressionList(): Array<ExpressionNode> {
             return this.children;

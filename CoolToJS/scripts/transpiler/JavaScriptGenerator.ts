@@ -8,17 +8,21 @@
     }
 
     export class JavaScriptGenerator {
+
+        private errorMessages: Array<ErrorMessage> = [];
+        private warningMessages: Array<WarningMessage> = [];
+
         Generate = (semanticAnalysisOutput: SemanticAnalyzerOutput, ioFunctions: IOFunctionDefinitions): JavaScriptGeneratorOutput => {
 
-            var errorMessages = semanticAnalysisOutput.errorMessages || [],
-                warningMessages = semanticAnalysisOutput.warningMessages || [],
-                success = errorMessages.length === 0,
-                output = this.generate(semanticAnalysisOutput.abstractSyntaxTree, ioFunctions, errorMessages, warningMessages);
+            this.errorMessages = semanticAnalysisOutput.errorMessages || [];
+            this.warningMessages = semanticAnalysisOutput.warningMessages || [];
+
+            var output = this.generate(semanticAnalysisOutput.abstractSyntaxTree, ioFunctions, this.errorMessages, this.warningMessages);
 
             return {
-                success: success,
-                errorMessages: errorMessages,
-                warningMessages: warningMessages,
+                success: this.errorMessages.length === 0,
+                errorMessages: this.errorMessages,
+                warningMessages: this.warningMessages,
                 generatedJavaScript: output
             }
         }
@@ -26,6 +30,7 @@
         private generate(ast: Node, ioFunctions: IOFunctionDefinitions, errorMessages: Array<ErrorMessage>, warningMessages: Array<WarningMessage>): string {
             var output: Array<string> = [];
             output.push('let inputGenerators = [];\n\n')
+            output.push(Utility.baseObjectClass);
             output.push(this.generateIOClass(ioFunctions, 0));
             output.push('\n');
 
@@ -41,22 +46,34 @@
             });
 
             if (isInputNeeded) {
-                output.push('let mainGenerator = new Main().main();\n');
+                output.push('let mainGenerator = new Main("Main").main();\n');
                 output.push('inputGenerators.push(mainGenerator)\n');
                 output.push('mainGenerator.next();\n');
             } else {
-                output.push('new Main().main();\n');
+                output.push('new Main("Main").main();\n');
             }
             return output.join('');
         }
 
         private generateIOClass(ioFunctions: IOFunctionDefinitions, indentLevel: number): string {
             var output: Array<string> = [];
-            output.push(this.indent(indentLevel) + 'class IO {\n');
-            output.push(this.indent(indentLevel + 1) + 'out_string = ' + ioFunctions.out_string + ';\n');
-            output.push(this.indent(indentLevel + 1) + 'out_int = ' + ioFunctions.out_int + ';\n');
-            output.push(this.indent(indentLevel + 1) + 'in_string = ' + ioFunctions.in_string + ';\n');
-            output.push(this.indent(indentLevel + 1) + 'in_int = ' + ioFunctions.in_int + ';\n');
+            output.push(this.indent(indentLevel) + 'class IO extends _BaseObject {\n');
+
+            output.push(this.indent(indentLevel + 1) + 'constructor(typeName) {\n');
+            output.push(this.indent(indentLevel + 2) + 'super(typeName);\n');
+            output.push(this.indent(indentLevel + 1) + '}\n\n');
+
+            ['out_string', 'out_int', 'in_string', 'in_int'].forEach(methodname => {
+                var outStringDetails = Utility.getFunctionDetails(ioFunctions[methodname]);
+                output.push(this.indent(indentLevel + 1) + methodname + '(');
+                outStringDetails.parameters.forEach((p, index) => {
+                    var isLast = outStringDetails.parameters.length - 1 === index;
+                    output.push(p + (isLast ? '' : ', '))
+                });
+                output.push(') {');
+                output.push(outStringDetails.body);
+                output.push('};\n');
+            });
             output.push(this.indent(indentLevel) + '}\n');
             return output.join('');
         }
@@ -64,8 +81,12 @@
         private generateClass(classNode: ClassNode, indentLevel: number): string {
             var output: Array<string> = [];
 
-            var extendsPhrase = classNode.isSubClass ? (' extends ' + classNode.superClassName) : '';
+            var extendsPhrase = ' extends ' + (classNode.isSubClass ? classNode.superClassName : '_BaseObject');
             output.push(this.indent(indentLevel) + 'class ' + classNode.className + extendsPhrase + ' {\n');
+
+            output.push(this.indent(indentLevel + 1) + 'constructor(typeName) {\n');
+            output.push(this.indent(indentLevel + 2) + 'super(typeName);\n');
+            output.push(this.indent(indentLevel + 1) + '}\n\n');
 
             classNode.propertyList.forEach(propertyNode => {
                 output.push(this.generateClassProperty(propertyNode, indentLevel + 1));
@@ -87,24 +108,6 @@
         }
 
         private generateClassMethod(methodNode: MethodNode, indentLevel: number): string {
-            /*if ((<ClassNode>methodNode.parent).className === 'Main' && methodNode.methodName === 'main') {
-                var output: Array<string> = [];
-                output.push(this.indent(indentLevel) + (methodNode.isAsync ? '*' : '') + 'main() {\n');
-                output.push(this.indent(indentLevel + 1) + '{\n');
-                output.push(this.indent(indentLevel + 2) + '// the following is hardcoded while the\n');
-                output.push(this.indent(indentLevel + 2) + '// transpiler is being built\n');
-                output.push(this.indent(indentLevel + 2) + 'let hello = "Hello, ";\n');
-                output.push(this.indent(indentLevel + 2) + 'let name = "";\n');
-                output.push(this.indent(indentLevel + 2) + 'let ending = "!\\n";\n');
-                output.push(this.indent(indentLevel + 2) + 'out_string("Please enter your name:\\n");\n');
-                output.push(this.indent(indentLevel + 2) + 'name = yield in_string(inputGenerator);\n');
-                output.push(this.indent(indentLevel + 2) + 'out_string(hello + name + ending);\n');
-                output.push(this.indent(indentLevel + 1) + '}\n');
-
-                output.push(this.indent(indentLevel) + '};\n');
-                return output.join('');
-            }*/
-
             var output: Array<string> = [];
             output.push(this.indent(indentLevel) + (methodNode.isAsync ? '*' : '') + methodNode.methodName + '() {\n');
             output.push(this.generateExpression(methodNode.methodBodyExpression, indentLevel + 1));
@@ -132,8 +135,17 @@
                 case NodeType.ObjectIdentifierExpression:
                     return this.generateObjectIdentifierExpression(<ObjectIdentifierExpressionNode>expressionNode, indentLevel);
                     break;
+                case NodeType.SelfExpression:
+                    return this.generateSelfExpression(<ObjectIdentifierExpressionNode>expressionNode, indentLevel);
+                    break;
+                case NodeType.NewExpression:
+                    return this.generateNewExpression(<NewExpressionNode>expressionNode, indentLevel);
+                    break;
                 default:
-                    throw 'Unrecognized ExpressionNode type!';
+                    this.errorMessages.push({
+                        location: null,
+                        message: 'Node type "' + expressionNode.nodeTypeName + '" not yet implemented!'
+                    });
             }
         }
 
@@ -148,7 +160,7 @@
                 var isFirst = index === 0,
                     isLast = index === letExpressionNode.localVariableDeclarations.length - 1;
 
-                output.push(this.indent(indentLevel) + (isFirst ? 'var ' : this.indent(1)) + lvdn.identifierName);
+                output.push(this.indent(indentLevel) + (isFirst ? 'let ' : this.indent(1)) + lvdn.identifierName);
                 if (lvdn.initializerExpression) {
                     output.push(' = ' + this.generateExpression(lvdn.initializerExpression, 0));
                 }
@@ -168,34 +180,37 @@
         private generateMethodCallExpression(methodCallExpression: MethodCallExpressionNode, indentLevel: number): string {
             var output: Array<string> = [];
 
-            if (methodCallExpression.isAsync) {
-                output.push(this.indent(indentLevel) + 'yield ');
+            output.push(this.indent(indentLevel));
+
+            if (methodCallExpression.isInStringOrInInt) {
+                output.push('yield in_string(inputGenerators[inputGenerators.length - 1])');
+                return output.join('');
             }
 
-            if (methodCallExpression.targetExpression) {
+            if (methodCallExpression.method.isAsync) {
+                // TODO
+                output.push('let newGenerator = ' + methodCallExpression + '();');
+                output.push('inputGenerators.push(newGenerator);');
+                output.push('inputGenerators.next();');
+            }
+
+            if (methodCallExpression.targetExpression && !methodCallExpression.isCallToParent) {
                 output.push(this.generateExpression(methodCallExpression.targetExpression, 0));
             }
 
-            if (methodCallExpression.isCallToSelf) {
-                // no output
-            } else if (methodCallExpression.isCallToParent) {
-                throw 'Explicit parent calls not yet implemented';
+            if (methodCallExpression.isCallToParent) {
+                output.push(methodCallExpression.explicitParentCallTypeName + '.prototype.' + methodCallExpression.methodName + '.call(this, ');
             } else {
-                output.push('.');
+                output.push(methodCallExpression.isCallToSelf ? 'this.' : '.');
+                output.push(methodCallExpression.methodName + '(');
             }
 
-            output.push(methodCallExpression.methodName + '(');
             methodCallExpression.parameterExpressionList.forEach((p, index) => {
                 output.push(this.generateExpression(p, 0));
                 if (index !== methodCallExpression.parameterExpressionList.length - 1) {
                     output.push(',');
                 }
             });
-
-            // TODO: what if this is a different in_string method?
-            if (methodCallExpression.methodName === 'in_string') {
-                output.push('inputGenerators[inputGenerators.length - 1]');
-            }
 
             output.push(')');
 
@@ -219,6 +234,14 @@
 
         private generateObjectIdentifierExpression(objectIdentifierExpressionNode: ObjectIdentifierExpressionNode, indentLevel: number): string {
             return this.indent(indentLevel) + objectIdentifierExpressionNode.objectIdentifierName;
+        }
+
+        private generateSelfExpression(selfExpressionNode: SelfExpressionNode, indentLevel: number): string {
+            return this.indent(indentLevel) + 'this';
+        }
+
+        private generateNewExpression(newExpressionNode: NewExpressionNode, indentLevel: number): string {
+            return this.indent(indentLevel) + 'new ' + newExpressionNode.typeName + '("' + newExpressionNode.typeName + '")';
         }
 
         private indentCache: Array<string> = [];

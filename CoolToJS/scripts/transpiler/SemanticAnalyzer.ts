@@ -255,6 +255,8 @@
                 var foundMethodNode = this.typeHeirarchy.findMethodOnType(methodCallExpressionNode.methodName, methodTargetType, !methodCallExpressionNode.isCallToParent);
 
                 if (foundMethodNode) {
+                    methodCallExpressionNode.method = foundMethodNode;
+
                     if (foundMethodNode.parameters.length !== methodCallExpressionNode.parameterExpressionList.length) {
                         errorMessages.push({
                             location: methodCallExpressionNode.token.location,
@@ -286,10 +288,9 @@
                         }
                     });
 
-                    if ((foundMethodNode.methodName === 'in_string' || foundMethodNode.methodName === 'in_int')
-                        && this.typeHeirarchy.isAssignableFrom('IO', methodTargetType, typeEnvironment.currentClassType)) {
-
-                        methodCallExpressionNode.isAsync = true;
+                    // mark the current class method as "async" since it makes calls to one of the IO functions
+                    if (foundMethodNode.isInStringOrInInt) {
+                        methodCallExpressionNode.isInStringOrInInt = true;
                         var parentClassMethodNode = methodCallExpressionNode.parent;
                         while (parentClassMethodNode.type !== NodeType.Method) {
                             parentClassMethodNode = parentClassMethodNode.parent;

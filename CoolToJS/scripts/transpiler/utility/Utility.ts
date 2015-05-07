@@ -103,11 +103,15 @@
         var inStringMethodNode = new MethodNode();
         inStringMethodNode.methodName = 'in_string';
         inStringMethodNode.returnTypeName = 'String';
+        inStringMethodNode.isAsync = true;
+        inStringMethodNode.isInStringOrInInt = true;
         ioClass.children.push(inStringMethodNode);
 
         var inIntMethodNode = new MethodNode();
         inIntMethodNode.methodName = 'in_int';
         inIntMethodNode.returnTypeName = 'Int';
+        inStringMethodNode.isAsync = true;
+        inStringMethodNode.isInStringOrInInt = true;
         ioClass.children.push(inIntMethodNode);
 
         programNode.children.push(ioClass);
@@ -152,4 +156,48 @@
         var boolClass = new ClassNode('Bool');
         programNode.children.push(boolClass);
     }
+
+    export function getFunctionDetails(func): { body: string; parameters: Array<string> } {
+        return {
+            body: getFunctionBody(func),
+            parameters: getFunctionParameters(func)
+        }
+    }
+
+    export function getFunctionBody(func): string {
+        return func.toString().slice(func.toString().indexOf("{") + 1, func.toString().lastIndexOf("}"));
+    }
+
+    var stripComments = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg;
+    var argumentNames = /([^\s,]+)/g;
+    export function getFunctionParameters(func): Array<string> {
+        var fnStr = func.toString().replace(stripComments, '');
+        var result = fnStr.slice(fnStr.indexOf('(') + 1, fnStr.indexOf(')')).match(argumentNames);
+        if (result === null)
+            result = [];
+        return result;
+    }
+
+    export var baseObjectClass = "\
+class _BaseObject {\n\
+    constructor(typeName) {\n\
+        this._type_name = typeName;\n\
+    }\n\
+    \n\
+    abort() {\n\
+        throw 'Program was aborted.';\n\
+    }\n\
+    type_name() {\n\
+        return this._type_name;\n\
+    }\n\
+    copy() {\n\
+        var copiedObject = Object.create(this.constructor);\n\
+        for (var prop in this) {\n\
+            copiedObject[prop] = this[prop];\n\
+        }\n\
+        return copiedObject;\n\
+    }\n\
+}\n\n";
+
+
 } 

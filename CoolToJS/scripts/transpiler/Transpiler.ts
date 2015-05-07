@@ -121,7 +121,7 @@ _in_string(function(input) {\n\
         });
 
         return {
-            success: true,
+            success: codeGeneratorOutput.success,
             errorMessages: codeGeneratorOutput.errorMessages,
             warningMessages: codeGeneratorOutput.warningMessages,
             generatedJavaScript: codeGeneratorOutput.generatedJavaScript,
