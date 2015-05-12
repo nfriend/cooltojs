@@ -51,6 +51,7 @@
     <Content Include="old-browser.html" />
     <Content Include="scripts\demo\CodeMirror-cool.js" />
     <Content Include="scripts\demo\demo.js" />
+    <Content Include="scripts\demo\google-analytics.js" />
     <Content Include="scripts\transpiler\JisonSimpleTestGrammar.txt" />
     <Content Include="scripts\transpiler\JisonBNFGrammar.txt" />
     <Content Include="styles\CodeMirror-cool-theme.css" />

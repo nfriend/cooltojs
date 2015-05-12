@@ -13,6 +13,8 @@
     $('[data-toggle="tooltip"]').tooltip();
 
     //#region set up editors and the console
+
+    var $transpileButton = $('#transpile-button');
     var coolEditor = CodeMirror(document.getElementById('cool-editor'), {
         value: CoolToJSDemo.CoolProgramSources[programIndexToUse].source,
         mode: 'cool',
@@ -21,9 +23,9 @@
         matchBrackets: true,
         autoCloseBrackets: '(){}',
         extraKeys: {
-            'Ctrl-Enter': transpile,
-            'F5': transpile,
-            'F6': transpile,
+            'Ctrl-Enter': function () { $transpileButton.click() },
+            'F5': function () { $transpileButton.click() },
+            'F6': function () { $transpileButton.click() }
         }
     });
 
