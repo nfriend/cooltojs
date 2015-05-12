@@ -353,7 +353,7 @@
 
                     var operand1Node = this.convert(syntaxTree.children[0]);
                     operand1Node.parent = binaryOperationExprNode;
-                    var operand2Node = this.convert(syntaxTree.children[0]);
+                    var operand2Node = this.convert(syntaxTree.children[2]);
                     operand2Node.parent = binaryOperationExprNode;
 
                     binaryOperationExprNode.children[0] = operand1Node;
@@ -427,8 +427,9 @@
                 /* STRING LITERAL EXPRESSION */
                 else if (syntaxTree.children[0].syntaxKind === SyntaxKind.String) {
                     var stringLiteralExprNode = new StringLiteralExpressionNode();
-                    // TODO: remove quotes
-                    stringLiteralExprNode.value = syntaxTree.children[0].token.match;
+                    var value = syntaxTree.children[0].token.match;
+                    // remove beginning and end quotes
+                    stringLiteralExprNode.value = value.substr(1, value.length - 2);
                     convertedNode = stringLiteralExprNode;
                 }
 

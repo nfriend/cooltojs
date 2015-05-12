@@ -436,6 +436,17 @@
         }
     }
 
+    window.consoleController.report([{
+        // non-breaking dash: ‑
+        msg: 'Welcome to CoolToJS!',
+        className: 'jquery-console-output'
+    }]);
+    window.consoleController.report([{
+        // non-breaking dash: ‑
+        msg: 'Please note that this project is very much a work‑in‑progress',
+        className: 'jquery-console-info'
+    }]);
+
     window.onresize();
     coolEditor.refresh();
     generatedEs6JavaScriptEditor.refresh();

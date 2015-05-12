@@ -802,7 +802,7 @@ var CoolToJS;
                         }
                         var operand1Node = _this.convert(syntaxTree.children[0]);
                         operand1Node.parent = binaryOperationExprNode;
-                        var operand2Node = _this.convert(syntaxTree.children[0]);
+                        var operand2Node = _this.convert(syntaxTree.children[2]);
                         operand2Node.parent = binaryOperationExprNode;
                         binaryOperationExprNode.children[0] = operand1Node;
                         binaryOperationExprNode.children[1] = operand2Node;
@@ -856,8 +856,9 @@ var CoolToJS;
                     }
                     else if (syntaxTree.children[0].syntaxKind === 35 /* String */) {
                         var stringLiteralExprNode = new CoolToJS.StringLiteralExpressionNode();
-                        // TODO: remove quotes
-                        stringLiteralExprNode.value = syntaxTree.children[0].token.match;
+                        var value = syntaxTree.children[0].token.match;
+                        // remove beginning and end quotes
+                        stringLiteralExprNode.value = value.substr(1, value.length - 2);
                         convertedNode = stringLiteralExprNode;
                     }
                     else if (syntaxTree.children[0].syntaxKind === 37 /* TrueKeyword */) {
@@ -1030,35 +1031,43 @@ var CoolToJS;
         JavaScriptGenerator.prototype.generateClassMethod = function (methodNode, indentLevel) {
             var output = [];
             output.push(this.indent(indentLevel) + (methodNode.isAsync ? '*' : '') + methodNode.methodName + '() {\n');
-            output.push(this.generateExpression(methodNode.methodBodyExpression, indentLevel + 1));
+            output.push(this.indent(indentLevel + 1) + 'let _returnValue;\n');
+            output.push(this.generateExpression(methodNode.methodBodyExpression, true, indentLevel + 1));
+            output.push(this.indent(indentLevel + 1) + 'return _returnValue;\n');
             output.push(this.indent(indentLevel) + '};\n');
             return output.join('');
         };
-        JavaScriptGenerator.prototype.generateExpression = function (expressionNode, indentLevel) {
+        JavaScriptGenerator.prototype.generateExpression = function (expressionNode, returnResult, indentLevel) {
             switch (expressionNode.type) {
                 case 9 /* LetExpression */:
-                    return this.generateLetExpression(expressionNode, indentLevel);
+                    return this.generateLetExpression(expressionNode, returnResult, indentLevel);
                     break;
                 case 21 /* StringLiteralExpression */:
-                    return expressionNode.value;
+                    return this.generateStringLiteralExpression(expressionNode, returnResult, indentLevel);
+                    break;
+                case 20 /* IntegerLiteralExpression */:
+                    return this.generateIntegerLiteralExpression(expressionNode, returnResult, indentLevel);
                     break;
                 case 5 /* MethodCallExpression */:
-                    return this.generateMethodCallExpression(expressionNode, indentLevel);
+                    return this.generateMethodCallExpression(expressionNode, returnResult, indentLevel);
                     break;
                 case 8 /* BlockExpression */:
-                    return this.generateBlockExpression(expressionNode, indentLevel);
+                    return this.generateBlockExpression(expressionNode, returnResult, indentLevel);
                     break;
                 case 4 /* AssignmentExpression */:
-                    return this.generateAssignmentExpression(expressionNode, indentLevel);
+                    return this.generateAssignmentExpression(expressionNode, returnResult, indentLevel);
                     break;
                 case 19 /* ObjectIdentifierExpression */:
-                    return this.generateObjectIdentifierExpression(expressionNode, indentLevel);
+                    return this.generateObjectIdentifierExpression(expressionNode, returnResult, indentLevel);
                     break;
                 case 18 /* SelfExpression */:
-                    return this.generateSelfExpression(expressionNode, indentLevel);
+                    return this.generateSelfExpression(expressionNode, returnResult, indentLevel);
                     break;
                 case 13 /* NewExpression */:
-                    return this.generateNewExpression(expressionNode, indentLevel);
+                    return this.generateNewExpression(expressionNode, returnResult, indentLevel);
+                    break;
+                case 15 /* BinaryOperationExpression */:
+                    return this.generateBinaryOperationExpression(expressionNode, returnResult, indentLevel);
                     break;
                 default:
                     this.errorMessages.push({
@@ -1067,7 +1076,7 @@ var CoolToJS;
                     });
             }
         };
-        JavaScriptGenerator.prototype.generateLetExpression = function (letExpressionNode, indentLevel) {
+        JavaScriptGenerator.prototype.generateLetExpression = function (letExpressionNode, returnResult, indentLevel) {
             var _this = this;
             var output = [];
             if (letExpressionNode.parent.type !== 3 /* Method */) {
@@ -1078,18 +1087,23 @@ var CoolToJS;
                 var isFirst = index === 0, isLast = index === letExpressionNode.localVariableDeclarations.length - 1;
                 output.push(_this.indent(indentLevel) + (isFirst ? 'let ' : _this.indent(1)) + lvdn.identifierName);
                 if (lvdn.initializerExpression) {
-                    output.push(' = ' + _this.generateExpression(lvdn.initializerExpression, 0));
+                    if (_this.expressionReturnsItself(lvdn.initializerExpression)) {
+                        output.push(' = ' + _this.generateExpression(lvdn.initializerExpression, false, 0));
+                    }
+                    else {
+                        output.push(_this.wrapInSelfExecutingFunction(lvdn.initializerExpression, indentLevel));
+                    }
                 }
                 output.push((isLast ? ';' : ',') + '\n');
             });
-            output.push(this.generateExpression(letExpressionNode.letBodyExpression, indentLevel));
+            (returnResult ? 'return ' : '') + output.push(this.generateExpression(letExpressionNode.letBodyExpression, returnResult, indentLevel));
             if (letExpressionNode.parent.type !== 3 /* Method */) {
                 indentLevel--;
                 output.push(this.indent(indentLevel) + '}\n');
             }
             return output.join('');
         };
-        JavaScriptGenerator.prototype.generateMethodCallExpression = function (methodCallExpression, indentLevel) {
+        JavaScriptGenerator.prototype.generateMethodCallExpression = function (methodCallExpression, returnResult, indentLevel) {
             var _this = this;
             var output = [];
             output.push(this.indent(indentLevel));
@@ -1104,7 +1118,7 @@ var CoolToJS;
                 output.push('inputGenerators.next();');
             }
             if (methodCallExpression.targetExpression && !methodCallExpression.isCallToParent) {
-                output.push(this.generateExpression(methodCallExpression.targetExpression, 0));
+                output.push(this.generateExpression(methodCallExpression.targetExpression, returnResult, 0));
             }
             if (methodCallExpression.isCallToParent) {
                 output.push(methodCallExpression.explicitParentCallTypeName + '.prototype.' + methodCallExpression.methodName + '.call(this, ');
@@ -1114,7 +1128,12 @@ var CoolToJS;
                 output.push(methodCallExpression.methodName + '(');
             }
             methodCallExpression.parameterExpressionList.forEach(function (p, index) {
-                output.push(_this.generateExpression(p, 0));
+                if (_this.expressionReturnsItself(p)) {
+                    output.push(_this.generateExpression(p, false, 0));
+                }
+                else {
+                    output.push(_this.wrapInSelfExecutingFunction(p, indentLevel));
+                }
                 if (index !== methodCallExpression.parameterExpressionList.length - 1) {
                     output.push(',');
                 }
@@ -1122,28 +1141,68 @@ var CoolToJS;
             output.push(')');
             return output.join('');
         };
-        JavaScriptGenerator.prototype.generateBlockExpression = function (blockExpressionNode, indentLevel) {
+        JavaScriptGenerator.prototype.generateBlockExpression = function (blockExpressionNode, returnResult, indentLevel) {
             var _this = this;
             var output = [];
-            blockExpressionNode.expressionList.forEach(function (en) {
-                output.push(_this.indent(indentLevel) + _this.generateExpression(en, 0) + ';\n');
+            blockExpressionNode.expressionList.forEach(function (en, index) {
+                var isLast = index === blockExpressionNode.expressionList.length - 1;
+                output.push(_this.indent(indentLevel) + _this.generateExpression(en, isLast, 0) + ';\n');
             });
             return output.join('');
         };
-        JavaScriptGenerator.prototype.generateAssignmentExpression = function (assignmentExpressionNode, indentLevel) {
+        JavaScriptGenerator.prototype.generateAssignmentExpression = function (assignmentExpressionNode, returnResult, indentLevel) {
             var output = [];
             output.push(this.indent(indentLevel) + assignmentExpressionNode.identifierName + ' = ');
-            output.push(this.generateExpression(assignmentExpressionNode.assignmentExpression, 0));
+            output.push(this.generateExpression(assignmentExpressionNode.assignmentExpression, returnResult, 0));
             return output.join('');
         };
-        JavaScriptGenerator.prototype.generateObjectIdentifierExpression = function (objectIdentifierExpressionNode, indentLevel) {
+        JavaScriptGenerator.prototype.generateObjectIdentifierExpression = function (objectIdentifierExpressionNode, returnResult, indentLevel) {
             return this.indent(indentLevel) + objectIdentifierExpressionNode.objectIdentifierName;
         };
-        JavaScriptGenerator.prototype.generateSelfExpression = function (selfExpressionNode, indentLevel) {
+        JavaScriptGenerator.prototype.generateSelfExpression = function (selfExpressionNode, returnResult, indentLevel) {
             return this.indent(indentLevel) + 'this';
         };
-        JavaScriptGenerator.prototype.generateNewExpression = function (newExpressionNode, indentLevel) {
+        JavaScriptGenerator.prototype.generateNewExpression = function (newExpressionNode, returnResult, indentLevel) {
             return this.indent(indentLevel) + 'new ' + newExpressionNode.typeName + '("' + newExpressionNode.typeName + '")';
+        };
+        JavaScriptGenerator.prototype.generateStringLiteralExpression = function (stringLiteralExpressionNode, returnResult, indentLevel) {
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + '"' + stringLiteralExpressionNode.value + '"';
+        };
+        JavaScriptGenerator.prototype.generateIntegerLiteralExpression = function (integerLiteralExpressionNode, returnResult, indentLevel) {
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + integerLiteralExpressionNode.value;
+        };
+        JavaScriptGenerator.prototype.generateBinaryOperationExpression = function (binOpExpressionNode, returnResult, indentLevel) {
+            var output = [];
+            output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : ''));
+            if (this.expressionReturnsItself(binOpExpressionNode)) {
+                output.push(this.generateExpression(binOpExpressionNode.operand1, false, 0));
+            }
+            else {
+                output.push(this.wrapInSelfExecutingFunction(binOpExpressionNode.operand1, indentLevel));
+            }
+            switch (binOpExpressionNode.operationType) {
+                case 0 /* Addition */:
+                    output.push(' + ');
+                    break;
+                case 1 /* Subtraction */:
+                    output.push(' - ');
+                    break;
+                case 3 /* Multiplication */:
+                    output.push(' * ');
+                    break;
+                case 2 /* Division */:
+                    output.push(' / ');
+                    break;
+                default:
+                    throw 'Unrecognized or unimplemented BinaryOperationType: ' + binOpExpressionNode[binOpExpressionNode.operationType];
+            }
+            if (this.expressionReturnsItself(binOpExpressionNode)) {
+                output.push(this.generateExpression(binOpExpressionNode.operand2, false, 0));
+            }
+            else {
+                output.push(this.wrapInSelfExecutingFunction(binOpExpressionNode.operand2, indentLevel));
+            }
+            return output.join('');
         };
         JavaScriptGenerator.prototype.indent = function (indentCount) {
             if (typeof this.indentCache[indentCount] === 'undefined') {
@@ -1154,6 +1213,18 @@ var CoolToJS;
                 this.indentCache[indentCount] = returnIndent;
             }
             return this.indentCache[indentCount];
+        };
+        JavaScriptGenerator.prototype.expressionReturnsItself = function (node) {
+            return (node.type === 21 /* StringLiteralExpression */ || node.type === 20 /* IntegerLiteralExpression */ || node.type === 19 /* ObjectIdentifierExpression */ || node.type === 15 /* BinaryOperationExpression */ || node.type === 16 /* UnaryOperationExpression */ || node.type === 5 /* MethodCallExpression */);
+        };
+        JavaScriptGenerator.prototype.wrapInSelfExecutingFunction = function (node, indentLevel) {
+            var output = [];
+            output.push(' = (() => {\n');
+            output.push(this.indent(indentLevel + 2) + 'let _returnValue;\n');
+            output.push(this.generateExpression(node, true, indentLevel + 2));
+            output.push(this.indent(indentLevel + 2) + 'return _returnValue;\n');
+            output.push(this.indent(indentLevel + 1) + '})();\n');
+            return output.join('');
         };
         return JavaScriptGenerator;
     })();

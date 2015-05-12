@@ -136,6 +136,13 @@ div.console {
         padding: 0.1em;
     }
 
+    div.console div.jquery-console-info {
+        color: #696971;
+        font-family: monospace;
+        padding: 0.1em;
+        font-style: italic
+    }
+
     div.console div.jquery-console-error {
         color: #ef0505;
         font-family: monospace;

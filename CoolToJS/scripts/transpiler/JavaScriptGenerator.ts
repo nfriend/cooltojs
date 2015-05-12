@@ -110,36 +110,44 @@
         private generateClassMethod(methodNode: MethodNode, indentLevel: number): string {
             var output: Array<string> = [];
             output.push(this.indent(indentLevel) + (methodNode.isAsync ? '*' : '') + methodNode.methodName + '() {\n');
-            output.push(this.generateExpression(methodNode.methodBodyExpression, indentLevel + 1));
+            output.push(this.indent(indentLevel + 1) + 'let _returnValue;\n');
+            output.push(this.generateExpression(methodNode.methodBodyExpression, true, indentLevel + 1));
+            output.push(this.indent(indentLevel + 1) + 'return _returnValue;\n');
             output.push(this.indent(indentLevel) + '};\n');
             return output.join('');
         }
 
-        private generateExpression(expressionNode: ExpressionNode, indentLevel: number): string {
+        private generateExpression(expressionNode: ExpressionNode, returnResult: boolean, indentLevel: number): string {
             switch (expressionNode.type) {
                 case NodeType.LetExpression:
-                    return this.generateLetExpression(<LetExpressionNode>expressionNode, indentLevel);
+                    return this.generateLetExpression(<LetExpressionNode>expressionNode, returnResult, indentLevel);
                     break;
                 case NodeType.StringLiteralExpression:
-                    return (<StringLiteralExpressionNode>expressionNode).value;
+                    return this.generateStringLiteralExpression(<StringLiteralExpressionNode>expressionNode, returnResult, indentLevel);
+                    break;
+                case NodeType.IntegerLiteralExpression:
+                    return this.generateIntegerLiteralExpression(<IntegerLiteralExpressionNode>expressionNode, returnResult, indentLevel);
                     break;
                 case NodeType.MethodCallExpression:
-                    return this.generateMethodCallExpression(<MethodCallExpressionNode>expressionNode, indentLevel);
+                    return this.generateMethodCallExpression(<MethodCallExpressionNode>expressionNode, returnResult, indentLevel);
                     break;
                 case NodeType.BlockExpression:
-                    return this.generateBlockExpression(<BlockExpressionNode>expressionNode, indentLevel);
+                    return this.generateBlockExpression(<BlockExpressionNode>expressionNode, returnResult, indentLevel);
                     break;
                 case NodeType.AssignmentExpression:
-                    return this.generateAssignmentExpression(<AssignmentExpressionNode>expressionNode, indentLevel);
+                    return this.generateAssignmentExpression(<AssignmentExpressionNode>expressionNode, returnResult, indentLevel);
                     break;
                 case NodeType.ObjectIdentifierExpression:
-                    return this.generateObjectIdentifierExpression(<ObjectIdentifierExpressionNode>expressionNode, indentLevel);
+                    return this.generateObjectIdentifierExpression(<ObjectIdentifierExpressionNode>expressionNode, returnResult, indentLevel);
                     break;
                 case NodeType.SelfExpression:
-                    return this.generateSelfExpression(<ObjectIdentifierExpressionNode>expressionNode, indentLevel);
+                    return this.generateSelfExpression(<ObjectIdentifierExpressionNode>expressionNode, returnResult, indentLevel);
                     break;
                 case NodeType.NewExpression:
-                    return this.generateNewExpression(<NewExpressionNode>expressionNode, indentLevel);
+                    return this.generateNewExpression(<NewExpressionNode>expressionNode, returnResult, indentLevel);
+                    break;
+                case NodeType.BinaryOperationExpression:
+                    return this.generateBinaryOperationExpression(<BinaryOperationExpressionNode>expressionNode, returnResult, indentLevel);
                     break;
                 default:
                     this.errorMessages.push({
@@ -149,7 +157,7 @@
             }
         }
 
-        private generateLetExpression(letExpressionNode: LetExpressionNode, indentLevel: number): string {
+        private generateLetExpression(letExpressionNode: LetExpressionNode, returnResult: boolean, indentLevel: number): string {
             var output: Array<string> = [];
             if (letExpressionNode.parent.type !== NodeType.Method) {
                 output.push(this.indent(indentLevel) + '{\n');
@@ -162,13 +170,17 @@
 
                 output.push(this.indent(indentLevel) + (isFirst ? 'let ' : this.indent(1)) + lvdn.identifierName);
                 if (lvdn.initializerExpression) {
-                    output.push(' = ' + this.generateExpression(lvdn.initializerExpression, 0));
+                    if (this.expressionReturnsItself(lvdn.initializerExpression)) {
+                        output.push(' = ' + this.generateExpression(lvdn.initializerExpression, false, 0))
+                    } else {
+                        output.push(this.wrapInSelfExecutingFunction(lvdn.initializerExpression, indentLevel));
+                    }
                 }
 
                 output.push((isLast ? ';' : ',') + '\n');
-            });
+            }); (returnResult ? 'return ' : '') +
 
-            output.push(this.generateExpression(letExpressionNode.letBodyExpression, indentLevel));
+            output.push(this.generateExpression(letExpressionNode.letBodyExpression, returnResult, indentLevel));
 
             if (letExpressionNode.parent.type !== NodeType.Method) {
                 indentLevel--;
@@ -177,7 +189,7 @@
             return output.join('');
         }
 
-        private generateMethodCallExpression(methodCallExpression: MethodCallExpressionNode, indentLevel: number): string {
+        private generateMethodCallExpression(methodCallExpression: MethodCallExpressionNode, returnResult: boolean, indentLevel: number): string {
             var output: Array<string> = [];
 
             output.push(this.indent(indentLevel));
@@ -195,7 +207,7 @@
             }
 
             if (methodCallExpression.targetExpression && !methodCallExpression.isCallToParent) {
-                output.push(this.generateExpression(methodCallExpression.targetExpression, 0));
+                output.push(this.generateExpression(methodCallExpression.targetExpression, returnResult, 0));
             }
 
             if (methodCallExpression.isCallToParent) {
@@ -206,7 +218,11 @@
             }
 
             methodCallExpression.parameterExpressionList.forEach((p, index) => {
-                output.push(this.generateExpression(p, 0));
+                if (this.expressionReturnsItself(p)) {
+                    output.push(this.generateExpression(p, false, 0));
+                } else {
+                    output.push(this.wrapInSelfExecutingFunction(p, indentLevel));
+                }
                 if (index !== methodCallExpression.parameterExpressionList.length - 1) {
                     output.push(',');
                 }
@@ -217,31 +233,72 @@
             return output.join('');
         }
 
-        private generateBlockExpression(blockExpressionNode: BlockExpressionNode, indentLevel: number): string {
+        private generateBlockExpression(blockExpressionNode: BlockExpressionNode, returnResult: boolean, indentLevel: number): string {
             var output: Array<string> = [];
-            blockExpressionNode.expressionList.forEach(en => {
-                output.push(this.indent(indentLevel) + this.generateExpression(en, 0) + ';\n');
+            blockExpressionNode.expressionList.forEach((en, index) => {
+                var isLast: boolean = index === blockExpressionNode.expressionList.length - 1;
+                output.push(this.indent(indentLevel) + this.generateExpression(en, isLast, 0) + ';\n');
             });
             return output.join('');
         }
 
-        private generateAssignmentExpression(assignmentExpressionNode: AssignmentExpressionNode, indentLevel: number): string {
+        private generateAssignmentExpression(assignmentExpressionNode: AssignmentExpressionNode, returnResult: boolean, indentLevel: number): string {
             var output: Array<string> = [];
             output.push(this.indent(indentLevel) + assignmentExpressionNode.identifierName + ' = ');
-            output.push(this.generateExpression(assignmentExpressionNode.assignmentExpression, 0));
+            output.push(this.generateExpression(assignmentExpressionNode.assignmentExpression, returnResult, 0));
             return output.join('');
         }
 
-        private generateObjectIdentifierExpression(objectIdentifierExpressionNode: ObjectIdentifierExpressionNode, indentLevel: number): string {
+        private generateObjectIdentifierExpression(objectIdentifierExpressionNode: ObjectIdentifierExpressionNode, returnResult: boolean, indentLevel: number): string {
             return this.indent(indentLevel) + objectIdentifierExpressionNode.objectIdentifierName;
         }
 
-        private generateSelfExpression(selfExpressionNode: SelfExpressionNode, indentLevel: number): string {
+        private generateSelfExpression(selfExpressionNode: SelfExpressionNode, returnResult: boolean, indentLevel: number): string {
             return this.indent(indentLevel) + 'this';
         }
 
-        private generateNewExpression(newExpressionNode: NewExpressionNode, indentLevel: number): string {
+        private generateNewExpression(newExpressionNode: NewExpressionNode, returnResult: boolean, indentLevel: number): string {
             return this.indent(indentLevel) + 'new ' + newExpressionNode.typeName + '("' + newExpressionNode.typeName + '")';
+        }
+
+        private generateStringLiteralExpression(stringLiteralExpressionNode: StringLiteralExpressionNode, returnResult: boolean, indentLevel: number): string {
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + '"' + stringLiteralExpressionNode.value + '"';
+        }
+
+        private generateIntegerLiteralExpression(integerLiteralExpressionNode: IntegerLiteralExpressionNode, returnResult: boolean, indentLevel: number): string {
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + integerLiteralExpressionNode.value;
+        }
+
+        private generateBinaryOperationExpression(binOpExpressionNode: BinaryOperationExpressionNode, returnResult: boolean, indentLevel: number): string {
+            var output: Array<string> = [];
+            output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : ''));
+            if (this.expressionReturnsItself(binOpExpressionNode)) {
+                output.push(this.generateExpression(binOpExpressionNode.operand1, false, 0));
+            } else {
+                output.push(this.wrapInSelfExecutingFunction(binOpExpressionNode.operand1, indentLevel));
+            }
+            switch (binOpExpressionNode.operationType) {
+                case BinaryOperationType.Addition:
+                    output.push(' + ')
+                    break;
+                case BinaryOperationType.Subtraction:
+                    output.push(' - ')
+                    break;
+                case BinaryOperationType.Multiplication:
+                    output.push(' * ')
+                    break;
+                case BinaryOperationType.Division:
+                    output.push(' / ')
+                    break;
+                default:
+                    throw 'Unrecognized or unimplemented BinaryOperationType: ' + binOpExpressionNode[binOpExpressionNode.operationType];
+            }
+            if (this.expressionReturnsItself(binOpExpressionNode)) {
+                output.push(this.generateExpression(binOpExpressionNode.operand2, false, 0));
+            } else {
+                output.push(this.wrapInSelfExecutingFunction(binOpExpressionNode.operand2, indentLevel));
+            }
+            return output.join('');
         }
 
         private indentCache: Array<string> = [];
@@ -256,6 +313,25 @@
             }
 
             return this.indentCache[indentCount];
+        }
+
+        private expressionReturnsItself(node: Node) {
+            return (node.type === NodeType.StringLiteralExpression
+                || node.type === NodeType.IntegerLiteralExpression
+                || node.type === NodeType.ObjectIdentifierExpression
+                || node.type === NodeType.BinaryOperationExpression
+                || node.type === NodeType.UnaryOperationExpression
+                || node.type === NodeType.MethodCallExpression);
+        }
+
+        private wrapInSelfExecutingFunction(node: Node, indentLevel: number) {
+            var output: Array<string> = [];
+            output.push(' = (() => {\n');
+            output.push(this.indent(indentLevel + 2) + 'let _returnValue;\n');
+            output.push(this.generateExpression(node, true, indentLevel + 2));
+            output.push(this.indent(indentLevel + 2) + 'return _returnValue;\n');
+            output.push(this.indent(indentLevel + 1) + '})();\n');
+            return output.join('');
         }
     }
 } 
