@@ -29,7 +29,8 @@
 
         private generate(ast: Node, ioFunctions: IOFunctionDefinitions, errorMessages: Array<ErrorMessage>, warningMessages: Array<WarningMessage>): string {
             var output: Array<string> = [];
-            output.push('let inputGenerators = [];\n\n')
+            output.push('let _inputGenerators = [],\n')
+            output.push(this.indent(1) + '_divide = (a, b) => { return Math.floor(a / b); };\n\n')
             output.push(Utility.baseObjectClass);
             output.push(this.generateIOClass(ioFunctions, 0));
             output.push('\n');
@@ -47,7 +48,7 @@
 
             if (isInputNeeded) {
                 output.push('let mainGenerator = new Main("Main").main();\n');
-                output.push('inputGenerators.push(mainGenerator)\n');
+                output.push('_inputGenerators.push(mainGenerator)\n');
                 output.push('mainGenerator.next();\n');
             } else {
                 output.push('new Main("Main").main();\n');
@@ -207,15 +208,15 @@
             output.push(this.indent(indentLevel));
 
             if (methodCallExpression.isInStringOrInInt) {
-                output.push('yield in_string(inputGenerators[inputGenerators.length - 1])');
+                output.push('yield in_string(_inputGenerators[_inputGenerators.length - 1])');
                 return output.join('');
             }
 
             if (methodCallExpression.method.isAsync) {
                 // TODO
                 output.push('let newGenerator = ' + methodCallExpression + '();');
-                output.push('inputGenerators.push(newGenerator);');
-                output.push('inputGenerators.next();');
+                output.push('_inputGenerators.push(newGenerator);');
+                output.push('_inputGenerators.next();');
             }
 
             if (methodCallExpression.targetExpression && !methodCallExpression.isCallToParent) {
@@ -294,42 +295,52 @@
         }
 
         private generateBinaryOperationExpression(binOpExpressionNode: BinaryOperationExpressionNode, returnResult: boolean, indentLevel: number): string {
-            var output: Array<string> = [];
+            var output: Array<string> = [],
+                operand1: string,
+                operand2: string;
+
+            if (this.expressionReturnsItself(binOpExpressionNode)) {
+                operand1 = this.generateExpression(this.unwrapSelfReturningExpression(binOpExpressionNode.operand1), false, 0);
+            } else {
+                operand1 = this.wrapInSelfExecutingFunction(binOpExpressionNode.operand1, indentLevel);
+            }
+
+            if (this.expressionReturnsItself(binOpExpressionNode)) {
+                operand2 = this.generateExpression(this.unwrapSelfReturningExpression(binOpExpressionNode.operand2), false, 0);
+            } else {
+                operand2 = this.wrapInSelfExecutingFunction(binOpExpressionNode.operand2, indentLevel);
+            }
+
             output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : ''));
-            if (this.expressionReturnsItself(binOpExpressionNode)) {
-                output.push(this.generateExpression(this.unwrapSelfReturningExpression(binOpExpressionNode.operand1), false, 0));
+
+            // we treat division differently than other binary operations, because Cool assumes all division is integer division
+            if (binOpExpressionNode.operationType === BinaryOperationType.Division) {
+                output.push('_divide(' + operand1 + ', ' + operand2 + ')');
             } else {
-                output.push(this.wrapInSelfExecutingFunction(binOpExpressionNode.operand1, indentLevel));
-            }
-            switch (binOpExpressionNode.operationType) {
-                case BinaryOperationType.Addition:
-                    output.push(' + ')
-                    break;
-                case BinaryOperationType.Subtraction:
-                    output.push(' - ')
-                    break;
-                case BinaryOperationType.Multiplication:
-                    output.push(' * ')
-                    break;
-                case BinaryOperationType.Division:
-                    output.push(' / ')
-                    break;
-                case BinaryOperationType.Comparison:
-                    output.push(' === ')
-                    break;
-                case BinaryOperationType.LessThan:
-                    output.push(' < ')
-                    break;
-                case BinaryOperationType.LessThanOrEqualTo:
-                    output.push(' <= ')
-                    break;
-                default:
-                    throw 'Unrecognized BinaryOperationType: ' + binOpExpressionNode[binOpExpressionNode.operationType];
-            }
-            if (this.expressionReturnsItself(binOpExpressionNode)) {
-                output.push(this.generateExpression(this.unwrapSelfReturningExpression(binOpExpressionNode.operand2), false, 0));
-            } else {
-                output.push(this.wrapInSelfExecutingFunction(binOpExpressionNode.operand2, indentLevel));
+                output.push(operand1);
+                switch (binOpExpressionNode.operationType) {
+                    case BinaryOperationType.Addition:
+                        output.push(' + ')
+                        break;
+                    case BinaryOperationType.Subtraction:
+                        output.push(' - ')
+                        break;
+                    case BinaryOperationType.Multiplication:
+                        output.push(' * ')
+                        break;
+                    case BinaryOperationType.Comparison:
+                        output.push(' === ')
+                        break;
+                    case BinaryOperationType.LessThan:
+                        output.push(' < ')
+                        break;
+                    case BinaryOperationType.LessThanOrEqualTo:
+                        output.push(' <= ')
+                        break;
+                    default:
+                        throw 'Unrecognized BinaryOperationType: ' + binOpExpressionNode[binOpExpressionNode.operationType];
+                }
+                output.push(operand2);
             }
             return output.join('');
         }
