@@ -443,7 +443,7 @@
     }]);
     window.consoleController.report([{
         // non-breaking dash: ‑
-        msg: 'Please note that this project is very much a work‑in‑progress',
+        msg: 'Please note that this project is very much a work-in-progress',
         className: 'jquery-console-info'
     }]);
 

@@ -501,8 +501,8 @@
             }
 
             /* PARANTHETICAL EXPRESSION */
-            else if (ast.type === NodeType.ParantheticalExpression) {
-                return this.analyze((<ParantheticalExpressionNode>ast).innerExpression, typeEnvironment, errorMessages, warningMessages);
+            else if (ast.type === NodeType.ParentheticalExpression) {
+                return this.analyze((<ParentheticalExpressionNode>ast).innerExpression, typeEnvironment, errorMessages, warningMessages);
             }
 
             /* SELF EXPRESSION */

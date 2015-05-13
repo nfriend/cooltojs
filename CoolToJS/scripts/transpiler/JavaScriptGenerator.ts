@@ -149,6 +149,18 @@
                 case NodeType.BinaryOperationExpression:
                     return this.generateBinaryOperationExpression(<BinaryOperationExpressionNode>expressionNode, returnResult, indentLevel);
                     break;
+                case NodeType.UnaryOperationExpression:
+                    return this.generateUnaryOperationExpression(<UnaryOperationExpressionNode>expressionNode, returnResult, indentLevel);
+                    break;
+                case NodeType.ParentheticalExpression:
+                    return this.generateParentheticalExpressionNode(<ParentheticalExpressionNode>expressionNode, returnResult, indentLevel);
+                    break;
+                case NodeType.TrueKeywordExpression:
+                    return this.generateTrueKeywordExpressionNode(<TrueKeywordExpressionNode>expressionNode, returnResult, indentLevel);
+                    break;
+                case NodeType.FalseKeywordExpression:
+                    return this.generateFalseKeywordExpressionNode(<FalseKeywordExpressionNode>expressionNode, returnResult, indentLevel);
+                    break;
                 default:
                     this.errorMessages.push({
                         location: null,
@@ -171,7 +183,7 @@
                 output.push(this.indent(indentLevel) + (isFirst ? 'let ' : this.indent(1)) + lvdn.identifierName);
                 if (lvdn.initializerExpression) {
                     if (this.expressionReturnsItself(lvdn.initializerExpression)) {
-                        output.push(' = ' + this.generateExpression(lvdn.initializerExpression, false, 0))
+                        output.push(' = ' + this.generateExpression(this.unwrapSelfReturningExpression(lvdn.initializerExpression), false, 0))
                     } else {
                         output.push(this.wrapInSelfExecutingFunction(lvdn.initializerExpression, indentLevel));
                     }
@@ -219,7 +231,7 @@
 
             methodCallExpression.parameterExpressionList.forEach((p, index) => {
                 if (this.expressionReturnsItself(p)) {
-                    output.push(this.generateExpression(p, false, 0));
+                    output.push(this.generateExpression(this.unwrapSelfReturningExpression(p), false, 0));
                 } else {
                     output.push(this.wrapInSelfExecutingFunction(p, indentLevel));
                 }
@@ -269,11 +281,23 @@
             return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + integerLiteralExpressionNode.value;
         }
 
+        private generateParentheticalExpressionNode(parentheticalExpressionNode: ParentheticalExpressionNode, returnResult: boolean, indentLevel: number): string {
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + '(' + this.generateExpression(parentheticalExpressionNode.innerExpression, false, indentLevel) + ')';
+        }
+
+        private generateTrueKeywordExpressionNode(trueKeywordExpressionNode: TrueKeywordExpressionNode, returnResult: boolean, indentLevel: number): string {
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'true';
+        }
+
+        private generateFalseKeywordExpressionNode(falseKeywordExpressionNode: FalseKeywordExpressionNode, returnResult: boolean, indentLevel: number): string {
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'false';
+        }
+
         private generateBinaryOperationExpression(binOpExpressionNode: BinaryOperationExpressionNode, returnResult: boolean, indentLevel: number): string {
             var output: Array<string> = [];
             output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : ''));
             if (this.expressionReturnsItself(binOpExpressionNode)) {
-                output.push(this.generateExpression(binOpExpressionNode.operand1, false, 0));
+                output.push(this.generateExpression(this.unwrapSelfReturningExpression(binOpExpressionNode.operand1), false, 0));
             } else {
                 output.push(this.wrapInSelfExecutingFunction(binOpExpressionNode.operand1, indentLevel));
             }
@@ -290,13 +314,43 @@
                 case BinaryOperationType.Division:
                     output.push(' / ')
                     break;
+                case BinaryOperationType.Comparison:
+                    output.push(' === ')
+                    break;
+                case BinaryOperationType.LessThan:
+                    output.push(' < ')
+                    break;
+                case BinaryOperationType.LessThanOrEqualTo:
+                    output.push(' <= ')
+                    break;
                 default:
-                    throw 'Unrecognized or unimplemented BinaryOperationType: ' + binOpExpressionNode[binOpExpressionNode.operationType];
+                    throw 'Unrecognized BinaryOperationType: ' + binOpExpressionNode[binOpExpressionNode.operationType];
             }
             if (this.expressionReturnsItself(binOpExpressionNode)) {
-                output.push(this.generateExpression(binOpExpressionNode.operand2, false, 0));
+                output.push(this.generateExpression(this.unwrapSelfReturningExpression(binOpExpressionNode.operand2), false, 0));
             } else {
                 output.push(this.wrapInSelfExecutingFunction(binOpExpressionNode.operand2, indentLevel));
+            }
+            return output.join('');
+        }
+
+        private generateUnaryOperationExpression(unOpExpressionNode: UnaryOperationExpressionNode, returnResult: boolean, indentLevel: number): string {
+            var output: Array<string> = [];
+            output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : ''));
+            switch (unOpExpressionNode.operationType) {
+                case UnaryOperationType.Complement:
+                    output.push('~')
+                    break;
+                case UnaryOperationType.Not:
+                    output.push('!')
+                    break;
+                default:
+                    throw 'Unrecognized UnaryOperationType: ' + unOpExpressionNode[unOpExpressionNode.operationType];
+            }
+            if (this.expressionReturnsItself(unOpExpressionNode)) {
+                output.push(this.generateExpression(this.unwrapSelfReturningExpression(unOpExpressionNode.operand), false, 0));
+            } else {
+                output.push(this.wrapInSelfExecutingFunction(unOpExpressionNode.operand, indentLevel));
             }
             return output.join('');
         }
@@ -315,13 +369,39 @@
             return this.indentCache[indentCount];
         }
 
-        private expressionReturnsItself(node: Node) {
+        private expressionReturnsItself(node: Node): boolean {
             return (node.type === NodeType.StringLiteralExpression
                 || node.type === NodeType.IntegerLiteralExpression
                 || node.type === NodeType.ObjectIdentifierExpression
                 || node.type === NodeType.BinaryOperationExpression
                 || node.type === NodeType.UnaryOperationExpression
-                || node.type === NodeType.MethodCallExpression);
+                || node.type === NodeType.MethodCallExpression
+                || node.type === NodeType.TrueKeywordExpression
+                || node.type === NodeType.FalseKeywordExpression
+                || (node.type === NodeType.BlockExpression
+                    && (<BlockExpressionNode>node).expressionList.length === 1
+                    && this.expressionReturnsItself((<BlockExpressionNode>node).expressionList[0]))
+                || (node.type === NodeType.ParentheticalExpression
+                    && this.expressionReturnsItself((<ParentheticalExpressionNode>node).innerExpression)));
+        }
+
+        private unwrapSelfReturningExpression(node: Node): ExpressionNode {
+            if (node.type === NodeType.StringLiteralExpression
+                || node.type === NodeType.IntegerLiteralExpression
+                || node.type === NodeType.ObjectIdentifierExpression
+                || node.type === NodeType.BinaryOperationExpression
+                || node.type === NodeType.UnaryOperationExpression
+                || node.type === NodeType.MethodCallExpression
+                || node.type === NodeType.ParentheticalExpression
+                || node.type === NodeType.TrueKeywordExpression
+                || node.type === NodeType.FalseKeywordExpression) {
+
+                return node;
+            } else if (node.type === NodeType.BlockExpression) {
+                return this.unwrapSelfReturningExpression((<BlockExpressionNode>node).expressionList[0]);
+            } else {
+                throw 'unwrapSelfReturningExpression() should not be called without testing whether the expression is self returning using expressionReturnsItself()'
+            }
         }
 
         private wrapInSelfExecutingFunction(node: Node, indentLevel: number) {

@@ -363,15 +363,6 @@
                 }
 
                 /* UNARY OPERATION EXPRESSION */
-                else if (syntaxTree.children[0].syntaxKind === SyntaxKind.TildeOperator) {
-                    var unaryOperationExprNode = new UnaryOperationExpressionNode();
-                    var operandNode = this.convert(syntaxTree.children[1]);
-                    operandNode.parent = unaryOperationExprNode;
-                    unaryOperationExprNode.children[0] = operandNode;
-                    convertedNode = unaryOperationExprNode;
-                }
-
-                /* UNARY OPERATION EXPRESSION */
                 else if (syntaxTree.children[0].syntaxKind === SyntaxKind.TildeOperator
                     || syntaxTree.children[0].syntaxKind === SyntaxKind.NotKeyword) {
 
@@ -392,7 +383,7 @@
 
                 /* UNARY OPERATION EXPRESSION */
                 else if (syntaxTree.children[0].syntaxKind === SyntaxKind.OpenParenthesis) {
-                    var parExprNod = new ParantheticalExpressionNode();
+                    var parExprNod = new ParentheticalExpressionNode();
                     var innerExprNode = this.convert(syntaxTree.children[1]);
                     innerExprNode.parent = parExprNod;
                     parExprNod.children[0] = innerExprNode;

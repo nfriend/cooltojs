@@ -19,7 +19,7 @@
         IsvoidExpression = 14,
         BinaryOperationExpression = 15,
         UnaryOperationExpression = 16,
-        ParantheticalExpression = 17,
+        ParentheticalExpression = 17,
         SelfExpression = 18,
         ObjectIdentifierExpression = 19,
         IntegerLiteralExpression = 20,
@@ -401,9 +401,9 @@
         }
     }
 
-    export class ParantheticalExpressionNode extends ExpressionNode {
+    export class ParentheticalExpressionNode extends ExpressionNode {
         constructor() {
-            super(NodeType.ParantheticalExpression);
+            super(NodeType.ParentheticalExpression);
         }
 
         get innerExpression(): ExpressionNode {

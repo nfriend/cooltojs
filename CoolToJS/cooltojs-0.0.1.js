@@ -25,7 +25,7 @@ var CoolToJS;
         NodeType[NodeType["IsvoidExpression"] = 14] = "IsvoidExpression";
         NodeType[NodeType["BinaryOperationExpression"] = 15] = "BinaryOperationExpression";
         NodeType[NodeType["UnaryOperationExpression"] = 16] = "UnaryOperationExpression";
-        NodeType[NodeType["ParantheticalExpression"] = 17] = "ParantheticalExpression";
+        NodeType[NodeType["ParentheticalExpression"] = 17] = "ParentheticalExpression";
         NodeType[NodeType["SelfExpression"] = 18] = "SelfExpression";
         NodeType[NodeType["ObjectIdentifierExpression"] = 19] = "ObjectIdentifierExpression";
         NodeType[NodeType["IntegerLiteralExpression"] = 20] = "IntegerLiteralExpression";
@@ -455,12 +455,12 @@ var CoolToJS;
         return UnaryOperationExpressionNode;
     })(ExpressionNode);
     CoolToJS.UnaryOperationExpressionNode = UnaryOperationExpressionNode;
-    var ParantheticalExpressionNode = (function (_super) {
-        __extends(ParantheticalExpressionNode, _super);
-        function ParantheticalExpressionNode() {
-            _super.call(this, 17 /* ParantheticalExpression */);
+    var ParentheticalExpressionNode = (function (_super) {
+        __extends(ParentheticalExpressionNode, _super);
+        function ParentheticalExpressionNode() {
+            _super.call(this, 17 /* ParentheticalExpression */);
         }
-        Object.defineProperty(ParantheticalExpressionNode.prototype, "innerExpression", {
+        Object.defineProperty(ParentheticalExpressionNode.prototype, "innerExpression", {
             get: function () {
                 return this.children[0];
             },
@@ -470,9 +470,9 @@ var CoolToJS;
             enumerable: true,
             configurable: true
         });
-        return ParantheticalExpressionNode;
+        return ParentheticalExpressionNode;
     })(ExpressionNode);
-    CoolToJS.ParantheticalExpressionNode = ParantheticalExpressionNode;
+    CoolToJS.ParentheticalExpressionNode = ParentheticalExpressionNode;
     var SelfExpressionNode = (function (_super) {
         __extends(SelfExpressionNode, _super);
         function SelfExpressionNode() {
@@ -808,13 +808,6 @@ var CoolToJS;
                         binaryOperationExprNode.children[1] = operand2Node;
                         convertedNode = binaryOperationExprNode;
                     }
-                    else if (syntaxTree.children[0].syntaxKind === 42 /* TildeOperator */) {
-                        var unaryOperationExprNode = new CoolToJS.UnaryOperationExpressionNode();
-                        var operandNode = _this.convert(syntaxTree.children[1]);
-                        operandNode.parent = unaryOperationExprNode;
-                        unaryOperationExprNode.children[0] = operandNode;
-                        convertedNode = unaryOperationExprNode;
-                    }
                     else if (syntaxTree.children[0].syntaxKind === 42 /* TildeOperator */ || syntaxTree.children[0].syntaxKind === 31 /* NotKeyword */) {
                         var unaryOperationExprNode = new CoolToJS.UnaryOperationExpressionNode();
                         if (syntaxTree.children[0].syntaxKind === 42 /* TildeOperator */) {
@@ -832,7 +825,7 @@ var CoolToJS;
                         convertedNode = unaryOperationExprNode;
                     }
                     else if (syntaxTree.children[0].syntaxKind === 1 /* OpenParenthesis */) {
-                        var parExprNod = new CoolToJS.ParantheticalExpressionNode();
+                        var parExprNod = new CoolToJS.ParentheticalExpressionNode();
                         var innerExprNode = _this.convert(syntaxTree.children[1]);
                         innerExprNode.parent = parExprNod;
                         parExprNod.children[0] = innerExprNode;
@@ -1069,6 +1062,18 @@ var CoolToJS;
                 case 15 /* BinaryOperationExpression */:
                     return this.generateBinaryOperationExpression(expressionNode, returnResult, indentLevel);
                     break;
+                case 16 /* UnaryOperationExpression */:
+                    return this.generateUnaryOperationExpression(expressionNode, returnResult, indentLevel);
+                    break;
+                case 17 /* ParentheticalExpression */:
+                    return this.generateParentheticalExpressionNode(expressionNode, returnResult, indentLevel);
+                    break;
+                case 22 /* TrueKeywordExpression */:
+                    return this.generateTrueKeywordExpressionNode(expressionNode, returnResult, indentLevel);
+                    break;
+                case 23 /* FalseKeywordExpression */:
+                    return this.generateFalseKeywordExpressionNode(expressionNode, returnResult, indentLevel);
+                    break;
                 default:
                     this.errorMessages.push({
                         location: null,
@@ -1088,7 +1093,7 @@ var CoolToJS;
                 output.push(_this.indent(indentLevel) + (isFirst ? 'let ' : _this.indent(1)) + lvdn.identifierName);
                 if (lvdn.initializerExpression) {
                     if (_this.expressionReturnsItself(lvdn.initializerExpression)) {
-                        output.push(' = ' + _this.generateExpression(lvdn.initializerExpression, false, 0));
+                        output.push(' = ' + _this.generateExpression(_this.unwrapSelfReturningExpression(lvdn.initializerExpression), false, 0));
                     }
                     else {
                         output.push(_this.wrapInSelfExecutingFunction(lvdn.initializerExpression, indentLevel));
@@ -1129,7 +1134,7 @@ var CoolToJS;
             }
             methodCallExpression.parameterExpressionList.forEach(function (p, index) {
                 if (_this.expressionReturnsItself(p)) {
-                    output.push(_this.generateExpression(p, false, 0));
+                    output.push(_this.generateExpression(_this.unwrapSelfReturningExpression(p), false, 0));
                 }
                 else {
                     output.push(_this.wrapInSelfExecutingFunction(p, indentLevel));
@@ -1171,11 +1176,20 @@ var CoolToJS;
         JavaScriptGenerator.prototype.generateIntegerLiteralExpression = function (integerLiteralExpressionNode, returnResult, indentLevel) {
             return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + integerLiteralExpressionNode.value;
         };
+        JavaScriptGenerator.prototype.generateParentheticalExpressionNode = function (parentheticalExpressionNode, returnResult, indentLevel) {
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + '(' + this.generateExpression(parentheticalExpressionNode.innerExpression, false, indentLevel) + ')';
+        };
+        JavaScriptGenerator.prototype.generateTrueKeywordExpressionNode = function (trueKeywordExpressionNode, returnResult, indentLevel) {
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'true';
+        };
+        JavaScriptGenerator.prototype.generateFalseKeywordExpressionNode = function (falseKeywordExpressionNode, returnResult, indentLevel) {
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'false';
+        };
         JavaScriptGenerator.prototype.generateBinaryOperationExpression = function (binOpExpressionNode, returnResult, indentLevel) {
             var output = [];
             output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : ''));
             if (this.expressionReturnsItself(binOpExpressionNode)) {
-                output.push(this.generateExpression(binOpExpressionNode.operand1, false, 0));
+                output.push(this.generateExpression(this.unwrapSelfReturningExpression(binOpExpressionNode.operand1), false, 0));
             }
             else {
                 output.push(this.wrapInSelfExecutingFunction(binOpExpressionNode.operand1, indentLevel));
@@ -1193,14 +1207,44 @@ var CoolToJS;
                 case 2 /* Division */:
                     output.push(' / ');
                     break;
+                case 4 /* Comparison */:
+                    output.push(' === ');
+                    break;
+                case 4 /* LessThan */:
+                    output.push(' < ');
+                    break;
+                case 4 /* LessThanOrEqualTo */:
+                    output.push(' <= ');
+                    break;
                 default:
-                    throw 'Unrecognized or unimplemented BinaryOperationType: ' + binOpExpressionNode[binOpExpressionNode.operationType];
+                    throw 'Unrecognized BinaryOperationType: ' + binOpExpressionNode[binOpExpressionNode.operationType];
             }
             if (this.expressionReturnsItself(binOpExpressionNode)) {
-                output.push(this.generateExpression(binOpExpressionNode.operand2, false, 0));
+                output.push(this.generateExpression(this.unwrapSelfReturningExpression(binOpExpressionNode.operand2), false, 0));
             }
             else {
                 output.push(this.wrapInSelfExecutingFunction(binOpExpressionNode.operand2, indentLevel));
+            }
+            return output.join('');
+        };
+        JavaScriptGenerator.prototype.generateUnaryOperationExpression = function (unOpExpressionNode, returnResult, indentLevel) {
+            var output = [];
+            output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : ''));
+            switch (unOpExpressionNode.operationType) {
+                case 0 /* Complement */:
+                    output.push('~');
+                    break;
+                case 1 /* Not */:
+                    output.push('!');
+                    break;
+                default:
+                    throw 'Unrecognized UnaryOperationType: ' + unOpExpressionNode[unOpExpressionNode.operationType];
+            }
+            if (this.expressionReturnsItself(unOpExpressionNode)) {
+                output.push(this.generateExpression(this.unwrapSelfReturningExpression(unOpExpressionNode.operand), false, 0));
+            }
+            else {
+                output.push(this.wrapInSelfExecutingFunction(unOpExpressionNode.operand, indentLevel));
             }
             return output.join('');
         };
@@ -1215,7 +1259,18 @@ var CoolToJS;
             return this.indentCache[indentCount];
         };
         JavaScriptGenerator.prototype.expressionReturnsItself = function (node) {
-            return (node.type === 21 /* StringLiteralExpression */ || node.type === 20 /* IntegerLiteralExpression */ || node.type === 19 /* ObjectIdentifierExpression */ || node.type === 15 /* BinaryOperationExpression */ || node.type === 16 /* UnaryOperationExpression */ || node.type === 5 /* MethodCallExpression */);
+            return (node.type === 21 /* StringLiteralExpression */ || node.type === 20 /* IntegerLiteralExpression */ || node.type === 19 /* ObjectIdentifierExpression */ || node.type === 15 /* BinaryOperationExpression */ || node.type === 16 /* UnaryOperationExpression */ || node.type === 5 /* MethodCallExpression */ || node.type === 22 /* TrueKeywordExpression */ || node.type === 23 /* FalseKeywordExpression */ || (node.type === 8 /* BlockExpression */ && node.expressionList.length === 1 && this.expressionReturnsItself(node.expressionList[0])) || (node.type === 17 /* ParentheticalExpression */ && this.expressionReturnsItself(node.innerExpression)));
+        };
+        JavaScriptGenerator.prototype.unwrapSelfReturningExpression = function (node) {
+            if (node.type === 21 /* StringLiteralExpression */ || node.type === 20 /* IntegerLiteralExpression */ || node.type === 19 /* ObjectIdentifierExpression */ || node.type === 15 /* BinaryOperationExpression */ || node.type === 16 /* UnaryOperationExpression */ || node.type === 5 /* MethodCallExpression */ || node.type === 17 /* ParentheticalExpression */ || node.type === 22 /* TrueKeywordExpression */ || node.type === 23 /* FalseKeywordExpression */) {
+                return node;
+            }
+            else if (node.type === 8 /* BlockExpression */) {
+                return this.unwrapSelfReturningExpression(node.expressionList[0]);
+            }
+            else {
+                throw 'unwrapSelfReturningExpression() should not be called without testing whether the expression is self returning using expressionReturnsItself()';
+            }
         };
         JavaScriptGenerator.prototype.wrapInSelfExecutingFunction = function (node, indentLevel) {
             var output = [];
@@ -2116,7 +2171,7 @@ var CoolToJS;
                         return 'Int';
                     }
                 }
-                else if (ast.type === 17 /* ParantheticalExpression */) {
+                else if (ast.type === 17 /* ParentheticalExpression */) {
                     return _this.analyze(ast.innerExpression, typeEnvironment, errorMessages, warningMessages);
                 }
                 else if (ast.type === 18 /* SelfExpression */) {
