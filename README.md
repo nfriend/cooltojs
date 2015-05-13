@@ -79,7 +79,7 @@ The output of the CoolToJS transpiler is valid ES6 JavaScript.  Note that suppor
         });
         
         if (transpilerOutput.success) {
-            // transorm the generated ES6 code to ES5
+            // transform the generated ES6 code to ES5 code
             var es5Code = babel.transform(transpilerOutput.generatedJavaScript, {
                 stage: 0
             }).code;
