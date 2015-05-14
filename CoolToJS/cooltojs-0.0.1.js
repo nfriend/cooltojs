@@ -1070,11 +1070,13 @@ var CoolToJS;
                     return this.generateParentheticalExpressionNode(expressionNode, returnResult, indentLevel);
                     break;
                 case 22 /* TrueKeywordExpression */:
-                    return this.generateTrueKeywordExpressionNode(expressionNode, returnResult, indentLevel);
+                    return this.generateTrueKeywordExpression(expressionNode, returnResult, indentLevel);
                     break;
                 case 23 /* FalseKeywordExpression */:
-                    return this.generateFalseKeywordExpressionNode(expressionNode, returnResult, indentLevel);
+                    return this.generateFalseKeywordExpression(expressionNode, returnResult, indentLevel);
                     break;
+                case 6 /* IfThenElseExpression */:
+                    return this.generateIfThenElseExpression(expressionNode, returnResult, indentLevel);
                 default:
                     this.errorMessages.push({
                         location: null,
@@ -1097,7 +1099,7 @@ var CoolToJS;
                         output.push(' = ' + _this.generateExpression(_this.unwrapSelfReturningExpression(lvdn.initializerExpression), false, 0));
                     }
                     else {
-                        output.push(_this.wrapInSelfExecutingFunction(lvdn.initializerExpression, indentLevel));
+                        output.push(' = ' + _this.wrapInSelfExecutingFunction(lvdn.initializerExpression, indentLevel));
                     }
                 }
                 output.push((isLast ? ';' : ',') + '\n');
@@ -1152,7 +1154,10 @@ var CoolToJS;
             var output = [];
             blockExpressionNode.expressionList.forEach(function (en, index) {
                 var isLast = index === blockExpressionNode.expressionList.length - 1;
-                output.push(_this.indent(indentLevel) + _this.generateExpression(en, isLast, 0) + ';\n');
+                output.push(_this.indent(indentLevel) + _this.generateExpression(en, isLast && returnResult, 0));
+                if (blockExpressionNode.expressionList.length !== 1) {
+                    output.push(';\n');
+                }
             });
             return output.join('');
         };
@@ -1180,10 +1185,10 @@ var CoolToJS;
         JavaScriptGenerator.prototype.generateParentheticalExpressionNode = function (parentheticalExpressionNode, returnResult, indentLevel) {
             return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + '(' + this.generateExpression(parentheticalExpressionNode.innerExpression, false, indentLevel) + ')';
         };
-        JavaScriptGenerator.prototype.generateTrueKeywordExpressionNode = function (trueKeywordExpressionNode, returnResult, indentLevel) {
+        JavaScriptGenerator.prototype.generateTrueKeywordExpression = function (trueKeywordExpressionNode, returnResult, indentLevel) {
             return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'true';
         };
-        JavaScriptGenerator.prototype.generateFalseKeywordExpressionNode = function (falseKeywordExpressionNode, returnResult, indentLevel) {
+        JavaScriptGenerator.prototype.generateFalseKeywordExpression = function (falseKeywordExpressionNode, returnResult, indentLevel) {
             return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'false';
         };
         JavaScriptGenerator.prototype.generateBinaryOperationExpression = function (binOpExpressionNode, returnResult, indentLevel) {
@@ -1254,6 +1259,22 @@ var CoolToJS;
             }
             return output.join('');
         };
+        JavaScriptGenerator.prototype.generateIfThenElseExpression = function (ifExpressionNode, returnResult, indentLevel) {
+            var output = [];
+            output.push(this.indent(indentLevel) + 'if (');
+            if (this.expressionReturnsItself(ifExpressionNode.predicate)) {
+                output.push(this.generateExpression(this.unwrapSelfReturningExpression(ifExpressionNode.predicate), false, 0));
+            }
+            else {
+                output.push(this.wrapInSelfExecutingFunction(ifExpressionNode.predicate, indentLevel));
+            }
+            output.push(') {\n');
+            output.push(this.generateExpression(ifExpressionNode.consequent, returnResult, indentLevel + 1));
+            output.push('} else {\n');
+            output.push(this.generateExpression(ifExpressionNode.alternative, returnResult, indentLevel + 1));
+            output.push('}');
+            return output.join('');
+        };
         JavaScriptGenerator.prototype.indent = function (indentCount) {
             if (typeof this.indentCache[indentCount] === 'undefined') {
                 var returnIndent = '';
@@ -1280,11 +1301,11 @@ var CoolToJS;
         };
         JavaScriptGenerator.prototype.wrapInSelfExecutingFunction = function (node, indentLevel) {
             var output = [];
-            output.push(' = (() => {\n');
+            output.push('(() => {\n');
             output.push(this.indent(indentLevel + 2) + 'let _returnValue;\n');
             output.push(this.generateExpression(node, true, indentLevel + 2));
             output.push(this.indent(indentLevel + 2) + 'return _returnValue;\n');
-            output.push(this.indent(indentLevel + 1) + '})();\n');
+            output.push(this.indent(indentLevel + 1) + '})()\n');
             return output.join('');
         };
         return JavaScriptGenerator;
