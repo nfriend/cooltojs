@@ -47,6 +47,7 @@
     <Content Include="lib\codemirror-5.2\mode\javascript\test.js" />
     <Content Include="lib\codemirror-5.2\mode\javascript\typescript.html" />
     <Content Include="lib\jquery-console-master\jquery.console.js" />
+    <Content Include="lib\jquery-cookie\jquery.cookie-1.4.1.js" />
     <Content Include="lib\jquery\jquery-2.1.3.min.js" />
     <Content Include="old-browser.html" />
     <Content Include="scripts\demo\CodeMirror-cool.js" />

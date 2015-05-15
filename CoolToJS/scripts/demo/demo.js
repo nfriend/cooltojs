@@ -4,6 +4,7 @@
 
     var isDebug = document.location.hostname === "localhost",
         programIndexToUse = 9,
+        coolSourceCookieKey = 'cool-source',
         liveErrorChecking = !isDebug;
 
     // remove the splash screen;
@@ -16,7 +17,14 @@
 
     var $transpileButton = $('#transpile-button');
     var coolEditor = CodeMirror(document.getElementById('cool-editor'), {
-        value: CoolToJSDemo.CoolProgramSources[programIndexToUse].source,
+        value: (function () {
+            var cookieCoolSource = $.cookie(coolSourceCookieKey);
+            if (cookieCoolSource) {
+                return cookieCoolSource;
+            } else {
+                return CoolToJSDemo.CoolProgramSources[programIndexToUse].source;
+            }
+        })(),
         mode: 'cool',
         lineNumbers: true,
         indentUnit: 4,
@@ -123,24 +131,29 @@
     }
 
     var errorCheckerTimer,
-        errorCheckerTimerDuration = 200;
+        errorCheckerTimerDuration = 200,
+        cookieWriterTimer,
+        cookieWriterTimerDuration = 500;
     coolEditor.on('change', function () {
         removeAllErrorVisualsFromCoolEditor();
 
         if (liveErrorChecking) {
-            if (!errorCheckerTimer) {
-                errorCheckerTimer = setTimeout(function () {
-                    checkForErrors();
-                    errorCheckerTimer = null;
-                }, errorCheckerTimerDuration);
-            } else {
+            if (errorCheckerTimer) {
                 clearTimeout(errorCheckerTimer);
-                errorCheckerTimer = setTimeout(function () {
-                    checkForErrors();
-                    errorCheckerTimer = null;
-                }, errorCheckerTimerDuration);
             }
+            errorCheckerTimer = setTimeout(function () {
+                checkForErrors();
+                errorCheckerTimer = null;
+            }, errorCheckerTimerDuration);
         }
+
+        if (cookieWriterTimer) {
+            clearTimeout(cookieWriterTimer);
+        }
+        cookieWriterTimer = setTimeout(function () {
+            $.cookie(coolSourceCookieKey, coolEditor.getValue());
+            cookieWriterTimer = null;
+        }, cookieWriterTimerDuration);
     });
 
     var generatedEs6JavaScriptEditor = CodeMirror(document.getElementById('generated-es6-javascript'), {
@@ -153,7 +166,7 @@
             'Ctrl-Enter': convertES6toES5,
             'F5': convertES6toES5,
             'F6': convertES6toES5,
-        } : { })
+        } : {})
     });
 
     var generatedEs5JavaScriptEditor = CodeMirror(document.getElementById('generated-es5-javascript'), {
