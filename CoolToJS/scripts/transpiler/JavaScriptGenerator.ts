@@ -146,6 +146,12 @@
             output.push(') {\n');
             output.push(this.indent(indentLevel + 1) + 'let _returnValue;\n');
             output.push(this.generateExpression(methodNode.methodBodyExpression, true, indentLevel + 1) + '\n');
+
+            // print a success message to the screen at the end of program execution
+            if (methodNode.methodName === 'main' && (<ClassNode>methodNode.parent).className === 'Main') {
+                output.push(this.indent(indentLevel + 1) + 'this.out_string(new _String("COOL program successfully executed\\n"));\n');
+            }
+
             output.push(this.indent(indentLevel + 1) + 'return _returnValue;\n');
             output.push(this.indent(indentLevel) + '};\n');
             return output.join('');
