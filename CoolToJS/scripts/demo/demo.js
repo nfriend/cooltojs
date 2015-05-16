@@ -151,7 +151,7 @@
             clearTimeout(cookieWriterTimer);
         }
         cookieWriterTimer = setTimeout(function () {
-            $.cookie(coolSourceCookieKey, coolEditor.getValue());
+            $.cookie(coolSourceCookieKey, coolEditor.getValue(), { expires: 31, path: '/' });
             cookieWriterTimer = null;
         }, cookieWriterTimerDuration);
     });

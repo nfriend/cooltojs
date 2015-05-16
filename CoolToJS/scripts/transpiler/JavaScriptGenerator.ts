@@ -112,7 +112,7 @@
             var output: Array<string> = [];
             output.push(this.indent(indentLevel) + (methodNode.isAsync ? '*' : '') + methodNode.methodName + '() {\n');
             output.push(this.indent(indentLevel + 1) + 'let _returnValue;\n');
-            output.push(this.generateExpression(methodNode.methodBodyExpression, true, indentLevel + 1));
+            output.push(this.generateExpression(methodNode.methodBodyExpression, true, indentLevel + 1) + '\n');
             output.push(this.indent(indentLevel + 1) + 'return _returnValue;\n');
             output.push(this.indent(indentLevel) + '};\n');
             return output.join('');
@@ -164,6 +164,10 @@
                     break;
                 case NodeType.IfThenElseExpression:
                     return this.generateIfThenElseExpression(<IfThenElseExpressionNode>expressionNode, returnResult, indentLevel);
+                case NodeType.WhileExpression:
+                    return this.generateWhileExpression(<WhileExpressionNode>expressionNode, returnResult, indentLevel);
+                case NodeType.CaseExpression:
+                    return this.generateCaseExpression(<CaseExpressionNode>expressionNode, returnResult, indentLevel);
                 default:
                     this.errorMessages.push({
                         location: null,
@@ -252,7 +256,7 @@
             var output: Array<string> = [];
             blockExpressionNode.expressionList.forEach((en, index) => {
                 var isLast: boolean = index === blockExpressionNode.expressionList.length - 1;
-                output.push(this.indent(indentLevel) + this.generateExpression(en, isLast && returnResult, 0));
+                output.push(this.generateExpression(en, isLast && returnResult, indentLevel));
                 if (blockExpressionNode.expressionList.length !== 1) {
                     output.push(';\n');
                 }
@@ -268,7 +272,7 @@
         }
 
         private generateObjectIdentifierExpression(objectIdentifierExpressionNode: ObjectIdentifierExpressionNode, returnResult: boolean, indentLevel: number): string {
-            return this.indent(indentLevel) + objectIdentifierExpressionNode.objectIdentifierName;
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + objectIdentifierExpressionNode.objectIdentifierName;
         }
 
         private generateSelfExpression(selfExpressionNode: SelfExpressionNode, returnResult: boolean, indentLevel: number): string {
@@ -380,10 +384,38 @@
                 output.push(this.wrapInSelfExecutingFunction(ifExpressionNode.predicate, indentLevel));
             }
             output.push(') {\n');
-            output.push(this.generateExpression(ifExpressionNode.consequent, returnResult, indentLevel + 1));
-            output.push('} else {\n');
-            output.push(this.generateExpression(ifExpressionNode.alternative, returnResult, indentLevel + 1));
-            output.push('}');
+            output.push(this.generateExpression(ifExpressionNode.consequent, returnResult, indentLevel + 1) + '\n');
+            output.push(this.indent(indentLevel) + '} else {\n');
+            output.push(this.generateExpression(ifExpressionNode.alternative, returnResult, indentLevel + 1) + '\n');
+            output.push(this.indent(indentLevel) + '}\n');
+            return output.join('');
+        }
+
+        private generateWhileExpression(whileExpressionNode: WhileExpressionNode, returnResult: boolean, indentLevel: number): string {
+            var output: Array<string> = [];
+            output.push(this.indent(indentLevel) + 'while (');
+            if (this.expressionReturnsItself(whileExpressionNode.whileConditionExpression)) {
+                output.push(this.generateExpression(this.unwrapSelfReturningExpression(whileExpressionNode.whileConditionExpression), false, 0));
+            } else {
+                output.push(this.wrapInSelfExecutingFunction(whileExpressionNode.whileConditionExpression, indentLevel));
+            }
+            output.push(') {\n');
+            output.push(this.generateExpression(whileExpressionNode.whileBodyExpression, returnResult, indentLevel + 1) + '\n');
+            output.push(this.indent(indentLevel) + '}\n');
+            return output.join('');
+        }
+
+        private generateCaseExpression(caseExpressionNode: CaseExpressionNode, returnResult: boolean, indentLevel: number): string {
+            var output: Array<string> = [];
+            output.push(this.indent(indentLevel) + 'case (');
+            if (this.expressionReturnsItself(whileExpressionNode.whileConditionExpression)) {
+                output.push(this.generateExpression(this.unwrapSelfReturningExpression(whileExpressionNode.whileConditionExpression), false, 0));
+            } else {
+                output.push(this.wrapInSelfExecutingFunction(whileExpressionNode.whileConditionExpression, indentLevel));
+            }
+            output.push(') {\n');
+            output.push(this.generateExpression(whileExpressionNode.whileBodyExpression, returnResult, indentLevel + 1) + '\n');
+            output.push(this.indent(indentLevel) + '}\n');
             return output.join('');
         }
 
@@ -442,7 +474,7 @@
             output.push(this.indent(indentLevel + 2) + 'let _returnValue;\n');
             output.push(this.generateExpression(node, true, indentLevel + 2));
             output.push(this.indent(indentLevel + 2) + 'return _returnValue;\n');
-            output.push(this.indent(indentLevel + 1) + '})()\n');
+            output.push(this.indent(indentLevel + 1) + '})()');
             return output.join('');
         }
     }

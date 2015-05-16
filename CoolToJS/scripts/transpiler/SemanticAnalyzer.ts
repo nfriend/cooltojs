@@ -256,6 +256,9 @@
 
                 if (foundMethodNode) {
                     methodCallExpressionNode.method = foundMethodNode;
+                    if (!foundMethodNode) {
+                        console.log();
+                    }
 
                     if (foundMethodNode.parameters.length !== methodCallExpressionNode.parameterExpressionList.length) {
                         errorMessages.push({
@@ -342,6 +345,8 @@
                         message: 'The condition expression of a "while" statement must return a "Bool"'
                     });
                 }
+
+                this.analyze(whileExpressionNode.whileBodyExpression, typeEnvironment, errorMessages, warningMessages);
 
                 return 'Object';
             }
