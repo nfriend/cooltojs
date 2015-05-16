@@ -30,8 +30,8 @@
         private generate(ast: Node, ioFunctions: IOFunctionDefinitions, errorMessages: Array<ErrorMessage>, warningMessages: Array<WarningMessage>): string {
             var output: Array<string> = [];
             output.push('let _inputGenerators = [],\n')
-            output.push(this.indent(1) + '_divide = (a, b) => { return Math.floor(a / b); };\n\n')
-            output.push(Utility.baseObjectClass);
+            output.push(Utility.operationFunctions);
+            Utility.baseObjectClasses.forEach(c => { output.push(c); });
             output.push(this.generateIOClass(ioFunctions, 0));
             output.push('\n');
 
@@ -67,11 +67,20 @@
             ['out_string', 'out_int', 'in_string', 'in_int'].forEach(methodname => {
                 var outStringDetails = Utility.getFunctionDetails(ioFunctions[methodname]);
                 output.push(this.indent(indentLevel + 1) + methodname + '(');
+                var firstParamName: string;
                 outStringDetails.parameters.forEach((p, index) => {
                     var isLast = outStringDetails.parameters.length - 1 === index;
+                    if (index === 0) {
+                        firstParamName = p;
+                    }
                     output.push(p + (isLast ? '' : ', '))
                 });
-                output.push(') {');
+                if (methodname === 'out_string' || methodname === 'out_int') {
+                    output.push(') {\n');
+                    output.push(this.indent(indentLevel + 2) + firstParamName + ' = ' + firstParamName + '._value;');
+                } else {
+                    output.push(') {');
+                }
                 output.push(outStringDetails.body);
                 output.push('};\n');
             });
@@ -166,8 +175,8 @@
                     return this.generateIfThenElseExpression(<IfThenElseExpressionNode>expressionNode, returnResult, indentLevel);
                 case NodeType.WhileExpression:
                     return this.generateWhileExpression(<WhileExpressionNode>expressionNode, returnResult, indentLevel);
-                case NodeType.CaseExpression:
-                    return this.generateCaseExpression(<CaseExpressionNode>expressionNode, returnResult, indentLevel);
+                //case NodeType.CaseExpression:
+                //    return this.generateCaseExpression(<CaseExpressionNode>expressionNode, returnResult, indentLevel);
                 default:
                     this.errorMessages.push({
                         location: null,
@@ -214,7 +223,7 @@
             output.push(this.indent(indentLevel));
 
             if (methodCallExpression.isInStringOrInInt) {
-                output.push('yield in_string(_inputGenerators[_inputGenerators.length - 1])');
+                output.push('new _String(yield ' + methodCallExpression.methodName + '(_inputGenerators[_inputGenerators.length - 1]))');
                 return output.join('');
             }
 
@@ -284,11 +293,11 @@
         }
 
         private generateStringLiteralExpression(stringLiteralExpressionNode: StringLiteralExpressionNode, returnResult: boolean, indentLevel: number): string {
-            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + '"' + stringLiteralExpressionNode.value + '"';
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'new _String("' + stringLiteralExpressionNode.value + '")';
         }
 
         private generateIntegerLiteralExpression(integerLiteralExpressionNode: IntegerLiteralExpressionNode, returnResult: boolean, indentLevel: number): string {
-            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + integerLiteralExpressionNode.value;
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'new _Int(' + integerLiteralExpressionNode.value + ')';
         }
 
         private generateParentheticalExpressionNode(parentheticalExpressionNode: ParentheticalExpressionNode, returnResult: boolean, indentLevel: number): string {
@@ -296,11 +305,11 @@
         }
 
         private generateTrueKeywordExpression(trueKeywordExpressionNode: TrueKeywordExpressionNode, returnResult: boolean, indentLevel: number): string {
-            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'true';
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'new _Int(true)';
         }
 
         private generateFalseKeywordExpression(falseKeywordExpressionNode: FalseKeywordExpressionNode, returnResult: boolean, indentLevel: number): string {
-            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'false';
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'new _Int(false)';
         }
 
         private generateBinaryOperationExpression(binOpExpressionNode: BinaryOperationExpressionNode, returnResult: boolean, indentLevel: number): string {
@@ -322,35 +331,33 @@
 
             output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : ''));
 
-            // we treat division differently than other binary operations, because Cool assumes all division is integer division
-            if (binOpExpressionNode.operationType === BinaryOperationType.Division) {
-                output.push('_divide(' + operand1 + ', ' + operand2 + ')');
-            } else {
-                output.push(operand1);
-                switch (binOpExpressionNode.operationType) {
-                    case BinaryOperationType.Addition:
-                        output.push(' + ')
-                        break;
-                    case BinaryOperationType.Subtraction:
-                        output.push(' - ')
-                        break;
-                    case BinaryOperationType.Multiplication:
-                        output.push(' * ')
-                        break;
-                    case BinaryOperationType.Comparison:
-                        output.push(' === ')
-                        break;
-                    case BinaryOperationType.LessThan:
-                        output.push(' < ')
-                        break;
-                    case BinaryOperationType.LessThanOrEqualTo:
-                        output.push(' <= ')
-                        break;
-                    default:
-                        throw 'Unrecognized BinaryOperationType: ' + binOpExpressionNode[binOpExpressionNode.operationType];
-                }
-                output.push(operand2);
+            switch (binOpExpressionNode.operationType) {
+                case BinaryOperationType.Addition:
+                    output.push('_add');
+                    break;
+                case BinaryOperationType.Subtraction:
+                    output.push('_subtract');
+                    break;
+                case BinaryOperationType.Multiplication:
+                    output.push('_multiply');
+                    break;
+                case BinaryOperationType.Division:
+                    output.push('_divide');
+                    break;
+                case BinaryOperationType.Comparison:
+                    output.push('_equals');
+                    break;
+                case BinaryOperationType.LessThan:
+                    output.push('_lessThan');
+                    break;
+                case BinaryOperationType.LessThanOrEqualTo:
+                    output.push('_lessThanOrEqualTo');
+                    break;
+                default:
+                    throw 'Unrecognized BinaryOperationType: ' + binOpExpressionNode[binOpExpressionNode.operationType];
             }
+            output.push('(' + operand1 + ', ' + operand2 + ')');
+
             return output.join('');
         }
 
@@ -359,31 +366,33 @@
             output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : ''));
             switch (unOpExpressionNode.operationType) {
                 case UnaryOperationType.Complement:
-                    output.push('~')
+                    output.push('_complement')
                     break;
                 case UnaryOperationType.Not:
-                    output.push('!')
+                    output.push('_not');
                     break;
                 default:
                     throw 'Unrecognized UnaryOperationType: ' + unOpExpressionNode[unOpExpressionNode.operationType];
             }
+            output.push('(');
             if (this.expressionReturnsItself(unOpExpressionNode)) {
                 output.push(this.generateExpression(this.unwrapSelfReturningExpression(unOpExpressionNode.operand), false, 0));
             } else {
                 output.push(this.wrapInSelfExecutingFunction(unOpExpressionNode.operand, indentLevel));
             }
+            output.push(')');
             return output.join('');
         }
 
         private generateIfThenElseExpression(ifExpressionNode: IfThenElseExpressionNode, returnResult: boolean, indentLevel: number): string {
             var output: Array<string> = [];
-            output.push(this.indent(indentLevel) + 'if (');
+            output.push(this.indent(indentLevel) + 'if ((');
             if (this.expressionReturnsItself(ifExpressionNode.predicate)) {
                 output.push(this.generateExpression(this.unwrapSelfReturningExpression(ifExpressionNode.predicate), false, 0));
             } else {
                 output.push(this.wrapInSelfExecutingFunction(ifExpressionNode.predicate, indentLevel));
             }
-            output.push(') {\n');
+            output.push(')._value) {\n');
             output.push(this.generateExpression(ifExpressionNode.consequent, returnResult, indentLevel + 1) + '\n');
             output.push(this.indent(indentLevel) + '} else {\n');
             output.push(this.generateExpression(ifExpressionNode.alternative, returnResult, indentLevel + 1) + '\n');
@@ -393,31 +402,31 @@
 
         private generateWhileExpression(whileExpressionNode: WhileExpressionNode, returnResult: boolean, indentLevel: number): string {
             var output: Array<string> = [];
-            output.push(this.indent(indentLevel) + 'while (');
+            output.push(this.indent(indentLevel) + 'while ((');
             if (this.expressionReturnsItself(whileExpressionNode.whileConditionExpression)) {
                 output.push(this.generateExpression(this.unwrapSelfReturningExpression(whileExpressionNode.whileConditionExpression), false, 0));
             } else {
                 output.push(this.wrapInSelfExecutingFunction(whileExpressionNode.whileConditionExpression, indentLevel));
             }
-            output.push(') {\n');
+            output.push(')._value) {\n');
             output.push(this.generateExpression(whileExpressionNode.whileBodyExpression, returnResult, indentLevel + 1) + '\n');
             output.push(this.indent(indentLevel) + '}\n');
             return output.join('');
         }
 
-        private generateCaseExpression(caseExpressionNode: CaseExpressionNode, returnResult: boolean, indentLevel: number): string {
-            var output: Array<string> = [];
-            output.push(this.indent(indentLevel) + 'case (');
-            if (this.expressionReturnsItself(whileExpressionNode.whileConditionExpression)) {
-                output.push(this.generateExpression(this.unwrapSelfReturningExpression(whileExpressionNode.whileConditionExpression), false, 0));
-            } else {
-                output.push(this.wrapInSelfExecutingFunction(whileExpressionNode.whileConditionExpression, indentLevel));
-            }
-            output.push(') {\n');
-            output.push(this.generateExpression(whileExpressionNode.whileBodyExpression, returnResult, indentLevel + 1) + '\n');
-            output.push(this.indent(indentLevel) + '}\n');
-            return output.join('');
-        }
+        //private generateCaseExpression(caseExpressionNode: CaseExpressionNode, returnResult: boolean, indentLevel: number): string {
+        //    var output: Array<string> = [];
+        //    output.push(this.indent(indentLevel) + 'case (');
+        //    if (this.expressionReturnsItself(whileExpressionNode.whileConditionExpression)) {
+        //        output.push(this.generateExpression(this.unwrapSelfReturningExpression(whileExpressionNode.whileConditionExpression), false, 0));
+        //    } else {
+        //        output.push(this.wrapInSelfExecutingFunction(whileExpressionNode.whileConditionExpression, indentLevel));
+        //    }
+        //    output.push(') {\n');
+        //    output.push(this.generateExpression(whileExpressionNode.whileBodyExpression, returnResult, indentLevel + 1) + '\n');
+        //    output.push(this.indent(indentLevel) + '}\n');
+        //    return output.join('');
+        //}
 
         private indentCache: Array<string> = [];
         private singleIndent: string = '    ';

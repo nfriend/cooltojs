@@ -188,7 +188,7 @@ class _BaseObject {\n\
         throw 'Program was aborted.';\n\
     }\n\
     type_name() {\n\
-        return this._type_name;\n\
+        return new _String(this._type_name);\n\
     }\n\
     copy() {\n\
         var copiedObject = Object.create(this.constructor);\n\
@@ -199,5 +199,57 @@ class _BaseObject {\n\
     }\n\
 }\n\n";
 
+    export var baseStringClass = "\
+class _String extends _BaseObject {\n\
+    constructor (_stringValue) {\n\
+        super(\"String\");\n\
+        this._value = _stringValue;\n\
+    }\n\
+    _value;\n\
+    length() {\n\
+        return new _Int(this._value.length);\n\
+    }\n\
+    concat(_otherString) {\n\
+        return new _String(this._value.concat(_otherString._value));\n\
+    }\n\
+}\n\n";
 
+    export var baseIntClass = "\
+class _Int extends _BaseObject {\n\
+    constructor (_intValue) {\n\
+        super(\"Int\");\n\
+        this._value = _intValue;\n\
+    }\n\
+    _value;\n\
+}\n\n";
+
+    export var baseBoolClass = "\
+class _Bool extends _BaseObject {\n\
+    constructor (_boolValue) {\n\
+        super(\"Bool\");\n\
+        this._value = _boolValue;\n\
+    }\n\
+    _value;\n\
+}\n\n";
+
+    export var baseObjectClasses = [
+        baseObjectClass, baseStringClass, baseIntClass, baseBoolClass
+    ];
+
+    export var operationFunctions = '\
+    _divide = (a, b) => { return new _Int(Math.floor(a._value / b._value)); },\n\
+    _multiply = (a, b) => { return new _Int(a._value * b._value); },\n\
+    _add = (a, b) => { return new _Int(a._value + b._value); },\n\
+    _subtract = (a, b) => { return new _Int(a._value - b._value); },\n\
+    _equals = (a, b) => {\n\
+        if (typeof a._value === "undefined" || typeof b._value === "undefined") {\n\
+            return new _Bool(a === b);\n\
+        } else {\n\
+            return new _Bool(a._value === b._value);\n\
+        }\n\
+    },\n\
+    _lessThan = (a, b) => { return new _Bool(a._value < b._value); },\n\
+    _lessThanOrEqualTo = (a, b) => { return new _Bool(a._value <= b._value); },\n\
+    _not = (a) => { return new _Bool(!a._value); },\n\
+    _complement = (a) => { return new _Int(~a._value); };\n\n';
 } 

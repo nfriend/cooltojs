@@ -298,6 +298,7 @@ var CoolToJS;
                         var operandNode = _this.convert(syntaxTree.children[1]);
                         operandNode.parent = unaryOperationExprNode;
                         unaryOperationExprNode.children[0] = operandNode;
+                        unaryOperationExprNode.token = syntaxTree.children[0].token;
                         convertedNode = unaryOperationExprNode;
                     }
                     else if (syntaxTree.children[0].syntaxKind === 1 /* OpenParenthesis */) {
@@ -948,6 +949,19 @@ var CoolToJS;
                     generatedJavaScript: output
                 };
             };
+            //private generateCaseExpression(caseExpressionNode: CaseExpressionNode, returnResult: boolean, indentLevel: number): string {
+            //    var output: Array<string> = [];
+            //    output.push(this.indent(indentLevel) + 'case (');
+            //    if (this.expressionReturnsItself(whileExpressionNode.whileConditionExpression)) {
+            //        output.push(this.generateExpression(this.unwrapSelfReturningExpression(whileExpressionNode.whileConditionExpression), false, 0));
+            //    } else {
+            //        output.push(this.wrapInSelfExecutingFunction(whileExpressionNode.whileConditionExpression, indentLevel));
+            //    }
+            //    output.push(') {\n');
+            //    output.push(this.generateExpression(whileExpressionNode.whileBodyExpression, returnResult, indentLevel + 1) + '\n');
+            //    output.push(this.indent(indentLevel) + '}\n');
+            //    return output.join('');
+            //}
             this.indentCache = [];
             this.singleIndent = '    ';
         }
@@ -955,8 +969,10 @@ var CoolToJS;
             var _this = this;
             var output = [];
             output.push('let _inputGenerators = [],\n');
-            output.push(this.indent(1) + '_divide = (a, b) => { return Math.floor(a / b); };\n\n');
-            output.push(CoolToJS.Utility.baseObjectClass);
+            output.push(CoolToJS.Utility.operationFunctions);
+            CoolToJS.Utility.baseObjectClasses.forEach(function (c) {
+                output.push(c);
+            });
             output.push(this.generateIOClass(ioFunctions, 0));
             output.push('\n');
             var isInputNeeded = false;
@@ -989,11 +1005,21 @@ var CoolToJS;
             ['out_string', 'out_int', 'in_string', 'in_int'].forEach(function (methodname) {
                 var outStringDetails = CoolToJS.Utility.getFunctionDetails(ioFunctions[methodname]);
                 output.push(_this.indent(indentLevel + 1) + methodname + '(');
+                var firstParamName;
                 outStringDetails.parameters.forEach(function (p, index) {
                     var isLast = outStringDetails.parameters.length - 1 === index;
+                    if (index === 0) {
+                        firstParamName = p;
+                    }
                     output.push(p + (isLast ? '' : ', '));
                 });
-                output.push(') {');
+                if (methodname === 'out_string' || methodname === 'out_int') {
+                    output.push(') {\n');
+                    output.push(_this.indent(indentLevel + 2) + firstParamName + ' = ' + firstParamName + '._value;');
+                }
+                else {
+                    output.push(') {');
+                }
                 output.push(outStringDetails.body);
                 output.push('};\n');
             });
@@ -1118,7 +1144,7 @@ var CoolToJS;
             var output = [];
             output.push(this.indent(indentLevel));
             if (methodCallExpression.isInStringOrInInt) {
-                output.push('yield in_string(_inputGenerators[_inputGenerators.length - 1])');
+                output.push('new _String(yield ' + methodCallExpression.methodName + '(_inputGenerators[_inputGenerators.length - 1]))');
                 return output.join('');
             }
             if (methodCallExpression.method.isAsync) {
@@ -1179,19 +1205,19 @@ var CoolToJS;
             return this.indent(indentLevel) + 'new ' + newExpressionNode.typeName + '("' + newExpressionNode.typeName + '")';
         };
         JavaScriptGenerator.prototype.generateStringLiteralExpression = function (stringLiteralExpressionNode, returnResult, indentLevel) {
-            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + '"' + stringLiteralExpressionNode.value + '"';
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'new _String("' + stringLiteralExpressionNode.value + '")';
         };
         JavaScriptGenerator.prototype.generateIntegerLiteralExpression = function (integerLiteralExpressionNode, returnResult, indentLevel) {
-            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + integerLiteralExpressionNode.value;
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'new _Int(' + integerLiteralExpressionNode.value + ')';
         };
         JavaScriptGenerator.prototype.generateParentheticalExpressionNode = function (parentheticalExpressionNode, returnResult, indentLevel) {
             return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + '(' + this.generateExpression(parentheticalExpressionNode.innerExpression, false, indentLevel) + ')';
         };
         JavaScriptGenerator.prototype.generateTrueKeywordExpression = function (trueKeywordExpressionNode, returnResult, indentLevel) {
-            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'true';
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'new _Int(true)';
         };
         JavaScriptGenerator.prototype.generateFalseKeywordExpression = function (falseKeywordExpressionNode, returnResult, indentLevel) {
-            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'false';
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'new _Int(false)';
         };
         JavaScriptGenerator.prototype.generateBinaryOperationExpression = function (binOpExpressionNode, returnResult, indentLevel) {
             var output = [], operand1, operand2;
@@ -1208,36 +1234,32 @@ var CoolToJS;
                 operand2 = this.wrapInSelfExecutingFunction(binOpExpressionNode.operand2, indentLevel);
             }
             output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : ''));
-            // we treat division differently than other binary operations, because Cool assumes all division is integer division
-            if (binOpExpressionNode.operationType === 2 /* Division */) {
-                output.push('_divide(' + operand1 + ', ' + operand2 + ')');
+            switch (binOpExpressionNode.operationType) {
+                case 0 /* Addition */:
+                    output.push('_add');
+                    break;
+                case 1 /* Subtraction */:
+                    output.push('_subtract');
+                    break;
+                case 3 /* Multiplication */:
+                    output.push('_multiply');
+                    break;
+                case 2 /* Division */:
+                    output.push('_divide');
+                    break;
+                case 6 /* Comparison */:
+                    output.push('_equals');
+                    break;
+                case 4 /* LessThan */:
+                    output.push('_lessThan');
+                    break;
+                case 5 /* LessThanOrEqualTo */:
+                    output.push('_lessThanOrEqualTo');
+                    break;
+                default:
+                    throw 'Unrecognized BinaryOperationType: ' + binOpExpressionNode[binOpExpressionNode.operationType];
             }
-            else {
-                output.push(operand1);
-                switch (binOpExpressionNode.operationType) {
-                    case 0 /* Addition */:
-                        output.push(' + ');
-                        break;
-                    case 1 /* Subtraction */:
-                        output.push(' - ');
-                        break;
-                    case 3 /* Multiplication */:
-                        output.push(' * ');
-                        break;
-                    case 6 /* Comparison */:
-                        output.push(' === ');
-                        break;
-                    case 4 /* LessThan */:
-                        output.push(' < ');
-                        break;
-                    case 5 /* LessThanOrEqualTo */:
-                        output.push(' <= ');
-                        break;
-                    default:
-                        throw 'Unrecognized BinaryOperationType: ' + binOpExpressionNode[binOpExpressionNode.operationType];
-                }
-                output.push(operand2);
-            }
+            output.push('(' + operand1 + ', ' + operand2 + ')');
             return output.join('');
         };
         JavaScriptGenerator.prototype.generateUnaryOperationExpression = function (unOpExpressionNode, returnResult, indentLevel) {
@@ -1245,32 +1267,34 @@ var CoolToJS;
             output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : ''));
             switch (unOpExpressionNode.operationType) {
                 case 0 /* Complement */:
-                    output.push('~');
+                    output.push('_complement');
                     break;
                 case 1 /* Not */:
-                    output.push('!');
+                    output.push('_not');
                     break;
                 default:
                     throw 'Unrecognized UnaryOperationType: ' + unOpExpressionNode[unOpExpressionNode.operationType];
             }
+            output.push('(');
             if (this.expressionReturnsItself(unOpExpressionNode)) {
                 output.push(this.generateExpression(this.unwrapSelfReturningExpression(unOpExpressionNode.operand), false, 0));
             }
             else {
                 output.push(this.wrapInSelfExecutingFunction(unOpExpressionNode.operand, indentLevel));
             }
+            output.push(')');
             return output.join('');
         };
         JavaScriptGenerator.prototype.generateIfThenElseExpression = function (ifExpressionNode, returnResult, indentLevel) {
             var output = [];
-            output.push(this.indent(indentLevel) + 'if (');
+            output.push(this.indent(indentLevel) + 'if ((');
             if (this.expressionReturnsItself(ifExpressionNode.predicate)) {
                 output.push(this.generateExpression(this.unwrapSelfReturningExpression(ifExpressionNode.predicate), false, 0));
             }
             else {
                 output.push(this.wrapInSelfExecutingFunction(ifExpressionNode.predicate, indentLevel));
             }
-            output.push(') {\n');
+            output.push(')._value) {\n');
             output.push(this.generateExpression(ifExpressionNode.consequent, returnResult, indentLevel + 1) + '\n');
             output.push(this.indent(indentLevel) + '} else {\n');
             output.push(this.generateExpression(ifExpressionNode.alternative, returnResult, indentLevel + 1) + '\n');
@@ -1279,14 +1303,14 @@ var CoolToJS;
         };
         JavaScriptGenerator.prototype.generateWhileExpression = function (whileExpressionNode, returnResult, indentLevel) {
             var output = [];
-            output.push(this.indent(indentLevel) + 'while (');
+            output.push(this.indent(indentLevel) + 'while ((');
             if (this.expressionReturnsItself(whileExpressionNode.whileConditionExpression)) {
                 output.push(this.generateExpression(this.unwrapSelfReturningExpression(whileExpressionNode.whileConditionExpression), false, 0));
             }
             else {
                 output.push(this.wrapInSelfExecutingFunction(whileExpressionNode.whileConditionExpression, indentLevel));
             }
-            output.push(') {\n');
+            output.push(')._value) {\n');
             output.push(this.generateExpression(whileExpressionNode.whileBodyExpression, returnResult, indentLevel + 1) + '\n');
             output.push(this.indent(indentLevel) + '}\n');
             return output.join('');
@@ -3072,7 +3096,7 @@ class _BaseObject {\n\
         throw 'Program was aborted.';\n\
     }\n\
     type_name() {\n\
-        return this._type_name;\n\
+        return new _String(this._type_name);\n\
     }\n\
     copy() {\n\
         var copiedObject = Object.create(this.constructor);\n\
@@ -3082,6 +3106,58 @@ class _BaseObject {\n\
         return copiedObject;\n\
     }\n\
 }\n\n";
+        Utility.baseStringClass = "\
+class _String extends _BaseObject {\n\
+    constructor (_stringValue) {\n\
+        super(\"String\");\n\
+        this._value = _stringValue;\n\
+    }\n\
+    _value;\n\
+    length() {\n\
+        return new _Int(this._value.length);\n\
+    }\n\
+    concat(_otherString) {\n\
+        return new _String(this._value.concat(_otherString._value));\n\
+    }\n\
+}\n\n";
+        Utility.baseIntClass = "\
+class _Int extends _BaseObject {\n\
+    constructor (_intValue) {\n\
+        super(\"Int\");\n\
+        this._value = _intValue;\n\
+    }\n\
+    _value;\n\
+}\n\n";
+        Utility.baseBoolClass = "\
+class _Bool extends _BaseObject {\n\
+    constructor (_boolValue) {\n\
+        super(\"Bool\");\n\
+        this._value = _boolValue;\n\
+    }\n\
+    _value;\n\
+}\n\n";
+        Utility.baseObjectClasses = [
+            Utility.baseObjectClass,
+            Utility.baseStringClass,
+            Utility.baseIntClass,
+            Utility.baseBoolClass
+        ];
+        Utility.operationFunctions = '\
+    _divide = (a, b) => { return new _Int(Math.floor(a._value / b._value)); },\n\
+    _multiply = (a, b) => { return new _Int(a._value * b._value); },\n\
+    _add = (a, b) => { return new _Int(a._value + b._value); },\n\
+    _subtract = (a, b) => { return new _Int(a._value - b._value); },\n\
+    _equals = (a, b) => {\n\
+        if (typeof a._value === "undefined" || typeof b._value === "undefined") {\n\
+            return new _Bool(a === b);\n\
+        } else {\n\
+            return new _Bool(a._value === b._value);\n\
+        }\n\
+    },\n\
+    _lessThan = (a, b) => { return new _Bool(a._value < b._value); },\n\
+    _lessThanOrEqualTo = (a, b) => { return new _Bool(a._value <= b._value); },\n\
+    _not = (a) => { return new _Bool(!a._value); },\n\
+    _complement = (a) => { return new _Int(~a._value); };\n\n';
     })(Utility = CoolToJS.Utility || (CoolToJS.Utility = {}));
 })(CoolToJS || (CoolToJS = {}));
 //# sourceMappingURL=cooltojs-0.0.1.js.map

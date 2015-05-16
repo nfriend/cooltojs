@@ -378,6 +378,7 @@
                     var operandNode = this.convert(syntaxTree.children[1]);
                     operandNode.parent = unaryOperationExprNode;
                     unaryOperationExprNode.children[0] = operandNode;
+                    unaryOperationExprNode.token = syntaxTree.children[0].token;
                     convertedNode = unaryOperationExprNode;
                 }
 
