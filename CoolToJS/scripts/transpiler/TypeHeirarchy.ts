@@ -157,11 +157,12 @@
             var typeHeirarchy: TypeHeirarchy = this.findTypeHeirarchy(typeName);
 
             while (typeHeirarchy) {
-                typeHeirarchy.classNode.propertyList.forEach(propertyNode => {
-                    if (propertyNode.propertyName === propertyName) {
-                        return propertyNode;
+                for (var i = 0; i < typeHeirarchy.classNode.propertyList.length; i++) {
+                    if (typeHeirarchy.classNode.propertyList[i].propertyName === propertyName) {
+                        return typeHeirarchy.classNode.propertyList[i];
                     }
-                });
+                }
+                
                 typeHeirarchy = includeInheritedProperties ? typeHeirarchy.parent : null;
             }
 

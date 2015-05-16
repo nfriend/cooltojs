@@ -175,6 +175,7 @@
         }
 
         identifierName: string;
+        isAssignmentToSelfVariable: boolean = false;
 
         get assignmentExpression(): ExpressionNode {
             return this.children[0];
@@ -425,6 +426,7 @@
         constructor() {
             super(NodeType.ObjectIdentifierExpression);
         }
+        isCallToSelf: boolean = false;
 
         objectIdentifierName: string;
     }

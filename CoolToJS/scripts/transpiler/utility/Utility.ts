@@ -185,7 +185,7 @@ class _BaseObject {\n\
     }\n\
     \n\
     abort() {\n\
-        throw 'Program was aborted.';\n\
+        throw 'Abort called from class ' + this.type_name()._value;\n\
     }\n\
     type_name() {\n\
         return new _String(this._type_name);\n\
@@ -211,6 +211,10 @@ class _String extends _BaseObject {\n\
     }\n\
     concat(_otherString) {\n\
         return new _String(this._value.concat(_otherString._value));\n\
+    }\n\
+    substr(_start, _length) {\n\
+        // TODO: throw error here if substr is out of range\n\
+        return new _String(this._value.substr(_start._value, _length._value));\n\
     }\n\
 }\n\n";
 
@@ -242,7 +246,7 @@ class _Bool extends _BaseObject {\n\
     _add = (a, b) => { return new _Int(a._value + b._value); },\n\
     _subtract = (a, b) => { return new _Int(a._value - b._value); },\n\
     _equals = (a, b) => {\n\
-        if (typeof a._value === "undefined" || typeof b._value === "undefined") {\n\
+        if (!a || !b || typeof a._value === "undefined" || typeof b._value === "undefined") {\n\
             return new _Bool(a === b);\n\
         } else {\n\
             return new _Bool(a._value === b._value);\n\

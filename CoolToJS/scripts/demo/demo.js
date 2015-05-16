@@ -228,10 +228,14 @@
 
     //#region IO methods
     var out_string = function (output) {
-        window.consoleController.report([{
-            msg: output,
-            className: "jquery-console-output"
-        }]);
+        window.out_stringBuffer = (window.out_stringBuffer || '') + output;
+        if (/\n/.test(window.out_stringBuffer)) {
+            window.consoleController.report([{
+                msg: window.out_stringBuffer,
+                className: "jquery-console-output"
+            }]);
+            window.out_stringBuffer = '';
+        }
     };
 
     var out_int = out_string;

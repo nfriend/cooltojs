@@ -137,21 +137,21 @@
                 });
 
                 // add all superclass properties to the scope
-                var addedSuperClassProperties: Array<VariableScope> = [];
-                var parentTypeHeirarchy = this.typeHeirarchy.findTypeHeirarchy(classNode.className).parent;
-                while (parentTypeHeirarchy) {
-                    parentTypeHeirarchy.classNode.propertyList.forEach(pn => {
-                        addedSuperClassProperties.push({
-                            variableName: pn.propertyName,
-                            variableType: pn.typeName
-                        });
-                    });
-                    parentTypeHeirarchy = parentTypeHeirarchy.parent;
-                }
+                //var addedSuperClassProperties: Array<VariableScope> = [];
+                //var parentTypeHeirarchy = this.typeHeirarchy.findTypeHeirarchy(classNode.className).parent;
+                //while (parentTypeHeirarchy) {
+                //    parentTypeHeirarchy.classNode.propertyList.forEach(pn => {
+                //        addedSuperClassProperties.push({
+                //            variableName: pn.propertyName,
+                //            variableType: pn.typeName
+                //        });
+                //    });
+                //    parentTypeHeirarchy = parentTypeHeirarchy.parent;
+                //}
 
                 // add the properties to the stack in reverse order so that the closest
                 // properties to the current scope are at the top of the stack
-                typeEnvironment.variableScope = typeEnvironment.variableScope.concat(addedSuperClassProperties.reverse());
+                //typeEnvironment.variableScope = typeEnvironment.variableScope.concat(addedSuperClassProperties.reverse());
 
                 // ensure that all property names are unique
                 var duplicateProperties: Array<PropertyNode> = [];
@@ -159,10 +159,10 @@
                     if (classNode.propertyList.map(c => { return c.propertyName }).slice(0, i).indexOf(classNode.propertyList[i].propertyName) !== -1) {
                         duplicateProperties.push(classNode.propertyList[i]);
                     } else {
-                        typeEnvironment.variableScope.push({
-                            variableName: classNode.propertyList[i].propertyName,
-                            variableType: classNode.propertyList[i].typeName
-                        });
+                        //typeEnvironment.variableScope.push({
+                        //    variableName: classNode.propertyList[i].propertyName,
+                        //    variableType: classNode.propertyList[i].typeName
+                        //});
                     }
                 }
 
@@ -217,24 +217,47 @@
             /* ASSIGNMENT EXPRESSION */
             else if (ast.type === NodeType.AssignmentExpression) {
                 var assignmentExpressionNode = <AssignmentExpressionNode>ast;
+                var identifierName: string,
+                    identifierType: string,
+                    identifierWasFound: boolean = false;
+
+                // first check the scope for the target variable
                 for (var i = typeEnvironment.variableScope.length - 1; i >= 0; i--) {
                     if (typeEnvironment.variableScope[i].variableName === assignmentExpressionNode.identifierName) {
-                        var expressionType = this.analyze(assignmentExpressionNode.assignmentExpression, typeEnvironment, errorMessages, warningMessages);
-
-                        if (!this.typeHeirarchy.isAssignableFrom(typeEnvironment.variableScope[i].variableType, expressionType, typeEnvironment.currentClassType)) {
-                            this.addTypeError(typeEnvironment.variableScope[i].variableType, expressionType, assignmentExpressionNode.token.location, errorMessages);
-                        }
-
-                        return expressionType;
+                        identifierName = typeEnvironment.variableScope[i].variableName;
+                        identifierType = typeEnvironment.variableScope[i].variableType;
+                        identifierWasFound = true;
+                        break;
                     }
                 }
 
-                errorMessages.push({
-                    location: assignmentExpressionNode.token.location,
-                    message: 'Assignment to undeclared variable "' + assignmentExpressionNode.identifierName + '"'
-                });
+                // if we didn't find it in the scope, check the current class variables
+                if (!identifierWasFound) {
+                    var foundPropertyNode = this.typeHeirarchy.findPropertyOnType(assignmentExpressionNode.identifierName, typeEnvironment.currentClassType, true);
+                    if (foundPropertyNode) {
+                        identifierName = foundPropertyNode.propertyName;
+                        identifierType = foundPropertyNode.typeName;
+                        identifierWasFound = true;
+                        assignmentExpressionNode.isAssignmentToSelfVariable = true;
+                    }
+                }
 
-                return UnknownType;
+                if (!identifierWasFound) {
+                    errorMessages.push({
+                        location: assignmentExpressionNode.token.location,
+                        message: 'Assignment to undeclared variable "' + assignmentExpressionNode.identifierName + '"'
+                    });
+
+                    return UnknownType;
+                }
+
+                var expressionType = this.analyze(assignmentExpressionNode.assignmentExpression, typeEnvironment, errorMessages, warningMessages);
+
+                if (!this.typeHeirarchy.isAssignableFrom(identifierType, expressionType, typeEnvironment.currentClassType)) {
+                    this.addTypeError(identifierType, expressionType, assignmentExpressionNode.token.location, errorMessages);
+                }
+
+                return expressionType;
             }
 
             /* METHOD CALL EXPRESSION */
@@ -256,9 +279,6 @@
 
                 if (foundMethodNode) {
                     methodCallExpressionNode.method = foundMethodNode;
-                    if (!foundMethodNode) {
-                        console.log();
-                    }
 
                     if (foundMethodNode.parameters.length !== methodCallExpressionNode.parameterExpressionList.length) {
                         errorMessages.push({
@@ -523,6 +543,12 @@
                     if (typeEnvironment.variableScope[i].variableName === objectIdExpressionNode.objectIdentifierName) {
                         return typeEnvironment.variableScope[i].variableType;
                     }
+                }
+
+                var foundPropertyNode = this.typeHeirarchy.findPropertyOnType(objectIdExpressionNode.objectIdentifierName, typeEnvironment.currentClassType, true);
+                if (foundPropertyNode) {
+                    objectIdExpressionNode.isCallToSelf = true;
+                    return foundPropertyNode.typeName;
                 }
 
                 errorMessages.push({

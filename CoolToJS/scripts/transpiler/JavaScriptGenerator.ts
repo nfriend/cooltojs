@@ -78,11 +78,14 @@
                 if (methodname === 'out_string' || methodname === 'out_int') {
                     output.push(') {\n');
                     output.push(this.indent(indentLevel + 2) + firstParamName + ' = ' + firstParamName + '._value;');
+                    output.push(outStringDetails.body);
+                    output.push(this.indent(indentLevel + 1) + 'return this;\n')
+                    output.push(this.indent(indentLevel + 1) + '};\n');
                 } else {
                     output.push(') {');
+                    output.push(outStringDetails.body)
+                    output.push(this.indent(indentLevel) + '};\n');
                 }
-                output.push(outStringDetails.body);
-                output.push('};\n');
             });
             output.push(this.indent(indentLevel) + '}\n');
             return output.join('');
@@ -113,13 +116,34 @@
 
         private generateClassProperty(propertyNode: PropertyNode, indentLevel: number): string {
             var output: Array<string> = [];
-            output.push(this.indent(indentLevel) + propertyNode.propertyName + ';\n');
+            if (propertyNode.hasInitializer) {
+                output.push(this.indent(indentLevel) + propertyNode.propertyName + ' = ');
+                if (this.expressionReturnsItself(propertyNode.propertyInitializerExpression)) {
+                    output.push(this.generateExpression(propertyNode.propertyInitializerExpression, false, indentLevel + 1));
+                } else {
+                    output.push(this.wrapInSelfExecutingFunction(propertyNode.propertyInitializerExpression, indentLevel));
+                }
+                output.push(';\n');
+            } else if (propertyNode.typeName === 'Bool') {
+                output.push(this.indent(indentLevel) + propertyNode.propertyName + ' = new _Bool(false);\n');
+            } else if (propertyNode.typeName === 'String') {
+                output.push(this.indent(indentLevel) + propertyNode.propertyName + ' = new _String("");\n');
+            } else if (propertyNode.typeName === 'Int') {
+                output.push(this.indent(indentLevel) + propertyNode.propertyName + ' = new _Int(0);\n');
+            } else {
+                output.push(this.indent(indentLevel) + propertyNode.propertyName + ';\n');
+            }
             return output.join('');
         }
 
         private generateClassMethod(methodNode: MethodNode, indentLevel: number): string {
             var output: Array<string> = [];
-            output.push(this.indent(indentLevel) + (methodNode.isAsync ? '*' : '') + methodNode.methodName + '() {\n');
+            output.push(this.indent(indentLevel) + (methodNode.isAsync ? '*' : '') + methodNode.methodName + '(');
+            methodNode.parameters.forEach((p, index) => {
+                var isLast = index === methodNode.parameters.length - 1;
+                output.push(p.parameterName + (isLast ? '' : ', '));
+            });
+            output.push(') {\n');
             output.push(this.indent(indentLevel + 1) + 'let _returnValue;\n');
             output.push(this.generateExpression(methodNode.methodBodyExpression, true, indentLevel + 1) + '\n');
             output.push(this.indent(indentLevel + 1) + 'return _returnValue;\n');
@@ -228,10 +252,15 @@
             }
 
             if (methodCallExpression.method.isAsync) {
-                // TODO
+                 // TODO
+                throw 'Nested input not yet implemented!';
                 output.push('let newGenerator = ' + methodCallExpression + '();');
                 output.push('_inputGenerators.push(newGenerator);');
                 output.push('_inputGenerators.next();');
+            }
+
+            if (returnResult) {
+                output.push('_returnValue = ');
             }
 
             if (methodCallExpression.targetExpression && !methodCallExpression.isCallToParent) {
@@ -275,17 +304,17 @@
 
         private generateAssignmentExpression(assignmentExpressionNode: AssignmentExpressionNode, returnResult: boolean, indentLevel: number): string {
             var output: Array<string> = [];
-            output.push(this.indent(indentLevel) + assignmentExpressionNode.identifierName + ' = ');
+            output.push(this.indent(indentLevel) + (assignmentExpressionNode.isAssignmentToSelfVariable ? 'this.' : '') + assignmentExpressionNode.identifierName + ' = ');
             output.push(this.generateExpression(assignmentExpressionNode.assignmentExpression, returnResult, 0));
             return output.join('');
         }
 
         private generateObjectIdentifierExpression(objectIdentifierExpressionNode: ObjectIdentifierExpressionNode, returnResult: boolean, indentLevel: number): string {
-            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + objectIdentifierExpressionNode.objectIdentifierName;
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + (objectIdentifierExpressionNode.isCallToSelf ? 'this.' : '') + objectIdentifierExpressionNode.objectIdentifierName;
         }
 
         private generateSelfExpression(selfExpressionNode: SelfExpressionNode, returnResult: boolean, indentLevel: number): string {
-            return this.indent(indentLevel) + 'this';
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'this';
         }
 
         private generateNewExpression(newExpressionNode: NewExpressionNode, returnResult: boolean, indentLevel: number): string {
@@ -301,7 +330,8 @@
         }
 
         private generateParentheticalExpressionNode(parentheticalExpressionNode: ParentheticalExpressionNode, returnResult: boolean, indentLevel: number): string {
-            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + '(' + this.generateExpression(parentheticalExpressionNode.innerExpression, false, indentLevel) + ')';
+            // parenthetical expressions aren't necessary - just generate its child expression
+            return this.generateExpression(parentheticalExpressionNode.innerExpression, returnResult, indentLevel);
         }
 
         private generateTrueKeywordExpression(trueKeywordExpressionNode: TrueKeywordExpressionNode, returnResult: boolean, indentLevel: number): string {
@@ -451,6 +481,7 @@
                 || node.type === NodeType.MethodCallExpression
                 || node.type === NodeType.TrueKeywordExpression
                 || node.type === NodeType.FalseKeywordExpression
+                || node.type === NodeType.NewExpression
                 || (node.type === NodeType.BlockExpression
                     && (<BlockExpressionNode>node).expressionList.length === 1
                     && this.expressionReturnsItself((<BlockExpressionNode>node).expressionList[0]))
@@ -467,7 +498,8 @@
                 || node.type === NodeType.MethodCallExpression
                 || node.type === NodeType.ParentheticalExpression
                 || node.type === NodeType.TrueKeywordExpression
-                || node.type === NodeType.FalseKeywordExpression) {
+                || node.type === NodeType.FalseKeywordExpression
+                || node.type === NodeType.NewExpression) {
 
                 return node;
             } else if (node.type === NodeType.BlockExpression) {
@@ -481,7 +513,7 @@
             var output: Array<string> = [];
             output.push('(() => {\n');
             output.push(this.indent(indentLevel + 2) + 'let _returnValue;\n');
-            output.push(this.generateExpression(node, true, indentLevel + 2));
+            output.push(this.generateExpression(node, true, indentLevel + 2) + '\n');
             output.push(this.indent(indentLevel + 2) + 'return _returnValue;\n');
             output.push(this.indent(indentLevel + 1) + '})()');
             return output.join('');
