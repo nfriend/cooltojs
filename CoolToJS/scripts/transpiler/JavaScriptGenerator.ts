@@ -341,11 +341,11 @@
         }
 
         private generateTrueKeywordExpression(trueKeywordExpressionNode: TrueKeywordExpressionNode, returnResult: boolean, indentLevel: number): string {
-            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'new _Int(true)';
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'new _Bool(true)';
         }
 
         private generateFalseKeywordExpression(falseKeywordExpressionNode: FalseKeywordExpressionNode, returnResult: boolean, indentLevel: number): string {
-            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'new _Int(false)';
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'new _Bool(false)';
         }
 
         private generateBinaryOperationExpression(binOpExpressionNode: BinaryOperationExpressionNode, returnResult: boolean, indentLevel: number): string {
