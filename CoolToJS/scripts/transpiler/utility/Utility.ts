@@ -110,8 +110,8 @@
         var inIntMethodNode = new MethodNode();
         inIntMethodNode.methodName = 'in_int';
         inIntMethodNode.returnTypeName = 'Int';
-        inStringMethodNode.isAsync = true;
-        inStringMethodNode.isInStringOrInInt = true;
+        inIntMethodNode.isAsync = true;
+        inIntMethodNode.isInStringOrInInt = true;
         ioClass.children.push(inIntMethodNode);
 
         programNode.children.push(ioClass);

@@ -149,7 +149,7 @@
 
             // print a success message to the screen at the end of program execution
             if (methodNode.methodName === 'main' && (<ClassNode>methodNode.parent).className === 'Main') {
-                output.push(this.indent(indentLevel + 1) + 'this.out_string(new _String("COOL program successfully executed\\n"));\n');
+                output.push(this.indent(indentLevel + 1) + 'new IO("IO").out_string(new _String("COOL program successfully executed\\n"));\n');
             }
 
             output.push(this.indent(indentLevel + 1) + 'return _returnValue;\n');
@@ -207,6 +207,9 @@
                     return this.generateWhileExpression(<WhileExpressionNode>expressionNode, returnResult, indentLevel);
                 //case NodeType.CaseExpression:
                 //    return this.generateCaseExpression(<CaseExpressionNode>expressionNode, returnResult, indentLevel);
+                case NodeType.IsvoidExpression:
+                    return this.generateIsVoidExpression(<IsVoidExpressionNode>expressionNode, returnResult, indentLevel);
+                    break;
                 default:
                     this.errorMessages.push({
                         location: null,
@@ -233,10 +236,16 @@
                     } else {
                         output.push(' = ' + this.wrapInSelfExecutingFunction(lvdn.initializerExpression, indentLevel));
                     }
+                } else if (lvdn.typeName === 'Bool') {
+                    output.push(' = new _Bool(false);\n');
+                } else if (lvdn.typeName === 'String') {
+                    output.push(' = new _String("");\n');
+                } else if (lvdn.typeName === 'Int') {
+                    output.push(' = new _Int(0);\n');
                 }
 
                 output.push((isLast ? ';' : ',') + '\n');
-            }); (returnResult ? 'return ' : '') +
+            });
 
             output.push(this.generateExpression(letExpressionNode.letBodyExpression, returnResult, indentLevel));
 
@@ -324,7 +333,11 @@
         }
 
         private generateNewExpression(newExpressionNode: NewExpressionNode, returnResult: boolean, indentLevel: number): string {
-            return this.indent(indentLevel) + 'new ' + newExpressionNode.typeName + '("' + newExpressionNode.typeName + '")';
+            if (newExpressionNode.typeName === 'Object') {
+                return this.indent(indentLevel) + 'new _BaseObject("' + newExpressionNode.typeName + '")';
+            } else {
+                return this.indent(indentLevel) + 'new ' + newExpressionNode.typeName + '("' + newExpressionNode.typeName + '")';
+            }
         }
 
         private generateStringLiteralExpression(stringLiteralExpressionNode: StringLiteralExpressionNode, returnResult: boolean, indentLevel: number): string {
@@ -353,13 +366,13 @@
                 operand1: string,
                 operand2: string;
 
-            if (this.expressionReturnsItself(binOpExpressionNode)) {
+            if (this.expressionReturnsItself(binOpExpressionNode.operand1)) {
                 operand1 = this.generateExpression(this.unwrapSelfReturningExpression(binOpExpressionNode.operand1), false, 0);
             } else {
                 operand1 = this.wrapInSelfExecutingFunction(binOpExpressionNode.operand1, indentLevel);
             }
 
-            if (this.expressionReturnsItself(binOpExpressionNode)) {
+            if (this.expressionReturnsItself(binOpExpressionNode.operand2)) {
                 operand2 = this.generateExpression(this.unwrapSelfReturningExpression(binOpExpressionNode.operand2), false, 0);
             } else {
                 operand2 = this.wrapInSelfExecutingFunction(binOpExpressionNode.operand2, indentLevel);
@@ -464,6 +477,14 @@
         //    return output.join('');
         //}
 
+        private generateIsVoidExpression(isVoidExpressionNode: IsVoidExpressionNode, returnResult: boolean, indentLevel: number): string {
+            var output: Array<string> = [];
+            output.push(this.indent(indentLevel) + '(');
+            output.push(this.generateExpression(isVoidExpressionNode.isVoidCondition, returnResult, indentLevel));
+            output.push(' ? new _Bool(false) : new _Bool(true))');
+            return output.join('');
+        }
+
         private indentCache: Array<string> = [];
         private singleIndent: string = '    ';
         private indent(indentCount: number): string {
@@ -488,6 +509,7 @@
                 || node.type === NodeType.TrueKeywordExpression
                 || node.type === NodeType.FalseKeywordExpression
                 || node.type === NodeType.NewExpression
+                || node.type === NodeType.IsvoidExpression
                 || (node.type === NodeType.BlockExpression
                     && (<BlockExpressionNode>node).expressionList.length === 1
                     && this.expressionReturnsItself((<BlockExpressionNode>node).expressionList[0]))
@@ -505,7 +527,8 @@
                 || node.type === NodeType.ParentheticalExpression
                 || node.type === NodeType.TrueKeywordExpression
                 || node.type === NodeType.FalseKeywordExpression
-                || node.type === NodeType.NewExpression) {
+                || node.type === NodeType.NewExpression
+                || node.type === NodeType.IsvoidExpression) {
 
                 return node;
             } else if (node.type === NodeType.BlockExpression) {

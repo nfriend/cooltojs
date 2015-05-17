@@ -134,6 +134,7 @@ div.console {
         color: #00c;
         font-family: monospace;
         padding: 0.1em;
+        white-space: pre;
     }
 
     div.console div.jquery-console-info {

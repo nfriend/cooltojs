@@ -951,19 +951,6 @@ var CoolToJS;
                     generatedJavaScript: output
                 };
             };
-            //private generateCaseExpression(caseExpressionNode: CaseExpressionNode, returnResult: boolean, indentLevel: number): string {
-            //    var output: Array<string> = [];
-            //    output.push(this.indent(indentLevel) + 'case (');
-            //    if (this.expressionReturnsItself(whileExpressionNode.whileConditionExpression)) {
-            //        output.push(this.generateExpression(this.unwrapSelfReturningExpression(whileExpressionNode.whileConditionExpression), false, 0));
-            //    } else {
-            //        output.push(this.wrapInSelfExecutingFunction(whileExpressionNode.whileConditionExpression, indentLevel));
-            //    }
-            //    output.push(') {\n');
-            //    output.push(this.generateExpression(whileExpressionNode.whileBodyExpression, returnResult, indentLevel + 1) + '\n');
-            //    output.push(this.indent(indentLevel) + '}\n');
-            //    return output.join('');
-            //}
             this.indentCache = [];
             this.singleIndent = '    ';
         }
@@ -1086,7 +1073,7 @@ var CoolToJS;
             output.push(this.generateExpression(methodNode.methodBodyExpression, true, indentLevel + 1) + '\n');
             // print a success message to the screen at the end of program execution
             if (methodNode.methodName === 'main' && methodNode.parent.className === 'Main') {
-                output.push(this.indent(indentLevel + 1) + 'this.out_string(new _String("COOL program successfully executed\\n"));\n');
+                output.push(this.indent(indentLevel + 1) + 'new IO("IO").out_string(new _String("COOL program successfully executed\\n"));\n');
             }
             output.push(this.indent(indentLevel + 1) + 'return _returnValue;\n');
             output.push(this.indent(indentLevel) + '};\n');
@@ -1140,6 +1127,9 @@ var CoolToJS;
                     return this.generateIfThenElseExpression(expressionNode, returnResult, indentLevel);
                 case 7 /* WhileExpression */:
                     return this.generateWhileExpression(expressionNode, returnResult, indentLevel);
+                case 14 /* IsvoidExpression */:
+                    return this.generateIsVoidExpression(expressionNode, returnResult, indentLevel);
+                    break;
                 default:
                     this.errorMessages.push({
                         location: null,
@@ -1165,9 +1155,18 @@ var CoolToJS;
                         output.push(' = ' + _this.wrapInSelfExecutingFunction(lvdn.initializerExpression, indentLevel));
                     }
                 }
+                else if (lvdn.typeName === 'Bool') {
+                    output.push(' = new _Bool(false);\n');
+                }
+                else if (lvdn.typeName === 'String') {
+                    output.push(' = new _String("");\n');
+                }
+                else if (lvdn.typeName === 'Int') {
+                    output.push(' = new _Int(0);\n');
+                }
                 output.push((isLast ? ';' : ',') + '\n');
             });
-            (returnResult ? 'return ' : '') + output.push(this.generateExpression(letExpressionNode.letBodyExpression, returnResult, indentLevel));
+            output.push(this.generateExpression(letExpressionNode.letBodyExpression, returnResult, indentLevel));
             if (letExpressionNode.parent.type !== 3 /* Method */) {
                 indentLevel--;
                 output.push(this.indent(indentLevel) + '}\n');
@@ -1240,7 +1239,12 @@ var CoolToJS;
             return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'this';
         };
         JavaScriptGenerator.prototype.generateNewExpression = function (newExpressionNode, returnResult, indentLevel) {
-            return this.indent(indentLevel) + 'new ' + newExpressionNode.typeName + '("' + newExpressionNode.typeName + '")';
+            if (newExpressionNode.typeName === 'Object') {
+                return this.indent(indentLevel) + 'new _BaseObject("' + newExpressionNode.typeName + '")';
+            }
+            else {
+                return this.indent(indentLevel) + 'new ' + newExpressionNode.typeName + '("' + newExpressionNode.typeName + '")';
+            }
         };
         JavaScriptGenerator.prototype.generateStringLiteralExpression = function (stringLiteralExpressionNode, returnResult, indentLevel) {
             return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'new _String("' + stringLiteralExpressionNode.value + '")';
@@ -1260,13 +1264,13 @@ var CoolToJS;
         };
         JavaScriptGenerator.prototype.generateBinaryOperationExpression = function (binOpExpressionNode, returnResult, indentLevel) {
             var output = [], operand1, operand2;
-            if (this.expressionReturnsItself(binOpExpressionNode)) {
+            if (this.expressionReturnsItself(binOpExpressionNode.operand1)) {
                 operand1 = this.generateExpression(this.unwrapSelfReturningExpression(binOpExpressionNode.operand1), false, 0);
             }
             else {
                 operand1 = this.wrapInSelfExecutingFunction(binOpExpressionNode.operand1, indentLevel);
             }
-            if (this.expressionReturnsItself(binOpExpressionNode)) {
+            if (this.expressionReturnsItself(binOpExpressionNode.operand2)) {
                 operand2 = this.generateExpression(this.unwrapSelfReturningExpression(binOpExpressionNode.operand2), false, 0);
             }
             else {
@@ -1354,6 +1358,26 @@ var CoolToJS;
             output.push(this.indent(indentLevel) + '}\n');
             return output.join('');
         };
+        //private generateCaseExpression(caseExpressionNode: CaseExpressionNode, returnResult: boolean, indentLevel: number): string {
+        //    var output: Array<string> = [];
+        //    output.push(this.indent(indentLevel) + 'case (');
+        //    if (this.expressionReturnsItself(whileExpressionNode.whileConditionExpression)) {
+        //        output.push(this.generateExpression(this.unwrapSelfReturningExpression(whileExpressionNode.whileConditionExpression), false, 0));
+        //    } else {
+        //        output.push(this.wrapInSelfExecutingFunction(whileExpressionNode.whileConditionExpression, indentLevel));
+        //    }
+        //    output.push(') {\n');
+        //    output.push(this.generateExpression(whileExpressionNode.whileBodyExpression, returnResult, indentLevel + 1) + '\n');
+        //    output.push(this.indent(indentLevel) + '}\n');
+        //    return output.join('');
+        //}
+        JavaScriptGenerator.prototype.generateIsVoidExpression = function (isVoidExpressionNode, returnResult, indentLevel) {
+            var output = [];
+            output.push(this.indent(indentLevel) + '(');
+            output.push(this.generateExpression(isVoidExpressionNode.isVoidCondition, returnResult, indentLevel));
+            output.push(' ? new _Bool(false) : new _Bool(true))');
+            return output.join('');
+        };
         JavaScriptGenerator.prototype.indent = function (indentCount) {
             if (typeof this.indentCache[indentCount] === 'undefined') {
                 var returnIndent = '';
@@ -1365,10 +1389,10 @@ var CoolToJS;
             return this.indentCache[indentCount];
         };
         JavaScriptGenerator.prototype.expressionReturnsItself = function (node) {
-            return (node.type === 21 /* StringLiteralExpression */ || node.type === 20 /* IntegerLiteralExpression */ || node.type === 19 /* ObjectIdentifierExpression */ || node.type === 15 /* BinaryOperationExpression */ || node.type === 16 /* UnaryOperationExpression */ || node.type === 5 /* MethodCallExpression */ || node.type === 22 /* TrueKeywordExpression */ || node.type === 23 /* FalseKeywordExpression */ || node.type === 13 /* NewExpression */ || (node.type === 8 /* BlockExpression */ && node.expressionList.length === 1 && this.expressionReturnsItself(node.expressionList[0])) || (node.type === 17 /* ParentheticalExpression */ && this.expressionReturnsItself(node.innerExpression)));
+            return (node.type === 21 /* StringLiteralExpression */ || node.type === 20 /* IntegerLiteralExpression */ || node.type === 19 /* ObjectIdentifierExpression */ || node.type === 15 /* BinaryOperationExpression */ || node.type === 16 /* UnaryOperationExpression */ || node.type === 5 /* MethodCallExpression */ || node.type === 22 /* TrueKeywordExpression */ || node.type === 23 /* FalseKeywordExpression */ || node.type === 13 /* NewExpression */ || node.type === 14 /* IsvoidExpression */ || (node.type === 8 /* BlockExpression */ && node.expressionList.length === 1 && this.expressionReturnsItself(node.expressionList[0])) || (node.type === 17 /* ParentheticalExpression */ && this.expressionReturnsItself(node.innerExpression)));
         };
         JavaScriptGenerator.prototype.unwrapSelfReturningExpression = function (node) {
-            if (node.type === 21 /* StringLiteralExpression */ || node.type === 20 /* IntegerLiteralExpression */ || node.type === 19 /* ObjectIdentifierExpression */ || node.type === 15 /* BinaryOperationExpression */ || node.type === 16 /* UnaryOperationExpression */ || node.type === 5 /* MethodCallExpression */ || node.type === 17 /* ParentheticalExpression */ || node.type === 22 /* TrueKeywordExpression */ || node.type === 23 /* FalseKeywordExpression */ || node.type === 13 /* NewExpression */) {
+            if (node.type === 21 /* StringLiteralExpression */ || node.type === 20 /* IntegerLiteralExpression */ || node.type === 19 /* ObjectIdentifierExpression */ || node.type === 15 /* BinaryOperationExpression */ || node.type === 16 /* UnaryOperationExpression */ || node.type === 5 /* MethodCallExpression */ || node.type === 17 /* ParentheticalExpression */ || node.type === 22 /* TrueKeywordExpression */ || node.type === 23 /* FalseKeywordExpression */ || node.type === 13 /* NewExpression */ || node.type === 14 /* IsvoidExpression */) {
                 return node;
             }
             else if (node.type === 8 /* BlockExpression */) {
@@ -3080,8 +3104,8 @@ var CoolToJS;
             var inIntMethodNode = new CoolToJS.MethodNode();
             inIntMethodNode.methodName = 'in_int';
             inIntMethodNode.returnTypeName = 'Int';
-            inStringMethodNode.isAsync = true;
-            inStringMethodNode.isInStringOrInInt = true;
+            inIntMethodNode.isAsync = true;
+            inIntMethodNode.isInStringOrInInt = true;
             ioClass.children.push(inIntMethodNode);
             programNode.children.push(ioClass);
             // Int
