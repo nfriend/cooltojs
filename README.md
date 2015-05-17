@@ -2,13 +2,14 @@
 A [Cool](http://en.wikipedia.org/wiki/Cool_%28programming_language%29)-to-JavaScript transpiler, written in TypeScript.
 <br />
 <br />
-<img height="256" src="http://nathanfriend.io/cooltojs/img/coolToJsLogo-with-margin.png" />
+<img height="256" src="http://nathanfriend.io/cooltojs/img/coolToJsLogo.png" />
 
 #### Example usage
 ```` HTML
 <script type="text/cool" src="HelloWorld.cl"></script>
 <script src="cooltojs-0.0.1.js"></script>
 <script>
+
     // automatically fetch any Cool source referenced 
     // by a <script type="text/cool"> element
     CoolToJS.GetReferencedCoolSources(function(sources) {
@@ -19,6 +20,7 @@ A [Cool](http://en.wikipedia.org/wiki/Cool_%28programming_language%29)-to-JavaSc
         });
         
         if (transpilerOutput.success) {
+            
             // do what you want with the output
             eval(transpilerOutput.generatedJavaScript);
         }
@@ -52,6 +54,7 @@ var transpilerOutput = CoolToJS.Transpile({
     },
     in_int: function (callback) {
         var input = prompt('Please enter an integer:');
+        
         // input should be validated here to 
         // ensure it only contains numbers
         callback(input);
@@ -69,6 +72,7 @@ The output of the CoolToJS transpiler is valid ES6 JavaScript.  Note that suppor
 <script src="lib/babel/browser.js"></script>
 <script src="cooltojs-0.0.1.js"></script>
 <script>
+
     // automatically fetch any Cool source referenced 
     // by a <script type="text/cool"> element
     CoolToJS.GetReferencedCoolSources(function(sources) {
@@ -79,6 +83,7 @@ The output of the CoolToJS transpiler is valid ES6 JavaScript.  Note that suppor
         });
         
         if (transpilerOutput.success) {
+            
             // transform the generated ES6 code to ES5 code
             var es5Code = babel.transform(transpilerOutput.generatedJavaScript, {
                 stage: 0
