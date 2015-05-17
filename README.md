@@ -54,6 +54,7 @@ var transpilerOutput = CoolToJS.Transpile({
     },
     in_int: function (callback) {
         var input = prompt('Please enter an integer:');
+        
         // input should be validated here to 
         // ensure it only contains numbers
         callback(input);
