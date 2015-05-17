@@ -3,7 +3,7 @@
     'use strict';
 
     var isDebug = document.location.hostname === "localhost",
-        programIndexToUse = 9,
+        programIndexToUse = 4,
         coolSourceCookieKey = 'cool-source',
         liveErrorChecking = !isDebug;
 
@@ -22,7 +22,7 @@
             if (cookieCoolSource) {
                 return cookieCoolSource;
             } else {
-                return CoolToJSDemo.CoolProgramSources[programIndexToUse].source;
+                return (CoolToJSDemo.CoolProgramSources.filter(function (x) { return !x.localOnly || isDebug; }))[programIndexToUse].source;
             }
         })(),
         mode: 'cool',
@@ -416,8 +416,9 @@
 
     // populate the "sources" dropdown with the example programs
     var options = '';
-    for (var i = 0; i < CoolToJSDemo.CoolProgramSources.length; i++) {
-        var currentSource = CoolToJSDemo.CoolProgramSources[i];
+    var localOnlySource = CoolToJSDemo.CoolProgramSources.filter(function (x) { return !x.localOnly || isDebug; });
+    for (var i = 0; i < localOnlySource.length; i++) {
+        var currentSource = localOnlySource[i];
         options += '<option value="' + i + '">'
             + currentSource.filename
             + '</option>';
@@ -425,7 +426,7 @@
 
     // select the appropriate source to start
     $('#source-dropdown').append(options).change(function () {
-        coolEditor.setValue(CoolToJSDemo.CoolProgramSources[$('#source-dropdown option:selected').val()].source);
+        coolEditor.setValue(localOnlySource[$('#source-dropdown option:selected').val()].source);
     });
 
     $('#source-dropdown option:eq(' + programIndexToUse + ')').attr('selected', 'selected');
