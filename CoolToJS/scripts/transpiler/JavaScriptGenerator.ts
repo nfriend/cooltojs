@@ -237,11 +237,11 @@
                         output.push(' = ' + this.wrapInSelfExecutingFunction(lvdn.initializerExpression, indentLevel));
                     }
                 } else if (lvdn.typeName === 'Bool') {
-                    output.push(' = new _Bool(false);\n');
+                    output.push(' = new _Bool(false)');
                 } else if (lvdn.typeName === 'String') {
-                    output.push(' = new _String("");\n');
+                    output.push(' = new _String("")');
                 } else if (lvdn.typeName === 'Int') {
-                    output.push(' = new _Int(0);\n');
+                    output.push(' = new _Int(0)');
                 }
 
                 output.push((isLast ? ';' : ',') + '\n');

@@ -1156,13 +1156,13 @@ var CoolToJS;
                     }
                 }
                 else if (lvdn.typeName === 'Bool') {
-                    output.push(' = new _Bool(false);\n');
+                    output.push(' = new _Bool(false)');
                 }
                 else if (lvdn.typeName === 'String') {
-                    output.push(' = new _String("");\n');
+                    output.push(' = new _String("")');
                 }
                 else if (lvdn.typeName === 'Int') {
-                    output.push(' = new _Int(0);\n');
+                    output.push(' = new _Int(0)');
                 }
                 output.push((isLast ? ';' : ',') + '\n');
             });
@@ -1257,10 +1257,10 @@ var CoolToJS;
             return this.generateExpression(parentheticalExpressionNode.innerExpression, returnResult, indentLevel);
         };
         JavaScriptGenerator.prototype.generateTrueKeywordExpression = function (trueKeywordExpressionNode, returnResult, indentLevel) {
-            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'new _Int(true)';
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'new _Bool(true)';
         };
         JavaScriptGenerator.prototype.generateFalseKeywordExpression = function (falseKeywordExpressionNode, returnResult, indentLevel) {
-            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'new _Int(false)';
+            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'new _Bool(false)';
         };
         JavaScriptGenerator.prototype.generateBinaryOperationExpression = function (binOpExpressionNode, returnResult, indentLevel) {
             var output = [], operand1, operand2;
