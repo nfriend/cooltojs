@@ -958,7 +958,7 @@ var CoolToJS;
             var _this = this;
             var output = [];
             output.push('let _inputGenerators = [],\n');
-            output.push(CoolToJS.Utility.operationFunctions);
+            output.push(CoolToJS.Utility.utilityFunctions);
             CoolToJS.Utility.baseObjectClasses.forEach(function (c) {
                 output.push(c);
             });
@@ -987,7 +987,7 @@ var CoolToJS;
         JavaScriptGenerator.prototype.generateIOClass = function (ioFunctions, indentLevel) {
             var _this = this;
             var output = [];
-            output.push(this.indent(indentLevel) + 'class IO extends _BaseObject {\n');
+            output.push(this.indent(indentLevel) + 'class IO extends _Object {\n');
             output.push(this.indent(indentLevel + 1) + 'constructor(typeName) {\n');
             output.push(this.indent(indentLevel + 2) + 'super(typeName);\n');
             output.push(this.indent(indentLevel + 1) + '}\n\n');
@@ -1021,7 +1021,7 @@ var CoolToJS;
         JavaScriptGenerator.prototype.generateClass = function (classNode, indentLevel) {
             var _this = this;
             var output = [];
-            var extendsPhrase = ' extends ' + (classNode.isSubClass ? classNode.superClassName : '_BaseObject');
+            var extendsPhrase = ' extends ' + (classNode.isSubClass ? classNode.superClassName : '_Object');
             output.push(this.indent(indentLevel) + 'class ' + classNode.className + extendsPhrase + ' {\n');
             output.push(this.indent(indentLevel + 1) + 'constructor(typeName) {\n');
             output.push(this.indent(indentLevel + 2) + 'super(typeName);\n');
@@ -1127,6 +1127,8 @@ var CoolToJS;
                     return this.generateIfThenElseExpression(expressionNode, returnResult, indentLevel);
                 case 7 /* WhileExpression */:
                     return this.generateWhileExpression(expressionNode, returnResult, indentLevel);
+                case 11 /* CaseExpression */:
+                    return this.generateCaseExpression(expressionNode, returnResult, indentLevel);
                 case 14 /* IsvoidExpression */:
                     return this.generateIsVoidExpression(expressionNode, returnResult, indentLevel);
                     break;
@@ -1239,12 +1241,7 @@ var CoolToJS;
             return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'this';
         };
         JavaScriptGenerator.prototype.generateNewExpression = function (newExpressionNode, returnResult, indentLevel) {
-            if (newExpressionNode.typeName === 'Object') {
-                return this.indent(indentLevel) + 'new _BaseObject("' + newExpressionNode.typeName + '")';
-            }
-            else {
-                return this.indent(indentLevel) + 'new ' + newExpressionNode.typeName + '("' + newExpressionNode.typeName + '")';
-            }
+            return this.indent(indentLevel) + 'new ' + this.translateTypeNameIfPrimitiveType(newExpressionNode.typeName) + '("' + newExpressionNode.typeName + '")';
         };
         JavaScriptGenerator.prototype.generateStringLiteralExpression = function (stringLiteralExpressionNode, returnResult, indentLevel) {
             return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'new _String("' + stringLiteralExpressionNode.value + '")';
@@ -1358,19 +1355,26 @@ var CoolToJS;
             output.push(this.indent(indentLevel) + '}\n');
             return output.join('');
         };
-        //private generateCaseExpression(caseExpressionNode: CaseExpressionNode, returnResult: boolean, indentLevel: number): string {
-        //    var output: Array<string> = [];
-        //    output.push(this.indent(indentLevel) + 'case (');
-        //    if (this.expressionReturnsItself(whileExpressionNode.whileConditionExpression)) {
-        //        output.push(this.generateExpression(this.unwrapSelfReturningExpression(whileExpressionNode.whileConditionExpression), false, 0));
-        //    } else {
-        //        output.push(this.wrapInSelfExecutingFunction(whileExpressionNode.whileConditionExpression, indentLevel));
-        //    }
-        //    output.push(') {\n');
-        //    output.push(this.generateExpression(whileExpressionNode.whileBodyExpression, returnResult, indentLevel + 1) + '\n');
-        //    output.push(this.indent(indentLevel) + '}\n');
-        //    return output.join('');
-        //}
+        JavaScriptGenerator.prototype.generateCaseExpression = function (caseExpressionNode, returnResult, indentLevel) {
+            var _this = this;
+            var output = [];
+            output.push(this.indent(indentLevel) + '_case(');
+            if (this.expressionReturnsItself(caseExpressionNode.condition)) {
+                output.push(this.generateExpression(this.unwrapSelfReturningExpression(caseExpressionNode.condition), false, 0));
+            }
+            else {
+                output.push(this.wrapInSelfExecutingFunction(caseExpressionNode.condition, indentLevel));
+            }
+            output.push(', [\n');
+            caseExpressionNode.caseOptionList.forEach(function (option, index) {
+                var isLast = index === caseExpressionNode.caseOptionList.length - 1;
+                output.push(_this.indent(indentLevel + 1) + '[' + _this.translateTypeNameIfPrimitiveType(option.typeName) + ', ');
+                output.push('(' + option.identiferName + ') => { return (' + _this.generateExpression(option.caseOptionExpression, returnResult, indentLevel) + '); }');
+                output.push(']' + (isLast ? '' : ',') + '\n');
+            });
+            output.push(this.indent(indentLevel) + '], this.type_name()._value)');
+            return output.join('');
+        };
         JavaScriptGenerator.prototype.generateIsVoidExpression = function (isVoidExpressionNode, returnResult, indentLevel) {
             var output = [];
             output.push(this.indent(indentLevel) + '(');
@@ -1410,6 +1414,20 @@ var CoolToJS;
             output.push(this.indent(indentLevel + 2) + 'return _returnValue;\n');
             output.push(this.indent(indentLevel + 1) + '})()');
             return output.join('');
+        };
+        JavaScriptGenerator.prototype.translateTypeNameIfPrimitiveType = function (typeName) {
+            switch (typeName) {
+                case 'String':
+                    return '_String';
+                case 'Int':
+                    return '_Int';
+                case 'Bool':
+                    return '_Bool';
+                case 'Object':
+                    return '_Object';
+                default:
+                    return typeName;
+            }
         };
         return JavaScriptGenerator;
     })();
@@ -3165,7 +3183,7 @@ var CoolToJS;
         }
         Utility.getFunctionParameters = getFunctionParameters;
         Utility.baseObjectClass = "\
-class _BaseObject {\n\
+class _Object {\n\
     constructor(typeName) {\n\
         this._type_name = typeName;\n\
     }\n\
@@ -3185,7 +3203,7 @@ class _BaseObject {\n\
     }\n\
 }\n\n";
         Utility.baseStringClass = "\
-class _String extends _BaseObject {\n\
+class _String extends _Object {\n\
     constructor (_stringValue) {\n\
         super(\"String\");\n\
         this._value = _stringValue;\n\
@@ -3203,7 +3221,7 @@ class _String extends _BaseObject {\n\
     }\n\
 }\n\n";
         Utility.baseIntClass = "\
-class _Int extends _BaseObject {\n\
+class _Int extends _Object {\n\
     constructor (_intValue) {\n\
         super(\"Int\");\n\
         this._value = _intValue;\n\
@@ -3211,7 +3229,7 @@ class _Int extends _BaseObject {\n\
     _value;\n\
 }\n\n";
         Utility.baseBoolClass = "\
-class _Bool extends _BaseObject {\n\
+class _Bool extends _Object {\n\
     constructor (_boolValue) {\n\
         super(\"Bool\");\n\
         this._value = _boolValue;\n\
@@ -3224,7 +3242,7 @@ class _Bool extends _BaseObject {\n\
             Utility.baseIntClass,
             Utility.baseBoolClass
         ];
-        Utility.operationFunctions = '\
+        Utility.utilityFunctions = '\
     _divide = (a, b) => { return new _Int(Math.floor(a._value / b._value)); },\n\
     _multiply = (a, b) => { return new _Int(a._value * b._value); },\n\
     _add = (a, b) => { return new _Int(a._value + b._value); },\n\
@@ -3239,7 +3257,37 @@ class _Bool extends _BaseObject {\n\
     _lessThan = (a, b) => { return new _Bool(a._value < b._value); },\n\
     _lessThanOrEqualTo = (a, b) => { return new _Bool(a._value <= b._value); },\n\
     _not = (a) => { return new _Bool(!a._value); },\n\
-    _complement = (a) => { return new _Int(~a._value); };\n\n';
+    _complement = (a) => { return new _Int(~a._value); },\n\
+    _case = (obj, branches, currentTypeName) => {\n\
+        let firstRound = branches.filter(branch => {\n\
+            return obj instanceof branch[0]; \n\
+        });\n\
+        if (firstRound.length === 0) {\n\
+            throw "No match in case statement for class " + currentTypeName;\n\
+        } else if (firstRound.length === 1) {\n\
+            return firstRound[0][1](obj);\n\
+        } else {\n\
+            let nextRound = firstRound,\n\
+                currentRound,\n\
+                eliminatedBranches;\n\
+            while (nextRound.length !== 0) {\n\
+                eliminatedBranches = [];\n\
+                currentRound = nextRound.map(branch => {\n\
+                    return [Object.getPrototypeOf(branch[0]), branch[1]];\n\
+                }).filter(branch => {\n\
+                    if (branch[0].prototype && obj instanceof branch[0]) {\n\
+                        return true;\n\
+                    } else {\n\
+                        eliminatedBranches.push(branch);\n\
+                    }\n\
+                });\n\
+                nextRound = currentRound;\n\
+            }\n\
+            eliminatedBranches.forEach(branch => {\n\
+                return branch[1](obj)\n\
+            });\n\
+        }\n\
+    };\n\n';
     })(Utility = CoolToJS.Utility || (CoolToJS.Utility = {}));
 })(CoolToJS || (CoolToJS = {}));
 //# sourceMappingURL=cooltojs-0.0.1.js.map

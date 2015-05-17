@@ -179,7 +179,7 @@
     }
 
     export var baseObjectClass = "\
-class _BaseObject {\n\
+class _Object {\n\
     constructor(typeName) {\n\
         this._type_name = typeName;\n\
     }\n\
@@ -200,7 +200,7 @@ class _BaseObject {\n\
 }\n\n";
 
     export var baseStringClass = "\
-class _String extends _BaseObject {\n\
+class _String extends _Object {\n\
     constructor (_stringValue) {\n\
         super(\"String\");\n\
         this._value = _stringValue;\n\
@@ -219,7 +219,7 @@ class _String extends _BaseObject {\n\
 }\n\n";
 
     export var baseIntClass = "\
-class _Int extends _BaseObject {\n\
+class _Int extends _Object {\n\
     constructor (_intValue) {\n\
         super(\"Int\");\n\
         this._value = _intValue;\n\
@@ -228,7 +228,7 @@ class _Int extends _BaseObject {\n\
 }\n\n";
 
     export var baseBoolClass = "\
-class _Bool extends _BaseObject {\n\
+class _Bool extends _Object {\n\
     constructor (_boolValue) {\n\
         super(\"Bool\");\n\
         this._value = _boolValue;\n\
@@ -240,7 +240,7 @@ class _Bool extends _BaseObject {\n\
         baseObjectClass, baseStringClass, baseIntClass, baseBoolClass
     ];
 
-    export var operationFunctions = '\
+    export var utilityFunctions = '\
     _divide = (a, b) => { return new _Int(Math.floor(a._value / b._value)); },\n\
     _multiply = (a, b) => { return new _Int(a._value * b._value); },\n\
     _add = (a, b) => { return new _Int(a._value + b._value); },\n\
@@ -255,5 +255,35 @@ class _Bool extends _BaseObject {\n\
     _lessThan = (a, b) => { return new _Bool(a._value < b._value); },\n\
     _lessThanOrEqualTo = (a, b) => { return new _Bool(a._value <= b._value); },\n\
     _not = (a) => { return new _Bool(!a._value); },\n\
-    _complement = (a) => { return new _Int(~a._value); };\n\n';
+    _complement = (a) => { return new _Int(~a._value); },\n\
+    _case = (obj, branches, currentTypeName) => {\n\
+        let firstRound = branches.filter(branch => {\n\
+            return obj instanceof branch[0]; \n\
+        });\n\
+        if (firstRound.length === 0) {\n\
+            throw "No match in case statement for class " + currentTypeName;\n\
+        } else if (firstRound.length === 1) {\n\
+            return firstRound[0][1](obj);\n\
+        } else {\n\
+            let nextRound = firstRound,\n\
+                currentRound,\n\
+                eliminatedBranches;\n\
+            while (nextRound.length !== 0) {\n\
+                eliminatedBranches = [];\n\
+                currentRound = nextRound.map(branch => {\n\
+                    return [Object.getPrototypeOf(branch[0]), branch[1]];\n\
+                }).filter(branch => {\n\
+                    if (branch[0].prototype && obj instanceof branch[0]) {\n\
+                        return true;\n\
+                    } else {\n\
+                        eliminatedBranches.push(branch);\n\
+                    }\n\
+                });\n\
+                nextRound = currentRound;\n\
+            }\n\
+            eliminatedBranches.forEach(branch => {\n\
+                return branch[1](obj)\n\
+            });\n\
+        }\n\
+    };\n\n';
 } 

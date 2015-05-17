@@ -30,7 +30,7 @@
         private generate(ast: Node, ioFunctions: IOFunctionDefinitions, errorMessages: Array<ErrorMessage>, warningMessages: Array<WarningMessage>): string {
             var output: Array<string> = [];
             output.push('let _inputGenerators = [],\n')
-            output.push(Utility.operationFunctions);
+            output.push(Utility.utilityFunctions);
             Utility.baseObjectClasses.forEach(c => { output.push(c); });
             output.push(this.generateIOClass(ioFunctions, 0));
             output.push('\n');
@@ -58,7 +58,7 @@
 
         private generateIOClass(ioFunctions: IOFunctionDefinitions, indentLevel: number): string {
             var output: Array<string> = [];
-            output.push(this.indent(indentLevel) + 'class IO extends _BaseObject {\n');
+            output.push(this.indent(indentLevel) + 'class IO extends _Object {\n');
 
             output.push(this.indent(indentLevel + 1) + 'constructor(typeName) {\n');
             output.push(this.indent(indentLevel + 2) + 'super(typeName);\n');
@@ -94,7 +94,7 @@
         private generateClass(classNode: ClassNode, indentLevel: number): string {
             var output: Array<string> = [];
 
-            var extendsPhrase = ' extends ' + (classNode.isSubClass ? classNode.superClassName : '_BaseObject');
+            var extendsPhrase = ' extends ' + (classNode.isSubClass ? classNode.superClassName : '_Object');
             output.push(this.indent(indentLevel) + 'class ' + classNode.className + extendsPhrase + ' {\n');
 
             output.push(this.indent(indentLevel + 1) + 'constructor(typeName) {\n');
@@ -205,8 +205,8 @@
                     return this.generateIfThenElseExpression(<IfThenElseExpressionNode>expressionNode, returnResult, indentLevel);
                 case NodeType.WhileExpression:
                     return this.generateWhileExpression(<WhileExpressionNode>expressionNode, returnResult, indentLevel);
-                //case NodeType.CaseExpression:
-                //    return this.generateCaseExpression(<CaseExpressionNode>expressionNode, returnResult, indentLevel);
+                case NodeType.CaseExpression:
+                    return this.generateCaseExpression(<CaseExpressionNode>expressionNode, returnResult, indentLevel);
                 case NodeType.IsvoidExpression:
                     return this.generateIsVoidExpression(<IsVoidExpressionNode>expressionNode, returnResult, indentLevel);
                     break;
@@ -267,7 +267,7 @@
             }
 
             if (methodCallExpression.method.isAsync) {
-                 // TODO
+                // TODO
                 throw 'Nested input not yet implemented!';
                 output.push('let newGenerator = ' + methodCallExpression + '();');
                 output.push('_inputGenerators.push(newGenerator);');
@@ -333,11 +333,7 @@
         }
 
         private generateNewExpression(newExpressionNode: NewExpressionNode, returnResult: boolean, indentLevel: number): string {
-            if (newExpressionNode.typeName === 'Object') {
-                return this.indent(indentLevel) + 'new _BaseObject("' + newExpressionNode.typeName + '")';
-            } else {
-                return this.indent(indentLevel) + 'new ' + newExpressionNode.typeName + '("' + newExpressionNode.typeName + '")';
-            }
+            return this.indent(indentLevel) + 'new ' + this.translateTypeNameIfPrimitiveType(newExpressionNode.typeName) + '("' + newExpressionNode.typeName + '")';
         }
 
         private generateStringLiteralExpression(stringLiteralExpressionNode: StringLiteralExpressionNode, returnResult: boolean, indentLevel: number): string {
@@ -463,19 +459,24 @@
             return output.join('');
         }
 
-        //private generateCaseExpression(caseExpressionNode: CaseExpressionNode, returnResult: boolean, indentLevel: number): string {
-        //    var output: Array<string> = [];
-        //    output.push(this.indent(indentLevel) + 'case (');
-        //    if (this.expressionReturnsItself(whileExpressionNode.whileConditionExpression)) {
-        //        output.push(this.generateExpression(this.unwrapSelfReturningExpression(whileExpressionNode.whileConditionExpression), false, 0));
-        //    } else {
-        //        output.push(this.wrapInSelfExecutingFunction(whileExpressionNode.whileConditionExpression, indentLevel));
-        //    }
-        //    output.push(') {\n');
-        //    output.push(this.generateExpression(whileExpressionNode.whileBodyExpression, returnResult, indentLevel + 1) + '\n');
-        //    output.push(this.indent(indentLevel) + '}\n');
-        //    return output.join('');
-        //}
+        private generateCaseExpression(caseExpressionNode: CaseExpressionNode, returnResult: boolean, indentLevel: number): string {
+            var output: Array<string> = [];
+            output.push(this.indent(indentLevel) + '_case(');
+            if (this.expressionReturnsItself(caseExpressionNode.condition)) {
+                output.push(this.generateExpression(this.unwrapSelfReturningExpression(caseExpressionNode.condition), false, 0));
+            } else {
+                output.push(this.wrapInSelfExecutingFunction(caseExpressionNode.condition, indentLevel));
+            }
+            output.push(', [\n');
+            caseExpressionNode.caseOptionList.forEach((option, index) => {
+                var isLast = index === caseExpressionNode.caseOptionList.length - 1;
+                output.push(this.indent(indentLevel + 1) + '[' + this.translateTypeNameIfPrimitiveType(option.typeName) + ', ');
+                output.push('(' + option.identiferName + ') => { return (' + this.generateExpression(option.caseOptionExpression, returnResult, indentLevel) + '); }');
+                output.push(']' + (isLast ? '' : ',') + '\n');
+            });
+            output.push(this.indent(indentLevel) + '], this.type_name()._value)');
+            return output.join('');
+        }
 
         private generateIsVoidExpression(isVoidExpressionNode: IsVoidExpressionNode, returnResult: boolean, indentLevel: number): string {
             var output: Array<string> = [];
@@ -546,6 +547,21 @@
             output.push(this.indent(indentLevel + 2) + 'return _returnValue;\n');
             output.push(this.indent(indentLevel + 1) + '})()');
             return output.join('');
+        }
+
+        private translateTypeNameIfPrimitiveType(typeName: string): string {
+            switch (typeName) {
+                case 'String':
+                    return '_String';
+                case 'Int':
+                    return '_Int';
+                case 'Bool':
+                    return '_Bool';
+                case 'Object':
+                    return '_Object';
+                default:
+                    return typeName;
+            }
         }
     }
 } 
