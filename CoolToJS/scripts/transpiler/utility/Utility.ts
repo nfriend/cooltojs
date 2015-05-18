@@ -240,23 +240,22 @@ class _Bool extends _Object {\n\
         baseObjectClass, baseStringClass, baseIntClass, baseBoolClass
     ];
 
-    export var utilityFunctions = '\
-    _divide = (a, b) => { return new _Int(Math.floor(a._value / b._value)); },\n\
-    _multiply = (a, b) => { return new _Int(a._value * b._value); },\n\
-    _add = (a, b) => { return new _Int(a._value + b._value); },\n\
-    _subtract = (a, b) => { return new _Int(a._value - b._value); },\n\
-    _equals = (a, b) => {\n\
-        if (!a || !b || typeof a._value === "undefined" || typeof b._value === "undefined") {\n\
-            return new _Bool(a === b);\n\
-        } else {\n\
-            return new _Bool(a._value === b._value);\n\
-        }\n\
-    },\n\
-    _lessThan = (a, b) => { return new _Bool(a._value < b._value); },\n\
-    _lessThanOrEqualTo = (a, b) => { return new _Bool(a._value <= b._value); },\n\
-    _not = (a) => { return new _Bool(!a._value); },\n\
-    _complement = (a) => { return new _Int(~a._value); },\n\
-    _case = (obj, branches, currentTypeName) => {\n\
+    export var binaryOperationFunctions = [
+        { operation: BinaryOperationType.Addition, func: '_add = (a, b) => { return new _Int(a._value + b._value); }' },
+        { operation: BinaryOperationType.Subtraction, func: '_subtract = (a, b) => { return new _Int(a._value - b._value); }' },
+        { operation: BinaryOperationType.Division, func: '_divide = (a, b) => { return new _Int(Math.floor(a._value / b._value)); }' },
+        { operation: BinaryOperationType.Multiplication, func: '_multiply = (a, b) => { return new _Int(a._value * b._value); }' },
+        { operation: BinaryOperationType.LessThan, func: '_lessThan = (a, b) => { return new _Bool(a._value < b._value); }' },
+        { operation: BinaryOperationType.LessThanOrEqualTo, func: '_lessThanOrEqualTo = (a, b) => { return new _Bool(a._value <= b._value); }' },
+        { operation: BinaryOperationType.Comparison, func: '_equals = (a, b) => {\n\        if (!a || !b || typeof a._value === "undefined" || typeof b._value === "undefined") {\n\            return new _Bool(a === b);\n\        } else {\n\            return new _Bool(a._value === b._value);\n\        }\n\    }' },
+    ];
+
+    export var unaryOperationFunctions = [
+        { operation: UnaryOperationType.Complement, func: '_complement = (a) => { return new _Int(~a._value); }' },
+        { operation: UnaryOperationType.Not, func: '_not = (a) => { return new _Bool(!a._value); }' },
+    ];
+
+    export var caseFunction = '_case = (obj, branches, currentTypeName) => {\n\
         let firstRound = branches.filter(branch => {\n\
             return obj instanceof branch[0]; \n\
         });\n\
@@ -281,9 +280,10 @@ class _Bool extends _Object {\n\
                 });\n\
                 nextRound = currentRound;\n\
             }\n\
-            eliminatedBranches.forEach(branch => {\n\
-                return branch[1](obj)\n\
-            });\n\
+            if (eliminatedBranches.length !== 1) {\n\
+                throw "Invalid state: Case statement matched more than one branch";\n\
+            }\n\
+            eliminatedBranches[0][1](obj);\n\
         }\n\
-    };\n\n';
+    }';
 } 

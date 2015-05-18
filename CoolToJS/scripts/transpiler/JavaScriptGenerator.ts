@@ -16,6 +16,7 @@
 
             this.errorMessages = semanticAnalysisOutput.errorMessages || [];
             this.warningMessages = semanticAnalysisOutput.warningMessages || [];
+            this.usageRecord = semanticAnalysisOutput.usageRecord;
 
             var output = this.generate(semanticAnalysisOutput.abstractSyntaxTree, ioFunctions, this.errorMessages, this.warningMessages);
 
@@ -27,10 +28,33 @@
             }
         }
 
+        usageRecord: UsageRecord;
+
         private generate(ast: Node, ioFunctions: IOFunctionDefinitions, errorMessages: Array<ErrorMessage>, warningMessages: Array<WarningMessage>): string {
             var output: Array<string> = [];
-            output.push('let _inputGenerators = [],\n')
-            output.push(Utility.utilityFunctions);
+            output.push('let _inputGenerators = []')
+
+            Utility.binaryOperationFunctions.forEach(binOp => {
+                if (this.usageRecord.binaryOperations.indexOf(binOp.operation) !== -1) {
+                    output.push(',\n');
+                    output.push(this.indent(1) + binOp.func);
+                }
+            });
+
+            Utility.unaryOperationFunctions.forEach(unaryOp => {
+                if (this.usageRecord.unaryOperations.indexOf(unaryOp.operation) !== -1) {
+                    output.push(',\n');
+                    output.push(this.indent(1) + unaryOp.func);
+                }
+            });
+
+            if (this.usageRecord.caseExpression) {
+                output.push(',\n');
+                output.push(this.indent(1) + Utility.caseFunction);
+            }
+
+            output.push(';\n\n');
+
             Utility.baseObjectClasses.forEach(c => { output.push(c); });
             output.push(this.generateIOClass(ioFunctions, 0));
             output.push('\n');

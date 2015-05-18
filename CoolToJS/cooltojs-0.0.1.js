@@ -943,6 +943,7 @@ var CoolToJS;
             this.Generate = function (semanticAnalysisOutput, ioFunctions) {
                 _this.errorMessages = semanticAnalysisOutput.errorMessages || [];
                 _this.warningMessages = semanticAnalysisOutput.warningMessages || [];
+                _this.usageRecord = semanticAnalysisOutput.usageRecord;
                 var output = _this.generate(semanticAnalysisOutput.abstractSyntaxTree, ioFunctions, _this.errorMessages, _this.warningMessages);
                 return {
                     success: _this.errorMessages.length === 0,
@@ -957,8 +958,24 @@ var CoolToJS;
         JavaScriptGenerator.prototype.generate = function (ast, ioFunctions, errorMessages, warningMessages) {
             var _this = this;
             var output = [];
-            output.push('let _inputGenerators = [],\n');
-            output.push(CoolToJS.Utility.utilityFunctions);
+            output.push('let _inputGenerators = []');
+            CoolToJS.Utility.binaryOperationFunctions.forEach(function (binOp) {
+                if (_this.usageRecord.binaryOperations.indexOf(binOp.operation) !== -1) {
+                    output.push(',\n');
+                    output.push(_this.indent(1) + binOp.func);
+                }
+            });
+            CoolToJS.Utility.unaryOperationFunctions.forEach(function (unaryOp) {
+                if (_this.usageRecord.unaryOperations.indexOf(unaryOp.operation) !== -1) {
+                    output.push(',\n');
+                    output.push(_this.indent(1) + unaryOp.func);
+                }
+            });
+            if (this.usageRecord.caseExpression) {
+                output.push(',\n');
+                output.push(this.indent(1) + CoolToJS.Utility.caseFunction);
+            }
+            output.push(';\n\n');
             CoolToJS.Utility.baseObjectClasses.forEach(function (c) {
                 output.push(c);
             });
@@ -1926,10 +1943,12 @@ var CoolToJS;
                     variableScope: [],
                     methodScope: []
                 };
+                _this.usageRecord = new CoolToJS.UsageRecord();
                 _this.analyze(astConvertOutput.abstractSyntaxTree, starterTypeEnvironment, errorMessages, warningMessages);
                 return {
                     success: errorMessages.length === 0,
                     abstractSyntaxTree: astConvertOutput.abstractSyntaxTree,
+                    usageRecord: _this.usageRecord,
                     errorMessages: errorMessages,
                     warningMessages: warningMessages
                 };
@@ -2035,21 +2054,6 @@ var CoolToJS;
                             message: 'Method "' + methodNode.methodName + '" is multiply defined in class "' + classNode.className + '"'
                         });
                     });
-                    // add all superclass properties to the scope
-                    //var addedSuperClassProperties: Array<VariableScope> = [];
-                    //var parentTypeHeirarchy = this.typeHeirarchy.findTypeHeirarchy(classNode.className).parent;
-                    //while (parentTypeHeirarchy) {
-                    //    parentTypeHeirarchy.classNode.propertyList.forEach(pn => {
-                    //        addedSuperClassProperties.push({
-                    //            variableName: pn.propertyName,
-                    //            variableType: pn.typeName
-                    //        });
-                    //    });
-                    //    parentTypeHeirarchy = parentTypeHeirarchy.parent;
-                    //}
-                    // add the properties to the stack in reverse order so that the closest
-                    // properties to the current scope are at the top of the stack
-                    //typeEnvironment.variableScope = typeEnvironment.variableScope.concat(addedSuperClassProperties.reverse());
                     // ensure that all property names are unique
                     var duplicateProperties = [];
                     for (var i = 0; i < classNode.propertyList.length; i++) {
@@ -2057,8 +2061,6 @@ var CoolToJS;
                             return c.propertyName;
                         }).slice(0, i).indexOf(classNode.propertyList[i].propertyName) !== -1) {
                             duplicateProperties.push(classNode.propertyList[i]);
-                        }
-                        else {
                         }
                     }
                     duplicateProperties.forEach(function (propertyNode) {
@@ -2262,6 +2264,7 @@ var CoolToJS;
                         var commonParent = _this.typeHeirarchy.closetCommonParent(caseOptionTypes[0], caseOptionTypes[1]);
                         caseOptionTypes.splice(0, 2, commonParent);
                     }
+                    _this.usageRecord.caseExpression = true;
                     return caseOptionTypes[0];
                 }
                 else if (ast.type === 12 /* CaseOption */) {
@@ -2279,6 +2282,9 @@ var CoolToJS;
                     var binOpNode = ast;
                     var leftSideType = _this.analyze(binOpNode.operand1, typeEnvironment, errorMessages, warningMessages);
                     var rightSideType = _this.analyze(binOpNode.operand2, typeEnvironment, errorMessages, warningMessages);
+                    if (_this.usageRecord.binaryOperations.indexOf(binOpNode.operationType) === -1) {
+                        _this.usageRecord.binaryOperations.push(binOpNode.operationType);
+                    }
                     if (binOpNode.operationType !== 6 /* Comparison */) {
                         if (!_this.typeHeirarchy.isAssignableFrom('Int', leftSideType, typeEnvironment.currentClassType)) {
                             errorMessages.push({
@@ -2314,6 +2320,9 @@ var CoolToJS;
                 else if (ast.type === 16 /* UnaryOperationExpression */) {
                     var unaryOpNode = ast;
                     var unaryOperationType = _this.analyze(unaryOpNode.operand, typeEnvironment, errorMessages, warningMessages);
+                    if (_this.usageRecord.unaryOperations.indexOf(unaryOpNode.operationType) === -1) {
+                        _this.usageRecord.unaryOperations.push(unaryOpNode.operationType);
+                    }
                     if (unaryOpNode.operationType === 1 /* Not */) {
                         if (!_this.typeHeirarchy.isAssignableFrom('Bool', unaryOperationType, typeEnvironment.currentClassType)) {
                             errorMessages.push({
@@ -3020,6 +3029,20 @@ var CoolToJS;
 })(CoolToJS || (CoolToJS = {}));
 var CoolToJS;
 (function (CoolToJS) {
+    // tracks which properties, methods, keywords, etc. are used in 
+    // order to minimize the size of the output code
+    var UsageRecord = (function () {
+        function UsageRecord() {
+            this.binaryOperations = [];
+            this.unaryOperations = [];
+            this.caseExpression = false;
+        }
+        return UsageRecord;
+    })();
+    CoolToJS.UsageRecord = UsageRecord;
+})(CoolToJS || (CoolToJS = {}));
+var CoolToJS;
+(function (CoolToJS) {
     var Utility;
     (function (Utility) {
         function PrintSyntaxTree(syntaxTree, indent, last) {
@@ -3242,23 +3265,20 @@ class _Bool extends _Object {\n\
             Utility.baseIntClass,
             Utility.baseBoolClass
         ];
-        Utility.utilityFunctions = '\
-    _divide = (a, b) => { return new _Int(Math.floor(a._value / b._value)); },\n\
-    _multiply = (a, b) => { return new _Int(a._value * b._value); },\n\
-    _add = (a, b) => { return new _Int(a._value + b._value); },\n\
-    _subtract = (a, b) => { return new _Int(a._value - b._value); },\n\
-    _equals = (a, b) => {\n\
-        if (!a || !b || typeof a._value === "undefined" || typeof b._value === "undefined") {\n\
-            return new _Bool(a === b);\n\
-        } else {\n\
-            return new _Bool(a._value === b._value);\n\
-        }\n\
-    },\n\
-    _lessThan = (a, b) => { return new _Bool(a._value < b._value); },\n\
-    _lessThanOrEqualTo = (a, b) => { return new _Bool(a._value <= b._value); },\n\
-    _not = (a) => { return new _Bool(!a._value); },\n\
-    _complement = (a) => { return new _Int(~a._value); },\n\
-    _case = (obj, branches, currentTypeName) => {\n\
+        Utility.binaryOperationFunctions = [
+            { operation: 0 /* Addition */, func: '_add = (a, b) => { return new _Int(a._value + b._value); }' },
+            { operation: 1 /* Subtraction */, func: '_subtract = (a, b) => { return new _Int(a._value - b._value); }' },
+            { operation: 2 /* Division */, func: '_divide = (a, b) => { return new _Int(Math.floor(a._value / b._value)); }' },
+            { operation: 3 /* Multiplication */, func: '_multiply = (a, b) => { return new _Int(a._value * b._value); }' },
+            { operation: 4 /* LessThan */, func: '_lessThan = (a, b) => { return new _Bool(a._value < b._value); }' },
+            { operation: 5 /* LessThanOrEqualTo */, func: '_lessThanOrEqualTo = (a, b) => { return new _Bool(a._value <= b._value); }' },
+            { operation: 6 /* Comparison */, func: '_equals = (a, b) => {\n\        if (!a || !b || typeof a._value === "undefined" || typeof b._value === "undefined") {\n\            return new _Bool(a === b);\n\        } else {\n\            return new _Bool(a._value === b._value);\n\        }\n\    }' },
+        ];
+        Utility.unaryOperationFunctions = [
+            { operation: 0 /* Complement */, func: '_complement = (a) => { return new _Int(~a._value); }' },
+            { operation: 1 /* Not */, func: '_not = (a) => { return new _Bool(!a._value); }' },
+        ];
+        Utility.caseFunction = '_case = (obj, branches, currentTypeName) => {\n\
         let firstRound = branches.filter(branch => {\n\
             return obj instanceof branch[0]; \n\
         });\n\
@@ -3283,11 +3303,12 @@ class _Bool extends _Object {\n\
                 });\n\
                 nextRound = currentRound;\n\
             }\n\
-            eliminatedBranches.forEach(branch => {\n\
-                return branch[1](obj)\n\
-            });\n\
+            if (eliminatedBranches.length !== 1) {\n\
+                throw "Invalid state: Case statement matched more than one branch";\n\
+            }\n\
+            eliminatedBranches[0][1](obj);\n\
         }\n\
-    };\n\n';
+    }';
     })(Utility = CoolToJS.Utility || (CoolToJS.Utility = {}));
 })(CoolToJS || (CoolToJS = {}));
 //# sourceMappingURL=cooltojs-0.0.1.js.map

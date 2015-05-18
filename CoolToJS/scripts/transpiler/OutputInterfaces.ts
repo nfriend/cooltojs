@@ -48,6 +48,7 @@
     export interface SemanticAnalyzerOutput {
         success: boolean;
         abstractSyntaxTree: Node;
+        usageRecord: UsageRecord;
         errorMessages?: Array<ErrorMessage>;
         warningMessages?: Array<WarningMessage>;
     }

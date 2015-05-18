@@ -8,17 +8,20 @@
                 variableScope: [],
                 methodScope: []
             }
+            this.usageRecord = new UsageRecord();
             this.analyze(astConvertOutput.abstractSyntaxTree, starterTypeEnvironment, errorMessages, warningMessages);
 
             return {
                 success: errorMessages.length === 0,
                 abstractSyntaxTree: astConvertOutput.abstractSyntaxTree,
+                usageRecord: this.usageRecord,
                 errorMessages: errorMessages,
                 warningMessages: warningMessages
             }
         };
 
         typeHeirarchy: TypeHeirarchy;
+        usageRecord: UsageRecord;
 
         // analyzes the current node and returns the inferred type name (if applicable)
         analyze = (ast: Node,
@@ -136,33 +139,11 @@
                     });
                 });
 
-                // add all superclass properties to the scope
-                //var addedSuperClassProperties: Array<VariableScope> = [];
-                //var parentTypeHeirarchy = this.typeHeirarchy.findTypeHeirarchy(classNode.className).parent;
-                //while (parentTypeHeirarchy) {
-                //    parentTypeHeirarchy.classNode.propertyList.forEach(pn => {
-                //        addedSuperClassProperties.push({
-                //            variableName: pn.propertyName,
-                //            variableType: pn.typeName
-                //        });
-                //    });
-                //    parentTypeHeirarchy = parentTypeHeirarchy.parent;
-                //}
-
-                // add the properties to the stack in reverse order so that the closest
-                // properties to the current scope are at the top of the stack
-                //typeEnvironment.variableScope = typeEnvironment.variableScope.concat(addedSuperClassProperties.reverse());
-
                 // ensure that all property names are unique
                 var duplicateProperties: Array<PropertyNode> = [];
                 for (var i = 0; i < classNode.propertyList.length; i++) {
                     if (classNode.propertyList.map(c => { return c.propertyName }).slice(0, i).indexOf(classNode.propertyList[i].propertyName) !== -1) {
                         duplicateProperties.push(classNode.propertyList[i]);
-                    } else {
-                        //typeEnvironment.variableScope.push({
-                        //    variableName: classNode.propertyList[i].propertyName,
-                        //    variableType: classNode.propertyList[i].typeName
-                        //});
                     }
                 }
 
@@ -434,6 +415,8 @@
                     caseOptionTypes.splice(0, 2, commonParent);
                 }
 
+                this.usageRecord.caseExpression = true;
+
                 return caseOptionTypes[0];
             }
 
@@ -459,6 +442,10 @@
                 var binOpNode = <BinaryOperationExpressionNode>ast;
                 var leftSideType = this.analyze(binOpNode.operand1, typeEnvironment, errorMessages, warningMessages);
                 var rightSideType = this.analyze(binOpNode.operand2, typeEnvironment, errorMessages, warningMessages);
+
+                if (this.usageRecord.binaryOperations.indexOf(binOpNode.operationType) === -1) {
+                    this.usageRecord.binaryOperations.push(binOpNode.operationType);
+                }
 
                 if (binOpNode.operationType !== BinaryOperationType.Comparison) {
                     if (!this.typeHeirarchy.isAssignableFrom('Int', leftSideType, typeEnvironment.currentClassType)) {
@@ -503,6 +490,10 @@
             else if (ast.type === NodeType.UnaryOperationExpression) {
                 var unaryOpNode = <UnaryOperationExpressionNode>ast;
                 var unaryOperationType = this.analyze(unaryOpNode.operand, typeEnvironment, errorMessages, warningMessages);
+
+                if (this.usageRecord.unaryOperations.indexOf(unaryOpNode.operationType) === -1) {
+                    this.usageRecord.unaryOperations.push(unaryOpNode.operationType);
+                }
 
                 if (unaryOpNode.operationType === UnaryOperationType.Not) {
                     if (!this.typeHeirarchy.isAssignableFrom('Bool', unaryOperationType, typeEnvironment.currentClassType)) {
