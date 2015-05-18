@@ -264,6 +264,9 @@ class _Bool extends _Object {\n\
     ];
 
     export var caseFunction = '_case = (obj, branches, currentTypeName) => {\n\
+        if (obj === null || typeof obj === "undefined") {\n\
+            throw "Match on void in case statement";\n\
+        }\n\
         let firstRound = branches.filter(branch => {\n\
             return obj instanceof branch[0]; \n\
         });\n\
