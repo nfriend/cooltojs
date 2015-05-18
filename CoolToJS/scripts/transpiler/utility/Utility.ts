@@ -215,10 +215,12 @@ class _String extends _Object {\n\
     substr(_start, _length) {\n\
         if ((this._value.length === 0 && _start._value !== 0)\n\
             || (this._value.length !== 0 && _start._value > this._value.length - 1)) {\n\
-                throw "Index to substr is too big";\n\
+\n\
+            throw "Index to substr is too big";\n\
         } else if ((this._value.length === 0 && _length._value !== 0)\n\
-            || (this._value.length !== 0 && _length._value > this._value.length - _start._value)) {\n\
-                throw "Length to substr too long";\n\
+                   || (this._value.length !== 0 && _length._value > this._value.length - _start._value)) {\n\
+\n\
+            throw "Length to substr too long";\n\
         }\n\
         return new _String(this._value.substr(_start._value, _length._value));\n\
     }\n\
@@ -289,7 +291,7 @@ class _Bool extends _Object {\n\
             if (eliminatedBranches.length !== 1) {\n\
                 throw "Invalid state: Case statement matched more than one branch";\n\
             }\n\
-            eliminatedBranches[0][1](obj);\n\
+            return eliminatedBranches[0][1](obj);\n\
         }\n\
     }';
 } 

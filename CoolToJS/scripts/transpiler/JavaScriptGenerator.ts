@@ -485,7 +485,7 @@
 
         private generateCaseExpression(caseExpressionNode: CaseExpressionNode, returnResult: boolean, indentLevel: number): string {
             var output: Array<string> = [];
-            output.push(this.indent(indentLevel) + '_case(');
+            output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + '_case(');
             if (this.expressionReturnsItself(caseExpressionNode.condition)) {
                 output.push(this.generateExpression(this.unwrapSelfReturningExpression(caseExpressionNode.condition), false, 0));
             } else {
@@ -495,7 +495,15 @@
             caseExpressionNode.caseOptionList.forEach((option, index) => {
                 var isLast = index === caseExpressionNode.caseOptionList.length - 1;
                 output.push(this.indent(indentLevel + 1) + '[' + this.translateTypeNameIfPrimitiveType(option.typeName) + ', ');
-                output.push('(' + option.identiferName + ') => { return (' + this.generateExpression(option.caseOptionExpression, returnResult, indentLevel) + '); }');
+                output.push('(' + option.identiferName + ') => { return (');
+                  
+                if (this.expressionReturnsItself(option.caseOptionExpression)) {
+                    output.push(this.generateExpression(this.unwrapSelfReturningExpression(option.caseOptionExpression), false, 0));
+                } else {
+                    output.push(this.wrapInSelfExecutingFunction(option.caseOptionExpression, indentLevel));
+                }
+
+                output.push('); }');
                 output.push(']' + (isLast ? '' : ',') + '\n');
             });
             output.push(this.indent(indentLevel) + '], this.type_name()._value)');

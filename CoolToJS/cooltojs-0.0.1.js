@@ -1375,7 +1375,7 @@ var CoolToJS;
         JavaScriptGenerator.prototype.generateCaseExpression = function (caseExpressionNode, returnResult, indentLevel) {
             var _this = this;
             var output = [];
-            output.push(this.indent(indentLevel) + '_case(');
+            output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + '_case(');
             if (this.expressionReturnsItself(caseExpressionNode.condition)) {
                 output.push(this.generateExpression(this.unwrapSelfReturningExpression(caseExpressionNode.condition), false, 0));
             }
@@ -1386,7 +1386,14 @@ var CoolToJS;
             caseExpressionNode.caseOptionList.forEach(function (option, index) {
                 var isLast = index === caseExpressionNode.caseOptionList.length - 1;
                 output.push(_this.indent(indentLevel + 1) + '[' + _this.translateTypeNameIfPrimitiveType(option.typeName) + ', ');
-                output.push('(' + option.identiferName + ') => { return (' + _this.generateExpression(option.caseOptionExpression, returnResult, indentLevel) + '); }');
+                output.push('(' + option.identiferName + ') => { return (');
+                if (_this.expressionReturnsItself(option.caseOptionExpression)) {
+                    output.push(_this.generateExpression(_this.unwrapSelfReturningExpression(option.caseOptionExpression), false, 0));
+                }
+                else {
+                    output.push(_this.wrapInSelfExecutingFunction(option.caseOptionExpression, indentLevel));
+                }
+                output.push('); }');
                 output.push(']' + (isLast ? '' : ',') + '\n');
             });
             output.push(this.indent(indentLevel) + '], this.type_name()._value)');
@@ -3241,10 +3248,12 @@ class _String extends _Object {\n\
     substr(_start, _length) {\n\
         if ((this._value.length === 0 && _start._value !== 0)\n\
             || (this._value.length !== 0 && _start._value > this._value.length - 1)) {\n\
-                throw "Index to substr is too big";\n\
+\n\
+            throw "Index to substr is too big";\n\
         } else if ((this._value.length === 0 && _length._value !== 0)\n\
-            || (this._value.length !== 0 && _length._value > this._value.length - _start._value)) {\n\
-                throw "Length to substr too long";\n\
+                   || (this._value.length !== 0 && _length._value > this._value.length - _start._value)) {\n\
+\n\
+            throw "Length to substr too long";\n\
         }\n\
         return new _String(this._value.substr(_start._value, _length._value));\n\
     }\n\
@@ -3312,7 +3321,7 @@ class _Bool extends _Object {\n\
             if (eliminatedBranches.length !== 1) {\n\
                 throw "Invalid state: Case statement matched more than one branch";\n\
             }\n\
-            eliminatedBranches[0][1](obj);\n\
+            return eliminatedBranches[0][1](obj);\n\
         }\n\
     }';
     })(Utility = CoolToJS.Utility || (CoolToJS.Utility = {}));

@@ -37,15 +37,15 @@
     margin-bottom: 20px;
 }
 
-.view-options-container .btn-group > .btn:first-child:not(:last-child):not(.dropdown-toggle) {
-    border-top-left-radius: 0;
-}
+    .view-options-container .btn-group > .btn:first-child:not(:last-child):not(.dropdown-toggle) {
+        border-top-left-radius: 0;
+    }
 
-.view-options-container .btn-group > .btn:last-child:not(:first-child), .btn-group > .dropdown-toggle:not(:first-child) {
-    border-top-right-radius: 0;
-}
+    .view-options-container .btn-group > .btn:last-child:not(:first-child), .btn-group > .dropdown-toggle:not(:first-child) {
+        border-top-right-radius: 0;
+    }
 
-/*.view-options-container .btn {
+    /*.view-options-container .btn {
     background: #eee;
 }*/
 
@@ -135,13 +135,15 @@ div.console {
         font-family: monospace;
         padding: 0.1em;
         white-space: pre;
+        -ms-word-wrap: break-word;
+        word-wrap: break-word;
     }
 
     div.console div.jquery-console-info {
         color: #696971;
         font-family: monospace;
         padding: 0.1em;
-        font-style: italic
+        font-style: italic;
     }
 
     div.console div.jquery-console-error {
@@ -180,17 +182,25 @@ div.console {
 
 .glyphicon-spin {
     -webkit-animation: spin 1200ms infinite linear;
+    -moz-animation: spin 1200ms infinite linear;
+    -o-animation: spin 1200ms infinite linear;
     animation: spin 1200ms infinite linear;
 }
 
 @-webkit-keyframes spin {
     0% {
         -webkit-transform: rotate(0deg);
+        -moz-transform: rotate(0deg);
+        -ms-transform: rotate(0deg);
+        -o-transform: rotate(0deg);
         transform: rotate(0deg);
     }
 
     100% {
         -webkit-transform: rotate(359deg);
+        -moz-transform: rotate(359deg);
+        -ms-transform: rotate(359deg);
+        -o-transform: rotate(359deg);
         transform: rotate(359deg);
     }
 }
@@ -198,11 +208,17 @@ div.console {
 @keyframes spin {
     0% {
         -webkit-transform: rotate(0deg);
+        -moz-transform: rotate(0deg);
+        -ms-transform: rotate(0deg);
+        -o-transform: rotate(0deg);
         transform: rotate(0deg);
     }
 
     100% {
         -webkit-transform: rotate(359deg);
+        -moz-transform: rotate(359deg);
+        -ms-transform: rotate(359deg);
+        -o-transform: rotate(359deg);
         transform: rotate(359deg);
     }
 }
