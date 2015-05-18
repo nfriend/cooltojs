@@ -32,7 +32,7 @@
 
         private generate(ast: Node, ioFunctions: IOFunctionDefinitions, errorMessages: Array<ErrorMessage>, warningMessages: Array<WarningMessage>): string {
             var output: Array<string> = [];
-            output.push('let _inputGenerators = []')
+            output.push('let _inputGenerators = []');
 
             Utility.binaryOperationFunctions.forEach(binOp => {
                 if (this.usageRecord.binaryOperations.indexOf(binOp.operation) !== -1) {

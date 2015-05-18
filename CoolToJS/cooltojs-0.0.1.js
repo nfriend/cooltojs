@@ -3225,7 +3225,7 @@ class _Object {\n\
         return copiedObject;\n\
     }\n\
 }\n\n";
-        Utility.baseStringClass = "\
+        Utility.baseStringClass = '\
 class _String extends _Object {\n\
     constructor (_stringValue) {\n\
         super(\"String\");\n\
@@ -3239,10 +3239,20 @@ class _String extends _Object {\n\
         return new _String(this._value.concat(_otherString._value));\n\
     }\n\
     substr(_start, _length) {\n\
-        // TODO: throw error here if substr is out of range\n\
+        if (this._value.length === 0) {\n\
+            if (_start._value !== 0) {\n\
+                throw "Index to substr is too big";\n\
+            } else if (_length._value !== 0) {\n\
+                throw "Length to substr too long";\n\
+            }\n\
+        } else if (_start._value > this._value.length - 1) {\n\
+            throw "Index to substr is too big";\n\
+        } else if (_length._value > this._value.length - _start._value) {\n\
+            throw "Length to substr too long";\n\
+        }\n\
         return new _String(this._value.substr(_start._value, _length._value));\n\
     }\n\
-}\n\n";
+}\n\n';
         Utility.baseIntClass = "\
 class _Int extends _Object {\n\
     constructor (_intValue) {\n\
