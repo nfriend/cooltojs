@@ -213,16 +213,12 @@ class _String extends _Object {\n\
         return new _String(this._value.concat(_otherString._value));\n\
     }\n\
     substr(_start, _length) {\n\
-        if (this._value.length === 0) {\n\
-            if (_start._value !== 0) {\n\
+        if ((this._value.length === 0 && _start._value !== 0)\n\
+            || (this._value.length !== 0 && _start._value > this._value.length - 1)) {\n\
                 throw "Index to substr is too big";\n\
-            } else if (_length._value !== 0) {\n\
+        } else if ((this._value.length === 0 && _length._value !== 0)\n\
+            || (this._value.length !== 0 && _length._value > this._value.length - _start._value)) {\n\
                 throw "Length to substr too long";\n\
-            }\n\
-        } else if (_start._value > this._value.length - 1) {\n\
-            throw "Index to substr is too big";\n\
-        } else if (_length._value > this._value.length - _start._value) {\n\
-            throw "Length to substr too long";\n\
         }\n\
         return new _String(this._value.substr(_start._value, _length._value));\n\
     }\n\
