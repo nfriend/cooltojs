@@ -132,6 +132,8 @@ var CoolToJS;
             this.isAsync = false;
             this.isInStringOrInInt = false;
             this.isUsed = false;
+            this.callsMethods = [];
+            this.calledByMethods = [];
         }
         Object.defineProperty(MethodNode.prototype, "hasParameters", {
             get: function () {
@@ -158,6 +160,7 @@ var CoolToJS;
         function PropertyNode() {
             _super.call(this, 2 /* Property */);
             this.isUsed = false;
+            this.callsMethods = [];
         }
         Object.defineProperty(PropertyNode.prototype, "hasInitializer", {
             get: function () {
@@ -1010,7 +1013,8 @@ var CoolToJS;
             output.push(this.indent(indentLevel + 1) + '}\n\n');
             ['out_string', 'out_int', 'in_string', 'in_int'].forEach(function (methodname) {
                 var methodDetails = CoolToJS.Utility.getFunctionDetails(ioFunctions[methodname]);
-                output.push(_this.indent(indentLevel + 1) + '*' + methodname + '(');
+                output.push(_this.indent(indentLevel + 1) + (methodname === 'in_string' || methodname === 'in_int' ? '*' : ''));
+                output.push(methodname + '(');
                 var firstParamName;
                 methodDetails.parameters.forEach(function (p, index) {
                     var isLast = methodDetails.parameters.length - 1 === index;
@@ -1023,14 +1027,14 @@ var CoolToJS;
                     output.push(') {\n');
                     output.push(_this.indent(indentLevel + 2) + firstParamName + ' = ' + firstParamName + '._value;');
                     output.push(methodDetails.body);
-                    output.push('\n' + _this.indent(indentLevel + 1) + 'return this;\n');
+                    output.push('\n' + _this.indent(indentLevel + 2) + 'return this;\n');
                     output.push(_this.indent(indentLevel + 1) + '};\n');
                 }
                 else {
                     output.push(') {');
                     output.push(methodDetails.body);
-                    output.push('\n' + _this.indent(indentLevel + 1) + 'return yield;');
-                    output.push(_this.indent(indentLevel) + '};\n');
+                    output.push('\n' + _this.indent(indentLevel + 2) + 'return yield;\n');
+                    output.push(_this.indent(indentLevel + 1) + '};\n');
                 }
             });
             output.push(this.indent(indentLevel) + '}\n');
@@ -1286,7 +1290,7 @@ var CoolToJS;
             else {
                 operand2 = this.wrapInSelfExecutingFunction(binOpExpressionNode.operand2, indentLevel);
             }
-            output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'yield* ');
+            output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : ''));
             switch (binOpExpressionNode.operationType) {
                 case 0 /* Addition */:
                     output.push('_add');
@@ -1948,6 +1952,7 @@ var CoolToJS;
                 };
                 _this.usageRecord = new CoolToJS.UsageRecord();
                 _this.analyze(astConvertOutput.abstractSyntaxTree, starterTypeEnvironment, errorMessages, warningMessages);
+                _this.markAsyncMethods(_this.typeHeirarchy.findMethodOnType('in_string', 'IO', false), _this.typeHeirarchy.findMethodOnType('in_int', 'IO', false));
                 return {
                     success: errorMessages.length === 0,
                     abstractSyntaxTree: astConvertOutput.abstractSyntaxTree,
@@ -2087,7 +2092,7 @@ var CoolToJS;
                 }
                 else if (ast.type === 3 /* Method */) {
                     var methodNode = ast;
-                    methodNode.isAsync = true;
+                    //methodNode.isAsync = true;
                     // add method parameters to the current scope
                     methodNode.parameters.forEach(function (param) {
                         typeEnvironment.variableScope.push({
@@ -2173,16 +2178,20 @@ var CoolToJS;
                                 });
                             }
                         });
-                        methodCallExpressionNode.isInStringOrInInt = foundMethodNode.isInStringOrInInt;
-                        //// mark the current class method as "async" since it makes calls to one of the IO functions
-                        //if (foundMethodNode.isInStringOrInInt) {
-                        //    methodCallExpressionNode.isInStringOrInInt = true;
-                        //    var parentClassMethodNode = methodCallExpressionNode.parent;
-                        //    while (parentClassMethodNode.type !== NodeType.Method) {
-                        //        parentClassMethodNode = parentClassMethodNode.parent;
-                        //    }
-                        //    (<MethodNode>parentClassMethodNode).isAsync = true;
-                        //}
+                        //methodCallExpressionNode.isInStringOrInInt = foundMethodNode.isInStringOrInInt
+                        var parentFeature = methodCallExpressionNode.parent;
+                        while (parentFeature && parentFeature.type !== 3 /* Method */ && parentFeature.type !== 2 /* Property */) {
+                            parentFeature = parentFeature.parent;
+                        }
+                        if (!parentFeature) {
+                            throw 'Invalid state: MethodCallExpressionNode has no parent Method or Property';
+                        }
+                        if (parentFeature.callsMethods.indexOf(foundMethodNode) === -1) {
+                            parentFeature.callsMethods.push(foundMethodNode);
+                        }
+                        if (parentFeature.type === 3 /* Method */ && foundMethodNode.calledByMethods.indexOf(parentFeature) === -1) {
+                            foundMethodNode.calledByMethods.push(parentFeature);
+                        }
                         foundMethodNode.isUsed = true;
                         if (foundMethodNode.returnTypeName === 'SELF_TYPE') {
                             return methodTargetType;
@@ -2388,6 +2397,21 @@ var CoolToJS;
             errorMessages.push({
                 location: location,
                 message: 'Type "' + type2Name + '" is not assignable to type "' + type1Name + '"'
+            });
+        };
+        SemanticAnalyzer.prototype.markAsyncMethods = function () {
+            var _this = this;
+            var asyncMethods = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                asyncMethods[_i - 0] = arguments[_i];
+            }
+            asyncMethods.forEach(function (asyncMethod) {
+                asyncMethod.calledByMethods.filter(function (calledByMethod) {
+                    return !calledByMethod.isAsync;
+                }).forEach(function (calledByMethod) {
+                    calledByMethod.isAsync = true;
+                    _this.markAsyncMethods(calledByMethod);
+                });
             });
         };
         return SemanticAnalyzer;
@@ -3216,13 +3240,13 @@ class _Object {\n\
         this._type_name = typeName;\n\
     }\n\
     \n\
-    *abort() {\n\
+    abort() {\n\
         throw 'Abort called from class ' + this.type_name()._value;\n\
     }\n\
-    *type_name() {\n\
+    type_name() {\n\
         return new _String(this._type_name);\n\
     }\n\
-    *copy() {\n\
+    copy() {\n\
         var copiedObject = Object.create(this.constructor);\n\
         for (var prop in this) {\n\
             copiedObject[prop] = this[prop];\n\
@@ -3237,13 +3261,13 @@ class _String extends _Object {\n\
         this._value = _stringValue;\n\
     }\n\
     _value;\n\
-    *length() {\n\
+    length() {\n\
         return new _Int(this._value.length);\n\
     }\n\
-    *concat(_otherString) {\n\
+    concat(_otherString) {\n\
         return new _String(this._value.concat(_otherString._value));\n\
     }\n\
-    *substr(_start, _length) {\n\
+    substr(_start, _length) {\n\
         if ((this._value.length === 0 && _start._value !== 0)\n\
             || (this._value.length !== 0 && _start._value > this._value.length - 1)) {\n\
 \n\
@@ -3279,19 +3303,19 @@ class _Bool extends _Object {\n\
             Utility.baseBoolClass
         ];
         Utility.binaryOperationFunctions = [
-            { operation: 0 /* Addition */, func: '_add = function *(a, b) { return new _Int(a._value + b._value); }' },
-            { operation: 1 /* Subtraction */, func: '_subtract = function *(a, b) { return new _Int(a._value - b._value); }' },
-            { operation: 2 /* Division */, func: '_divide = function *(a, b) { return new _Int(Math.floor(a._value / b._value)); }' },
-            { operation: 3 /* Multiplication */, func: '_multiply = function *(a, b) { return new _Int(a._value * b._value); }' },
-            { operation: 4 /* LessThan */, func: '_lessThan = function *(a, b) { return new _Bool(a._value < b._value); }' },
-            { operation: 5 /* LessThanOrEqualTo */, func: '_lessThanOrEqualTo = function *(a, b) { return new _Bool(a._value <= b._value); }' },
-            { operation: 6 /* Comparison */, func: '_equals = function *(a, b) {\n\        if (!a || !b || typeof a._value === "undefined" || typeof b._value === "undefined") {\n\            return new _Bool(a === b);\n\        } else {\n\            return new _Bool(a._value === b._value);\n\        }\n\    }' },
+            { operation: 0 /* Addition */, func: '_add = (a, b) => { return new _Int(a._value + b._value); }' },
+            { operation: 1 /* Subtraction */, func: '_subtract = (a, b) => { return new _Int(a._value - b._value); }' },
+            { operation: 2 /* Division */, func: '_divide = (a, b) => { return new _Int(Math.floor(a._value / b._value)); }' },
+            { operation: 3 /* Multiplication */, func: '_multiply = (a, b) => { return new _Int(a._value * b._value); }' },
+            { operation: 4 /* LessThan */, func: '_lessThan = (a, b) => { return new _Bool(a._value < b._value); }' },
+            { operation: 5 /* LessThanOrEqualTo */, func: '_lessThanOrEqualTo = (a, b) => { return new _Bool(a._value <= b._value); }' },
+            { operation: 6 /* Comparison */, func: '_equals = (a, b) => {\n\        if (!a || !b || typeof a._value === "undefined" || typeof b._value === "undefined") {\n\            return new _Bool(a === b);\n\        } else {\n\            return new _Bool(a._value === b._value);\n\        }\n\    }' },
         ];
         Utility.unaryOperationFunctions = [
-            { operation: 0 /* Complement */, func: '_complement = function *(a) { return new _Int(~a._value); }' },
-            { operation: 1 /* Not */, func: '_not = function *(a) { return new _Bool(!a._value); }' },
+            { operation: 0 /* Complement */, func: '_complement = (a) => { return new _Int(~a._value); }' },
+            { operation: 1 /* Not */, func: '_not = (a) => { return new _Bool(!a._value); }' },
         ];
-        Utility.caseFunction = '_case = function *(obj, branches, currentTypeName) {\n\
+        Utility.caseFunction = '_case = (obj, branches, currentTypeName) => {\n\
         if (obj === null || typeof obj === "undefined") {\n\
             throw "Match on void in case statement";\n\
         }\n\

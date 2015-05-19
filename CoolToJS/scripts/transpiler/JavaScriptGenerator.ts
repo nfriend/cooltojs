@@ -93,7 +93,8 @@
 
             ['out_string', 'out_int', 'in_string', 'in_int'].forEach(methodname => {
                 var methodDetails = Utility.getFunctionDetails(ioFunctions[methodname]);
-                output.push(this.indent(indentLevel + 1) + '*' + methodname + '(');
+                output.push(this.indent(indentLevel + 1) + (methodname === 'in_string' || methodname === 'in_int' ? '*' : ''));
+                output.push(methodname + '(');
                 var firstParamName: string;
                 methodDetails.parameters.forEach((p, index) => {
                     var isLast = methodDetails.parameters.length - 1 === index;
@@ -106,13 +107,13 @@
                     output.push(') {\n');
                     output.push(this.indent(indentLevel + 2) + firstParamName + ' = ' + firstParamName + '._value;');
                     output.push(methodDetails.body);
-                    output.push('\n' + this.indent(indentLevel + 1) + 'return this;\n')
+                    output.push('\n' + this.indent(indentLevel + 2) + 'return this;\n')
                     output.push(this.indent(indentLevel + 1) + '};\n');
                 } else {
                     output.push(') {');
                     output.push(methodDetails.body)
-                    output.push('\n' + this.indent(indentLevel + 1) + 'return yield;');
-                    output.push(this.indent(indentLevel) + '};\n');
+                    output.push('\n' + this.indent(indentLevel + 2) + 'return yield;\n');
+                    output.push(this.indent(indentLevel + 1) + '};\n');
                 }
             });
             output.push(this.indent(indentLevel) + '}\n');
@@ -396,7 +397,7 @@
                 operand2 = this.wrapInSelfExecutingFunction(binOpExpressionNode.operand2, indentLevel);
             }
 
-            output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'yield* ');
+            output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : ''));
 
             switch (binOpExpressionNode.operationType) {
                 case BinaryOperationType.Addition:

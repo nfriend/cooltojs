@@ -10,6 +10,7 @@
             }
             this.usageRecord = new UsageRecord();
             this.analyze(astConvertOutput.abstractSyntaxTree, starterTypeEnvironment, errorMessages, warningMessages);
+            this.markAsyncMethods(this.typeHeirarchy.findMethodOnType('in_string', 'IO', false), this.typeHeirarchy.findMethodOnType('in_int', 'IO', false));
 
             return {
                 success: errorMessages.length === 0,
@@ -173,7 +174,7 @@
             /* CLASS METHOD */
             else if (ast.type === NodeType.Method) {
                 var methodNode = <MethodNode>ast;
-                methodNode.isAsync = true;
+                //methodNode.isAsync = true;
 
                 // add method parameters to the current scope
                 methodNode.parameters.forEach(param => {
@@ -293,16 +294,21 @@
                         }
                     });
 
-                    methodCallExpressionNode.isInStringOrInInt = foundMethodNode.isInStringOrInInt
-                    //// mark the current class method as "async" since it makes calls to one of the IO functions
-                    //if (foundMethodNode.isInStringOrInInt) {
-                    //    methodCallExpressionNode.isInStringOrInInt = true;
-                    //    var parentClassMethodNode = methodCallExpressionNode.parent;
-                    //    while (parentClassMethodNode.type !== NodeType.Method) {
-                    //        parentClassMethodNode = parentClassMethodNode.parent;
-                    //    }
-                    //    (<MethodNode>parentClassMethodNode).isAsync = true;
-                    //}
+                    //methodCallExpressionNode.isInStringOrInInt = foundMethodNode.isInStringOrInInt
+                    
+                    var parentFeature = methodCallExpressionNode.parent;
+                    while (parentFeature && parentFeature.type !== NodeType.Method && parentFeature.type !== NodeType.Property) {
+                        parentFeature = parentFeature.parent;
+                    }
+                    if (!parentFeature) {
+                        throw 'Invalid state: MethodCallExpressionNode has no parent Method or Property';
+                    }
+                    if ((<MethodNode|PropertyNode>parentFeature).callsMethods.indexOf(foundMethodNode) === -1) {
+                        (<MethodNode|PropertyNode>parentFeature).callsMethods.push(foundMethodNode);
+                    }
+                    if (parentFeature.type === NodeType.Method && foundMethodNode.calledByMethods.indexOf(<MethodNode>parentFeature) === -1) {
+                        foundMethodNode.calledByMethods.push(<MethodNode>parentFeature);
+                    }
 
                     foundMethodNode.isUsed = true;
 
@@ -574,6 +580,17 @@
             errorMessages.push({
                 location: location,
                 message: 'Type "' + type2Name + '" is not assignable to type "' + type1Name + '"'
+            });
+        }
+
+        private markAsyncMethods(...asyncMethods: MethodNode[]): void {
+            asyncMethods.forEach(asyncMethod => {
+                asyncMethod.calledByMethods.filter(calledByMethod => {
+                    return !calledByMethod.isAsync
+                }).forEach(calledByMethod => {
+                    calledByMethod.isAsync = true;
+                    this.markAsyncMethods(calledByMethod);
+                });
             });
         }
     }

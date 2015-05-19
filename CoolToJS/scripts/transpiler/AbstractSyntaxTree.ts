@@ -127,6 +127,8 @@
         isAsync: boolean = false;
         isInStringOrInInt: boolean = false;
         isUsed: boolean = false;
+        callsMethods: Array<MethodNode> = [];
+        calledByMethods: Array<MethodNode> = [];
 
         get hasParameters(): boolean {
             return this.parameters.length > 0;
@@ -149,6 +151,7 @@
         propertyName: string;
         typeName: string;
         isUsed: boolean = false;
+        callsMethods: Array<MethodNode> = [];
 
         get hasInitializer(): boolean {
             return typeof this.propertyInitializerExpression !== 'undefined'
