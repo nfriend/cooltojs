@@ -958,7 +958,7 @@ var CoolToJS;
         JavaScriptGenerator.prototype.generate = function (ast, ioFunctions, errorMessages, warningMessages) {
             var _this = this;
             var output = [];
-            output.push('let _inputGenerators = []');
+            output.push('let _inputGenerator');
             CoolToJS.Utility.binaryOperationFunctions.forEach(function (binOp) {
                 if (_this.usageRecord.binaryOperations.indexOf(binOp.operation) !== -1) {
                     output.push(',\n');
@@ -991,14 +991,14 @@ var CoolToJS;
                     }
                 }
             });
-            if (isInputNeeded) {
-                output.push('let mainGenerator = new Main("Main").main();\n');
-                output.push('_inputGenerators.push(mainGenerator)\n');
-                output.push('mainGenerator.next();\n');
-            }
-            else {
-                output.push('new Main("Main").main();\n');
-            }
+            //if (isInputNeeded) {
+            //    output.push('_inputGenerator = new Main("Main").main();\n');
+            //    output.push('_inputGenerator.next()\n');
+            //} else {
+            //    output.push('new Main("Main").main();\n');
+            //}
+            output.push('_inputGenerator = new Main("Main").main();\n');
+            output.push('_inputGenerator.next()\n');
             return output.join('');
         };
         JavaScriptGenerator.prototype.generateIOClass = function (ioFunctions, indentLevel) {
@@ -1009,11 +1009,11 @@ var CoolToJS;
             output.push(this.indent(indentLevel + 2) + 'super(typeName);\n');
             output.push(this.indent(indentLevel + 1) + '}\n\n');
             ['out_string', 'out_int', 'in_string', 'in_int'].forEach(function (methodname) {
-                var outStringDetails = CoolToJS.Utility.getFunctionDetails(ioFunctions[methodname]);
-                output.push(_this.indent(indentLevel + 1) + methodname + '(');
+                var methodDetails = CoolToJS.Utility.getFunctionDetails(ioFunctions[methodname]);
+                output.push(_this.indent(indentLevel + 1) + '*' + methodname + '(');
                 var firstParamName;
-                outStringDetails.parameters.forEach(function (p, index) {
-                    var isLast = outStringDetails.parameters.length - 1 === index;
+                methodDetails.parameters.forEach(function (p, index) {
+                    var isLast = methodDetails.parameters.length - 1 === index;
                     if (index === 0) {
                         firstParamName = p;
                     }
@@ -1022,13 +1022,14 @@ var CoolToJS;
                 if (methodname === 'out_string' || methodname === 'out_int') {
                     output.push(') {\n');
                     output.push(_this.indent(indentLevel + 2) + firstParamName + ' = ' + firstParamName + '._value;');
-                    output.push(outStringDetails.body);
-                    output.push(_this.indent(indentLevel + 1) + 'return this;\n');
+                    output.push(methodDetails.body);
+                    output.push('\n' + _this.indent(indentLevel + 1) + 'return this;\n');
                     output.push(_this.indent(indentLevel + 1) + '};\n');
                 }
                 else {
                     output.push(') {');
-                    output.push(outStringDetails.body);
+                    output.push(methodDetails.body);
+                    output.push('\n' + _this.indent(indentLevel + 1) + 'return yield;');
                     output.push(_this.indent(indentLevel) + '};\n');
                 }
             });
@@ -1090,7 +1091,7 @@ var CoolToJS;
             output.push(this.generateExpression(methodNode.methodBodyExpression, true, indentLevel + 1) + '\n');
             // print a success message to the screen at the end of program execution
             if (methodNode.methodName === 'main' && methodNode.parent.className === 'Main') {
-                output.push(this.indent(indentLevel + 1) + 'new IO("IO").out_string(new _String("COOL program successfully executed\\n"));\n');
+                output.push(this.indent(indentLevel + 1) + 'yield* new IO("IO").out_string(new _String("COOL program successfully executed\\n"));\n');
             }
             output.push(this.indent(indentLevel + 1) + 'return _returnValue;\n');
             output.push(this.indent(indentLevel) + '};\n');
@@ -1197,18 +1198,13 @@ var CoolToJS;
             var output = [];
             output.push(this.indent(indentLevel));
             if (methodCallExpression.isInStringOrInInt) {
-                output.push('new _String(yield ' + methodCallExpression.methodName + '(_inputGenerators[_inputGenerators.length - 1]))');
+                output.push((returnResult ? '_returnValue = ' : '') + 'new _String(yield* this.' + methodCallExpression.methodName + '(_inputGenerator))');
                 return output.join('');
-            }
-            if (methodCallExpression.method.isAsync) {
-                throw 'Nested input not yet implemented!';
-                output.push('let newGenerator = ' + methodCallExpression + '();');
-                output.push('_inputGenerators.push(newGenerator);');
-                output.push('_inputGenerators.next();');
             }
             if (returnResult) {
                 output.push('_returnValue = ');
             }
+            output.push('yield* ');
             if (methodCallExpression.targetExpression && !methodCallExpression.isCallToParent) {
                 output.push(this.generateExpression(methodCallExpression.targetExpression, returnResult, 0));
             }
@@ -1290,7 +1286,7 @@ var CoolToJS;
             else {
                 operand2 = this.wrapInSelfExecutingFunction(binOpExpressionNode.operand2, indentLevel);
             }
-            output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : ''));
+            output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'yield* ');
             switch (binOpExpressionNode.operationType) {
                 case 0 /* Addition */:
                     output.push('_add');
@@ -1417,7 +1413,7 @@ var CoolToJS;
             return this.indentCache[indentCount];
         };
         JavaScriptGenerator.prototype.expressionReturnsItself = function (node) {
-            return (node.type === 21 /* StringLiteralExpression */ || node.type === 20 /* IntegerLiteralExpression */ || node.type === 19 /* ObjectIdentifierExpression */ || node.type === 15 /* BinaryOperationExpression */ || node.type === 16 /* UnaryOperationExpression */ || node.type === 5 /* MethodCallExpression */ || node.type === 22 /* TrueKeywordExpression */ || node.type === 23 /* FalseKeywordExpression */ || node.type === 13 /* NewExpression */ || node.type === 14 /* IsvoidExpression */ || (node.type === 8 /* BlockExpression */ && node.expressionList.length === 1 && this.expressionReturnsItself(node.expressionList[0])) || (node.type === 17 /* ParentheticalExpression */ && this.expressionReturnsItself(node.innerExpression)));
+            return (node.type === 21 /* StringLiteralExpression */ || node.type === 20 /* IntegerLiteralExpression */ || node.type === 19 /* ObjectIdentifierExpression */ || node.type === 22 /* TrueKeywordExpression */ || node.type === 23 /* FalseKeywordExpression */ || node.type === 13 /* NewExpression */ || (node.type === 8 /* BlockExpression */ && node.expressionList.length === 1 && this.expressionReturnsItself(node.expressionList[0])) || (node.type === 17 /* ParentheticalExpression */ && this.expressionReturnsItself(node.innerExpression)));
         };
         JavaScriptGenerator.prototype.unwrapSelfReturningExpression = function (node) {
             if (node.type === 21 /* StringLiteralExpression */ || node.type === 20 /* IntegerLiteralExpression */ || node.type === 19 /* ObjectIdentifierExpression */ || node.type === 15 /* BinaryOperationExpression */ || node.type === 16 /* UnaryOperationExpression */ || node.type === 5 /* MethodCallExpression */ || node.type === 17 /* ParentheticalExpression */ || node.type === 22 /* TrueKeywordExpression */ || node.type === 23 /* FalseKeywordExpression */ || node.type === 13 /* NewExpression */ || node.type === 14 /* IsvoidExpression */) {
@@ -1432,11 +1428,11 @@ var CoolToJS;
         };
         JavaScriptGenerator.prototype.wrapInSelfExecutingFunction = function (node, indentLevel) {
             var output = [];
-            output.push('(() => {\n');
+            output.push('(yield* (function *() {\n');
             output.push(this.indent(indentLevel + 2) + 'let _returnValue;\n');
             output.push(this.generateExpression(node, true, indentLevel + 2) + '\n');
             output.push(this.indent(indentLevel + 2) + 'return _returnValue;\n');
-            output.push(this.indent(indentLevel + 1) + '})()');
+            output.push(this.indent(indentLevel + 1) + '}).apply(this))');
             return output.join('');
         };
         JavaScriptGenerator.prototype.translateTypeNameIfPrimitiveType = function (typeName) {
@@ -2091,6 +2087,7 @@ var CoolToJS;
                 }
                 else if (ast.type === 3 /* Method */) {
                     var methodNode = ast;
+                    methodNode.isAsync = true;
                     // add method parameters to the current scope
                     methodNode.parameters.forEach(function (param) {
                         typeEnvironment.variableScope.push({
@@ -2176,15 +2173,16 @@ var CoolToJS;
                                 });
                             }
                         });
-                        // mark the current class method as "async" since it makes calls to one of the IO functions
-                        if (foundMethodNode.isInStringOrInInt) {
-                            methodCallExpressionNode.isInStringOrInInt = true;
-                            var parentClassMethodNode = methodCallExpressionNode.parent;
-                            while (parentClassMethodNode.type !== 3 /* Method */) {
-                                parentClassMethodNode = parentClassMethodNode.parent;
-                            }
-                            parentClassMethodNode.isAsync = true;
-                        }
+                        methodCallExpressionNode.isInStringOrInInt = foundMethodNode.isInStringOrInInt;
+                        //// mark the current class method as "async" since it makes calls to one of the IO functions
+                        //if (foundMethodNode.isInStringOrInInt) {
+                        //    methodCallExpressionNode.isInStringOrInInt = true;
+                        //    var parentClassMethodNode = methodCallExpressionNode.parent;
+                        //    while (parentClassMethodNode.type !== NodeType.Method) {
+                        //        parentClassMethodNode = parentClassMethodNode.parent;
+                        //    }
+                        //    (<MethodNode>parentClassMethodNode).isAsync = true;
+                        //}
                         foundMethodNode.isUsed = true;
                         if (foundMethodNode.returnTypeName === 'SELF_TYPE') {
                             return methodTargetType;
@@ -3218,13 +3216,13 @@ class _Object {\n\
         this._type_name = typeName;\n\
     }\n\
     \n\
-    abort() {\n\
+    *abort() {\n\
         throw 'Abort called from class ' + this.type_name()._value;\n\
     }\n\
-    type_name() {\n\
+    *type_name() {\n\
         return new _String(this._type_name);\n\
     }\n\
-    copy() {\n\
+    *copy() {\n\
         var copiedObject = Object.create(this.constructor);\n\
         for (var prop in this) {\n\
             copiedObject[prop] = this[prop];\n\
@@ -3239,13 +3237,13 @@ class _String extends _Object {\n\
         this._value = _stringValue;\n\
     }\n\
     _value;\n\
-    length() {\n\
+    *length() {\n\
         return new _Int(this._value.length);\n\
     }\n\
-    concat(_otherString) {\n\
+    *concat(_otherString) {\n\
         return new _String(this._value.concat(_otherString._value));\n\
     }\n\
-    substr(_start, _length) {\n\
+    *substr(_start, _length) {\n\
         if ((this._value.length === 0 && _start._value !== 0)\n\
             || (this._value.length !== 0 && _start._value > this._value.length - 1)) {\n\
 \n\
@@ -3281,19 +3279,19 @@ class _Bool extends _Object {\n\
             Utility.baseBoolClass
         ];
         Utility.binaryOperationFunctions = [
-            { operation: 0 /* Addition */, func: '_add = (a, b) => { return new _Int(a._value + b._value); }' },
-            { operation: 1 /* Subtraction */, func: '_subtract = (a, b) => { return new _Int(a._value - b._value); }' },
-            { operation: 2 /* Division */, func: '_divide = (a, b) => { return new _Int(Math.floor(a._value / b._value)); }' },
-            { operation: 3 /* Multiplication */, func: '_multiply = (a, b) => { return new _Int(a._value * b._value); }' },
-            { operation: 4 /* LessThan */, func: '_lessThan = (a, b) => { return new _Bool(a._value < b._value); }' },
-            { operation: 5 /* LessThanOrEqualTo */, func: '_lessThanOrEqualTo = (a, b) => { return new _Bool(a._value <= b._value); }' },
-            { operation: 6 /* Comparison */, func: '_equals = (a, b) => {\n\        if (!a || !b || typeof a._value === "undefined" || typeof b._value === "undefined") {\n\            return new _Bool(a === b);\n\        } else {\n\            return new _Bool(a._value === b._value);\n\        }\n\    }' },
+            { operation: 0 /* Addition */, func: '_add = function *(a, b) { return new _Int(a._value + b._value); }' },
+            { operation: 1 /* Subtraction */, func: '_subtract = function *(a, b) { return new _Int(a._value - b._value); }' },
+            { operation: 2 /* Division */, func: '_divide = function *(a, b) { return new _Int(Math.floor(a._value / b._value)); }' },
+            { operation: 3 /* Multiplication */, func: '_multiply = function *(a, b) { return new _Int(a._value * b._value); }' },
+            { operation: 4 /* LessThan */, func: '_lessThan = function *(a, b) { return new _Bool(a._value < b._value); }' },
+            { operation: 5 /* LessThanOrEqualTo */, func: '_lessThanOrEqualTo = function *(a, b) { return new _Bool(a._value <= b._value); }' },
+            { operation: 6 /* Comparison */, func: '_equals = function *(a, b) {\n\        if (!a || !b || typeof a._value === "undefined" || typeof b._value === "undefined") {\n\            return new _Bool(a === b);\n\        } else {\n\            return new _Bool(a._value === b._value);\n\        }\n\    }' },
         ];
         Utility.unaryOperationFunctions = [
-            { operation: 0 /* Complement */, func: '_complement = (a) => { return new _Int(~a._value); }' },
-            { operation: 1 /* Not */, func: '_not = (a) => { return new _Bool(!a._value); }' },
+            { operation: 0 /* Complement */, func: '_complement = function *(a) { return new _Int(~a._value); }' },
+            { operation: 1 /* Not */, func: '_not = function *(a) { return new _Bool(!a._value); }' },
         ];
-        Utility.caseFunction = '_case = (obj, branches, currentTypeName) => {\n\
+        Utility.caseFunction = '_case = function *(obj, branches, currentTypeName) {\n\
         if (obj === null || typeof obj === "undefined") {\n\
             throw "Match on void in case statement";\n\
         }\n\

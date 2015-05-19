@@ -197,7 +197,6 @@
                     // it after this function returns
                     setTimeout(function () {
                         window.inputGenerator.next(line);
-                        window.inputGenerator = null;
                     }, 0)
 
                     return [{
@@ -243,11 +242,25 @@
     var isInputRestrictedToNumbers = false;
 
     var in_string = function (generator) {
+        if (window.out_stringBuffer && window.out_stringBuffer.length > 0) {
+            window.consoleController.report([{
+                msg: window.out_stringBuffer,
+                className: "jquery-console-output"
+            }]);
+            window.out_stringBuffer = '';
+        }
         isInputRestrictedToNumbers = false;
         window.inputGenerator = generator;
     };
 
     var in_int = function (generator) {
+        if (window.out_stringBuffer && window.out_stringBuffer.length > 0) {
+            window.consoleController.report([{
+                msg: window.out_stringBuffer,
+                className: "jquery-console-output"
+            }]);
+            window.out_stringBuffer = '';
+        }
         isInputRestrictedToNumbers = true;
         window.inputGenerator = generator;
     };

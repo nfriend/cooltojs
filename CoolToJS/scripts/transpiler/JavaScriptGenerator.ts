@@ -32,7 +32,7 @@
 
         private generate(ast: Node, ioFunctions: IOFunctionDefinitions, errorMessages: Array<ErrorMessage>, warningMessages: Array<WarningMessage>): string {
             var output: Array<string> = [];
-            output.push('let _inputGenerators = []');
+            output.push('let _inputGenerator');
 
             Utility.binaryOperationFunctions.forEach(binOp => {
                 if (this.usageRecord.binaryOperations.indexOf(binOp.operation) !== -1) {
@@ -70,13 +70,16 @@
                 }
             });
 
-            if (isInputNeeded) {
-                output.push('let mainGenerator = new Main("Main").main();\n');
-                output.push('_inputGenerators.push(mainGenerator)\n');
-                output.push('mainGenerator.next();\n');
-            } else {
-                output.push('new Main("Main").main();\n');
-            }
+            //if (isInputNeeded) {
+            //    output.push('_inputGenerator = new Main("Main").main();\n');
+            //    output.push('_inputGenerator.next()\n');
+            //} else {
+            //    output.push('new Main("Main").main();\n');
+            //}
+
+            output.push('_inputGenerator = new Main("Main").main();\n');
+            output.push('_inputGenerator.next()\n');
+
             return output.join('');
         }
 
@@ -89,11 +92,11 @@
             output.push(this.indent(indentLevel + 1) + '}\n\n');
 
             ['out_string', 'out_int', 'in_string', 'in_int'].forEach(methodname => {
-                var outStringDetails = Utility.getFunctionDetails(ioFunctions[methodname]);
-                output.push(this.indent(indentLevel + 1) + methodname + '(');
+                var methodDetails = Utility.getFunctionDetails(ioFunctions[methodname]);
+                output.push(this.indent(indentLevel + 1) + '*' + methodname + '(');
                 var firstParamName: string;
-                outStringDetails.parameters.forEach((p, index) => {
-                    var isLast = outStringDetails.parameters.length - 1 === index;
+                methodDetails.parameters.forEach((p, index) => {
+                    var isLast = methodDetails.parameters.length - 1 === index;
                     if (index === 0) {
                         firstParamName = p;
                     }
@@ -102,12 +105,13 @@
                 if (methodname === 'out_string' || methodname === 'out_int') {
                     output.push(') {\n');
                     output.push(this.indent(indentLevel + 2) + firstParamName + ' = ' + firstParamName + '._value;');
-                    output.push(outStringDetails.body);
-                    output.push(this.indent(indentLevel + 1) + 'return this;\n')
+                    output.push(methodDetails.body);
+                    output.push('\n' + this.indent(indentLevel + 1) + 'return this;\n')
                     output.push(this.indent(indentLevel + 1) + '};\n');
                 } else {
                     output.push(') {');
-                    output.push(outStringDetails.body)
+                    output.push(methodDetails.body)
+                    output.push('\n' + this.indent(indentLevel + 1) + 'return yield;');
                     output.push(this.indent(indentLevel) + '};\n');
                 }
             });
@@ -173,7 +177,7 @@
 
             // print a success message to the screen at the end of program execution
             if (methodNode.methodName === 'main' && (<ClassNode>methodNode.parent).className === 'Main') {
-                output.push(this.indent(indentLevel + 1) + 'new IO("IO").out_string(new _String("COOL program successfully executed\\n"));\n');
+                output.push(this.indent(indentLevel + 1) + 'yield* new IO("IO").out_string(new _String("COOL program successfully executed\\n"));\n');
             }
 
             output.push(this.indent(indentLevel + 1) + 'return _returnValue;\n');
@@ -286,21 +290,15 @@
             output.push(this.indent(indentLevel));
 
             if (methodCallExpression.isInStringOrInInt) {
-                output.push('new _String(yield ' + methodCallExpression.methodName + '(_inputGenerators[_inputGenerators.length - 1]))');
+                output.push((returnResult ? '_returnValue = ' : '') + 'new _String(yield* this.' + methodCallExpression.methodName + '(_inputGenerator))');
                 return output.join('');
-            }
-
-            if (methodCallExpression.method.isAsync) {
-                // TODO
-                throw 'Nested input not yet implemented!';
-                output.push('let newGenerator = ' + methodCallExpression + '();');
-                output.push('_inputGenerators.push(newGenerator);');
-                output.push('_inputGenerators.next();');
             }
 
             if (returnResult) {
                 output.push('_returnValue = ');
             }
+
+            output.push('yield* ');
 
             if (methodCallExpression.targetExpression && !methodCallExpression.isCallToParent) {
                 output.push(this.generateExpression(methodCallExpression.targetExpression, returnResult, 0));
@@ -398,7 +396,7 @@
                 operand2 = this.wrapInSelfExecutingFunction(binOpExpressionNode.operand2, indentLevel);
             }
 
-            output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : ''));
+            output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'yield* ');
 
             switch (binOpExpressionNode.operationType) {
                 case BinaryOperationType.Addition:
@@ -496,7 +494,7 @@
                 var isLast = index === caseExpressionNode.caseOptionList.length - 1;
                 output.push(this.indent(indentLevel + 1) + '[' + this.translateTypeNameIfPrimitiveType(option.typeName) + ', ');
                 output.push('(' + option.identiferName + ') => { return (');
-                  
+
                 if (this.expressionReturnsItself(option.caseOptionExpression)) {
                     output.push(this.generateExpression(this.unwrapSelfReturningExpression(option.caseOptionExpression), false, 0));
                 } else {
@@ -536,13 +534,13 @@
             return (node.type === NodeType.StringLiteralExpression
                 || node.type === NodeType.IntegerLiteralExpression
                 || node.type === NodeType.ObjectIdentifierExpression
-                || node.type === NodeType.BinaryOperationExpression
-                || node.type === NodeType.UnaryOperationExpression
-                || node.type === NodeType.MethodCallExpression
+                //|| node.type === NodeType.BinaryOperationExpression
+                //|| node.type === NodeType.UnaryOperationExpression
+                //|| node.type === NodeType.MethodCallExpression
                 || node.type === NodeType.TrueKeywordExpression
                 || node.type === NodeType.FalseKeywordExpression
                 || node.type === NodeType.NewExpression
-                || node.type === NodeType.IsvoidExpression
+                //|| node.type === NodeType.IsvoidExpression
                 || (node.type === NodeType.BlockExpression
                     && (<BlockExpressionNode>node).expressionList.length === 1
                     && this.expressionReturnsItself((<BlockExpressionNode>node).expressionList[0]))
@@ -573,11 +571,11 @@
 
         private wrapInSelfExecutingFunction(node: Node, indentLevel: number) {
             var output: Array<string> = [];
-            output.push('(() => {\n');
+            output.push('(yield* (function *() {\n');
             output.push(this.indent(indentLevel + 2) + 'let _returnValue;\n');
             output.push(this.generateExpression(node, true, indentLevel + 2) + '\n');
             output.push(this.indent(indentLevel + 2) + 'return _returnValue;\n');
-            output.push(this.indent(indentLevel + 1) + '})()');
+            output.push(this.indent(indentLevel + 1) + '}).apply(this))');
             return output.join('');
         }
 

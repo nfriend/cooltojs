@@ -173,6 +173,7 @@
             /* CLASS METHOD */
             else if (ast.type === NodeType.Method) {
                 var methodNode = <MethodNode>ast;
+                methodNode.isAsync = true;
 
                 // add method parameters to the current scope
                 methodNode.parameters.forEach(param => {
@@ -292,15 +293,16 @@
                         }
                     });
 
-                    // mark the current class method as "async" since it makes calls to one of the IO functions
-                    if (foundMethodNode.isInStringOrInInt) {
-                        methodCallExpressionNode.isInStringOrInInt = true;
-                        var parentClassMethodNode = methodCallExpressionNode.parent;
-                        while (parentClassMethodNode.type !== NodeType.Method) {
-                            parentClassMethodNode = parentClassMethodNode.parent;
-                        }
-                        (<MethodNode>parentClassMethodNode).isAsync = true;
-                    }
+                    methodCallExpressionNode.isInStringOrInInt = foundMethodNode.isInStringOrInInt
+                    //// mark the current class method as "async" since it makes calls to one of the IO functions
+                    //if (foundMethodNode.isInStringOrInInt) {
+                    //    methodCallExpressionNode.isInStringOrInInt = true;
+                    //    var parentClassMethodNode = methodCallExpressionNode.parent;
+                    //    while (parentClassMethodNode.type !== NodeType.Method) {
+                    //        parentClassMethodNode = parentClassMethodNode.parent;
+                    //    }
+                    //    (<MethodNode>parentClassMethodNode).isAsync = true;
+                    //}
 
                     foundMethodNode.isUsed = true;
 
@@ -461,7 +463,7 @@
                             message: 'Right side of the "' + binOpNode.token.match + '" operator must be of type "Int"'
                         });
                     }
-                    
+
                     if (binOpNode.operationType === BinaryOperationType.LessThanOrEqualTo
                         || binOpNode.operationType === BinaryOperationType.LessThan) {
 

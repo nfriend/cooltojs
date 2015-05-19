@@ -184,13 +184,13 @@ class _Object {\n\
         this._type_name = typeName;\n\
     }\n\
     \n\
-    abort() {\n\
+    *abort() {\n\
         throw 'Abort called from class ' + this.type_name()._value;\n\
     }\n\
-    type_name() {\n\
+    *type_name() {\n\
         return new _String(this._type_name);\n\
     }\n\
-    copy() {\n\
+    *copy() {\n\
         var copiedObject = Object.create(this.constructor);\n\
         for (var prop in this) {\n\
             copiedObject[prop] = this[prop];\n\
@@ -206,13 +206,13 @@ class _String extends _Object {\n\
         this._value = _stringValue;\n\
     }\n\
     _value;\n\
-    length() {\n\
+    *length() {\n\
         return new _Int(this._value.length);\n\
     }\n\
-    concat(_otherString) {\n\
+    *concat(_otherString) {\n\
         return new _String(this._value.concat(_otherString._value));\n\
     }\n\
-    substr(_start, _length) {\n\
+    *substr(_start, _length) {\n\
         if ((this._value.length === 0 && _start._value !== 0)\n\
             || (this._value.length !== 0 && _start._value > this._value.length - 1)) {\n\
 \n\
@@ -249,21 +249,21 @@ class _Bool extends _Object {\n\
     ];
 
     export var binaryOperationFunctions = [
-        { operation: BinaryOperationType.Addition, func: '_add = (a, b) => { return new _Int(a._value + b._value); }' },
-        { operation: BinaryOperationType.Subtraction, func: '_subtract = (a, b) => { return new _Int(a._value - b._value); }' },
-        { operation: BinaryOperationType.Division, func: '_divide = (a, b) => { return new _Int(Math.floor(a._value / b._value)); }' },
-        { operation: BinaryOperationType.Multiplication, func: '_multiply = (a, b) => { return new _Int(a._value * b._value); }' },
-        { operation: BinaryOperationType.LessThan, func: '_lessThan = (a, b) => { return new _Bool(a._value < b._value); }' },
-        { operation: BinaryOperationType.LessThanOrEqualTo, func: '_lessThanOrEqualTo = (a, b) => { return new _Bool(a._value <= b._value); }' },
-        { operation: BinaryOperationType.Comparison, func: '_equals = (a, b) => {\n\        if (!a || !b || typeof a._value === "undefined" || typeof b._value === "undefined") {\n\            return new _Bool(a === b);\n\        } else {\n\            return new _Bool(a._value === b._value);\n\        }\n\    }' },
+        { operation: BinaryOperationType.Addition, func: '_add = function *(a, b) { return new _Int(a._value + b._value); }' },
+        { operation: BinaryOperationType.Subtraction, func: '_subtract = function *(a, b) { return new _Int(a._value - b._value); }' },
+        { operation: BinaryOperationType.Division, func: '_divide = function *(a, b) { return new _Int(Math.floor(a._value / b._value)); }' },
+        { operation: BinaryOperationType.Multiplication, func: '_multiply = function *(a, b) { return new _Int(a._value * b._value); }' },
+        { operation: BinaryOperationType.LessThan, func: '_lessThan = function *(a, b) { return new _Bool(a._value < b._value); }' },
+        { operation: BinaryOperationType.LessThanOrEqualTo, func: '_lessThanOrEqualTo = function *(a, b) { return new _Bool(a._value <= b._value); }' },
+        { operation: BinaryOperationType.Comparison, func: '_equals = function *(a, b) {\n\        if (!a || !b || typeof a._value === "undefined" || typeof b._value === "undefined") {\n\            return new _Bool(a === b);\n\        } else {\n\            return new _Bool(a._value === b._value);\n\        }\n\    }' },
     ];
 
     export var unaryOperationFunctions = [
-        { operation: UnaryOperationType.Complement, func: '_complement = (a) => { return new _Int(~a._value); }' },
-        { operation: UnaryOperationType.Not, func: '_not = (a) => { return new _Bool(!a._value); }' },
+        { operation: UnaryOperationType.Complement, func: '_complement = function *(a) { return new _Int(~a._value); }' },
+        { operation: UnaryOperationType.Not, func: '_not = function *(a) { return new _Bool(!a._value); }' },
     ];
 
-    export var caseFunction = '_case = (obj, branches, currentTypeName) => {\n\
+    export var caseFunction = '_case = function *(obj, branches, currentTypeName) {\n\
         if (obj === null || typeof obj === "undefined") {\n\
             throw "Match on void in case statement";\n\
         }\n\
