@@ -59,26 +59,27 @@
             output.push(this.generateIOClass(ioFunctions, 0));
             output.push('\n');
 
-            var isInputNeeded = false;
+            var isMainMethodAsync = false;
             (<ProgramNode>ast).classList.forEach(classNode => {
                 if (['Object', 'IO', 'Int', 'String', 'Bool'].indexOf(classNode.className) === -1) {
                     output.push(this.generateClass(classNode, 0));
                     output.push('\n');
-                    if (!isInputNeeded) {
-                        isInputNeeded = classNode.methodList.some(mn => mn.isAsync);
+                    if (classNode.className === 'Main') {
+                        var mainMethod = classNode.methodList.filter(m => m.methodName === 'main');
+                        if (mainMethod.length !== 1) {
+                            throw 'More than one "main" method found on class Main';
+                        }
+                        isMainMethodAsync = mainMethod[0].isAsync;
                     }
                 }
             });
 
-            //if (isInputNeeded) {
-            //    output.push('_inputGenerator = new Main("Main").main();\n');
-            //    output.push('_inputGenerator.next()\n');
-            //} else {
-            //    output.push('new Main("Main").main();\n');
-            //}
-
-            output.push('_inputGenerator = new Main("Main").main();\n');
-            output.push('_inputGenerator.next()\n');
+            if (isMainMethodAsync) {
+                output.push('_inputGenerator = new Main("Main").main();\n');
+                output.push('_inputGenerator.next()\n');
+            } else {
+                output.push('new Main("Main").main();\n');
+            }
 
             return output.join('');
         }
@@ -178,7 +179,7 @@
 
             // print a success message to the screen at the end of program execution
             if (methodNode.methodName === 'main' && (<ClassNode>methodNode.parent).className === 'Main') {
-                output.push(this.indent(indentLevel + 1) + 'yield* new IO("IO").out_string(new _String("COOL program successfully executed\\n"));\n');
+                output.push(this.indent(indentLevel + 1) + 'new IO("IO").out_string(new _String("COOL program successfully executed\\n"));\n');
             }
 
             output.push(this.indent(indentLevel + 1) + 'return _returnValue;\n');
@@ -290,16 +291,17 @@
 
             output.push(this.indent(indentLevel));
 
-            if (methodCallExpression.isInStringOrInInt) {
-                output.push((returnResult ? '_returnValue = ' : '') + 'new _String(yield* this.' + methodCallExpression.methodName + '(_inputGenerator))');
-                return output.join('');
-            }
-
             if (returnResult) {
                 output.push('_returnValue = ');
             }
 
-            output.push('yield* ');
+            if (methodCallExpression.isInStringOrInInt) {
+                output.push('new _String(');
+            }
+
+            if (methodCallExpression.method.isAsync) {
+                output.push('yield* ');
+            }
 
             if (methodCallExpression.targetExpression && !methodCallExpression.isCallToParent) {
                 output.push(this.generateExpression(methodCallExpression.targetExpression, returnResult, 0));
@@ -322,6 +324,13 @@
                     output.push(',');
                 }
             });
+
+            if (methodCallExpression.isInStringOrInInt) {
+                output.push('_inputGenerator');
+
+                // close out the extra parenthesis added for the new _String() expression
+                output.push(')');
+            }
 
             output.push(')');
 
@@ -570,6 +579,7 @@
             }
         }
 
+        // TODO: don't create a generator if we're currently executing inside a synchronous function
         private wrapInSelfExecutingFunction(node: Node, indentLevel: number) {
             var output: Array<string> = [];
             output.push('(yield* (function *() {\n');

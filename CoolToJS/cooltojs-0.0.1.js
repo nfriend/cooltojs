@@ -984,24 +984,27 @@ var CoolToJS;
             });
             output.push(this.generateIOClass(ioFunctions, 0));
             output.push('\n');
-            var isInputNeeded = false;
+            var isMainMethodAsync = false;
             ast.classList.forEach(function (classNode) {
                 if (['Object', 'IO', 'Int', 'String', 'Bool'].indexOf(classNode.className) === -1) {
                     output.push(_this.generateClass(classNode, 0));
                     output.push('\n');
-                    if (!isInputNeeded) {
-                        isInputNeeded = classNode.methodList.some(function (mn) { return mn.isAsync; });
+                    if (classNode.className === 'Main') {
+                        var mainMethod = classNode.methodList.filter(function (m) { return m.methodName === 'main'; });
+                        if (mainMethod.length !== 1) {
+                            throw 'More than one "main" method found on class Main';
+                        }
+                        isMainMethodAsync = mainMethod[0].isAsync;
                     }
                 }
             });
-            //if (isInputNeeded) {
-            //    output.push('_inputGenerator = new Main("Main").main();\n');
-            //    output.push('_inputGenerator.next()\n');
-            //} else {
-            //    output.push('new Main("Main").main();\n');
-            //}
-            output.push('_inputGenerator = new Main("Main").main();\n');
-            output.push('_inputGenerator.next()\n');
+            if (isMainMethodAsync) {
+                output.push('_inputGenerator = new Main("Main").main();\n');
+                output.push('_inputGenerator.next()\n');
+            }
+            else {
+                output.push('new Main("Main").main();\n');
+            }
             return output.join('');
         };
         JavaScriptGenerator.prototype.generateIOClass = function (ioFunctions, indentLevel) {
@@ -1095,7 +1098,7 @@ var CoolToJS;
             output.push(this.generateExpression(methodNode.methodBodyExpression, true, indentLevel + 1) + '\n');
             // print a success message to the screen at the end of program execution
             if (methodNode.methodName === 'main' && methodNode.parent.className === 'Main') {
-                output.push(this.indent(indentLevel + 1) + 'yield* new IO("IO").out_string(new _String("COOL program successfully executed\\n"));\n');
+                output.push(this.indent(indentLevel + 1) + 'new IO("IO").out_string(new _String("COOL program successfully executed\\n"));\n');
             }
             output.push(this.indent(indentLevel + 1) + 'return _returnValue;\n');
             output.push(this.indent(indentLevel) + '};\n');
@@ -1201,14 +1204,15 @@ var CoolToJS;
             var _this = this;
             var output = [];
             output.push(this.indent(indentLevel));
-            if (methodCallExpression.isInStringOrInInt) {
-                output.push((returnResult ? '_returnValue = ' : '') + 'new _String(yield* this.' + methodCallExpression.methodName + '(_inputGenerator))');
-                return output.join('');
-            }
             if (returnResult) {
                 output.push('_returnValue = ');
             }
-            output.push('yield* ');
+            if (methodCallExpression.isInStringOrInInt) {
+                output.push('new _String(');
+            }
+            if (methodCallExpression.method.isAsync) {
+                output.push('yield* ');
+            }
             if (methodCallExpression.targetExpression && !methodCallExpression.isCallToParent) {
                 output.push(this.generateExpression(methodCallExpression.targetExpression, returnResult, 0));
             }
@@ -1230,6 +1234,11 @@ var CoolToJS;
                     output.push(',');
                 }
             });
+            if (methodCallExpression.isInStringOrInInt) {
+                output.push('_inputGenerator');
+                // close out the extra parenthesis added for the new _String() expression
+                output.push(')');
+            }
             output.push(')');
             return output.join('');
         };
@@ -1430,6 +1439,7 @@ var CoolToJS;
                 throw 'unwrapSelfReturningExpression() should not be called without testing whether the expression is self returning using expressionReturnsItself()';
             }
         };
+        // TODO: don't create a generator if we're currently executing inside a synchronous function
         JavaScriptGenerator.prototype.wrapInSelfExecutingFunction = function (node, indentLevel) {
             var output = [];
             output.push('(yield* (function *() {\n');
@@ -2178,7 +2188,7 @@ var CoolToJS;
                                 });
                             }
                         });
-                        //methodCallExpressionNode.isInStringOrInInt = foundMethodNode.isInStringOrInInt
+                        methodCallExpressionNode.isInStringOrInInt = foundMethodNode.isInStringOrInInt;
                         var parentFeature = methodCallExpressionNode.parent;
                         while (parentFeature && parentFeature.type !== 3 /* Method */ && parentFeature.type !== 2 /* Property */) {
                             parentFeature = parentFeature.parent;

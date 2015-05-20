@@ -294,7 +294,7 @@
                         }
                     });
 
-                    //methodCallExpressionNode.isInStringOrInInt = foundMethodNode.isInStringOrInInt
+                    methodCallExpressionNode.isInStringOrInInt = foundMethodNode.isInStringOrInInt
                     
                     var parentFeature = methodCallExpressionNode.parent;
                     while (parentFeature && parentFeature.type !== NodeType.Method && parentFeature.type !== NodeType.Property) {
