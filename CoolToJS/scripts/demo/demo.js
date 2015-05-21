@@ -3,7 +3,7 @@
     'use strict';
 
     var isDebug = document.location.hostname === "localhost",
-        programIndexToUse = 5,
+        programIndexToUse = 6,
         coolSourceCookieKey = 'cool-source',
         liveErrorChecking = !isDebug;
 
