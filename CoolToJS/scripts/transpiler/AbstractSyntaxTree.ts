@@ -151,6 +151,7 @@
         propertyName: string;
         typeName: string;
         isUsed: boolean = false;
+        isAsync: boolean = false;
         callsMethods: Array<MethodNode> = [];
 
         get hasInitializer(): boolean {

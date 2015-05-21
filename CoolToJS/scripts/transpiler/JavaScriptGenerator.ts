@@ -29,6 +29,7 @@
         }
 
         usageRecord: UsageRecord;
+        isInAsyncContext: boolean = false;
 
         private generate(ast: Node, ioFunctions: IOFunctionDefinitions, errorMessages: Array<ErrorMessage>, warningMessages: Array<WarningMessage>): string {
             var output: Array<string> = [];
@@ -146,12 +147,13 @@
 
         private generateClassProperty(propertyNode: PropertyNode, indentLevel: number): string {
             var output: Array<string> = [];
+            this.isInAsyncContext = propertyNode.isAsync;
             if (propertyNode.hasInitializer) {
                 output.push(this.indent(indentLevel) + propertyNode.propertyName + ' = ');
                 if (this.expressionReturnsItself(propertyNode.propertyInitializerExpression)) {
                     output.push(this.generateExpression(propertyNode.propertyInitializerExpression, false, indentLevel + 1));
                 } else {
-                    output.push(this.wrapInSelfExecutingFunction(propertyNode.propertyInitializerExpression, indentLevel));
+                    output.push(this.wrapInSelfExecutingFunction(propertyNode.propertyInitializerExpression, this.isInAsyncContext, indentLevel));
                 }
                 output.push(';\n');
             } else if (propertyNode.typeName === 'Bool') {
@@ -168,6 +170,7 @@
 
         private generateClassMethod(methodNode: MethodNode, indentLevel: number): string {
             var output: Array<string> = [];
+            this.isInAsyncContext = methodNode.isAsync;
             output.push(this.indent(indentLevel) + (methodNode.isAsync ? '*' : '') + methodNode.methodName + '(');
             methodNode.parameters.forEach((p, index) => {
                 var isLast = index === methodNode.parameters.length - 1;
@@ -264,7 +267,7 @@
                     if (this.expressionReturnsItself(lvdn.initializerExpression)) {
                         output.push(' = ' + this.generateExpression(this.unwrapSelfReturningExpression(lvdn.initializerExpression), false, 0))
                     } else {
-                        output.push(' = ' + this.wrapInSelfExecutingFunction(lvdn.initializerExpression, indentLevel));
+                        output.push(' = ' + this.wrapInSelfExecutingFunction(lvdn.initializerExpression, this.isInAsyncContext, indentLevel));
                     }
                 } else if (lvdn.typeName === 'Bool') {
                     output.push(' = new _Bool(false)');
@@ -318,7 +321,7 @@
                 if (this.expressionReturnsItself(p)) {
                     output.push(this.generateExpression(this.unwrapSelfReturningExpression(p), false, 0));
                 } else {
-                    output.push(this.wrapInSelfExecutingFunction(p, indentLevel));
+                    output.push(this.wrapInSelfExecutingFunction(p, this.isInAsyncContext, indentLevel));
                 }
                 if (index !== methodCallExpression.parameterExpressionList.length - 1) {
                     output.push(',');
@@ -397,13 +400,13 @@
             if (this.expressionReturnsItself(binOpExpressionNode.operand1)) {
                 operand1 = this.generateExpression(this.unwrapSelfReturningExpression(binOpExpressionNode.operand1), false, 0);
             } else {
-                operand1 = this.wrapInSelfExecutingFunction(binOpExpressionNode.operand1, indentLevel);
+                operand1 = this.wrapInSelfExecutingFunction(binOpExpressionNode.operand1, this.isInAsyncContext, indentLevel);
             }
 
             if (this.expressionReturnsItself(binOpExpressionNode.operand2)) {
                 operand2 = this.generateExpression(this.unwrapSelfReturningExpression(binOpExpressionNode.operand2), false, 0);
             } else {
-                operand2 = this.wrapInSelfExecutingFunction(binOpExpressionNode.operand2, indentLevel);
+                operand2 = this.wrapInSelfExecutingFunction(binOpExpressionNode.operand2, this.isInAsyncContext, indentLevel);
             }
 
             output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : ''));
@@ -455,7 +458,7 @@
             if (this.expressionReturnsItself(unOpExpressionNode)) {
                 output.push(this.generateExpression(this.unwrapSelfReturningExpression(unOpExpressionNode.operand), false, 0));
             } else {
-                output.push(this.wrapInSelfExecutingFunction(unOpExpressionNode.operand, indentLevel));
+                output.push(this.wrapInSelfExecutingFunction(unOpExpressionNode.operand, this.isInAsyncContext, indentLevel));
             }
             output.push(')');
             return output.join('');
@@ -467,7 +470,7 @@
             if (this.expressionReturnsItself(ifExpressionNode.predicate)) {
                 output.push(this.generateExpression(this.unwrapSelfReturningExpression(ifExpressionNode.predicate), false, 0));
             } else {
-                output.push(this.wrapInSelfExecutingFunction(ifExpressionNode.predicate, indentLevel));
+                output.push(this.wrapInSelfExecutingFunction(ifExpressionNode.predicate, this.isInAsyncContext, indentLevel));
             }
             output.push(')._value) {\n');
             output.push(this.generateExpression(ifExpressionNode.consequent, returnResult, indentLevel + 1) + '\n');
@@ -483,7 +486,7 @@
             if (this.expressionReturnsItself(whileExpressionNode.whileConditionExpression)) {
                 output.push(this.generateExpression(this.unwrapSelfReturningExpression(whileExpressionNode.whileConditionExpression), false, 0));
             } else {
-                output.push(this.wrapInSelfExecutingFunction(whileExpressionNode.whileConditionExpression, indentLevel));
+                output.push(this.wrapInSelfExecutingFunction(whileExpressionNode.whileConditionExpression, this.isInAsyncContext, indentLevel));
             }
             output.push(')._value) {\n');
             output.push(this.generateExpression(whileExpressionNode.whileBodyExpression, returnResult, indentLevel + 1) + '\n');
@@ -497,7 +500,7 @@
             if (this.expressionReturnsItself(caseExpressionNode.condition)) {
                 output.push(this.generateExpression(this.unwrapSelfReturningExpression(caseExpressionNode.condition), false, 0));
             } else {
-                output.push(this.wrapInSelfExecutingFunction(caseExpressionNode.condition, indentLevel));
+                output.push(this.wrapInSelfExecutingFunction(caseExpressionNode.condition, this.isInAsyncContext, indentLevel));
             }
             output.push(', [\n');
             caseExpressionNode.caseOptionList.forEach((option, index) => {
@@ -508,7 +511,7 @@
                 if (this.expressionReturnsItself(option.caseOptionExpression)) {
                     output.push(this.generateExpression(this.unwrapSelfReturningExpression(option.caseOptionExpression), false, 0));
                 } else {
-                    output.push(this.wrapInSelfExecutingFunction(option.caseOptionExpression, indentLevel));
+                    output.push(this.wrapInSelfExecutingFunction(option.caseOptionExpression, this.isInAsyncContext, indentLevel));
                 }
 
                 output.push('); }');
@@ -544,32 +547,36 @@
             return (node.type === NodeType.StringLiteralExpression
                 || node.type === NodeType.IntegerLiteralExpression
                 || node.type === NodeType.ObjectIdentifierExpression
-                //|| node.type === NodeType.BinaryOperationExpression
-                //|| node.type === NodeType.UnaryOperationExpression
-                //|| node.type === NodeType.MethodCallExpression
                 || node.type === NodeType.TrueKeywordExpression
                 || node.type === NodeType.FalseKeywordExpression
                 || node.type === NodeType.NewExpression
-                //|| node.type === NodeType.IsvoidExpression
                 || (node.type === NodeType.BlockExpression
                     && (<BlockExpressionNode>node).expressionList.length === 1
                     && this.expressionReturnsItself((<BlockExpressionNode>node).expressionList[0]))
                 || (node.type === NodeType.ParentheticalExpression
                     && this.expressionReturnsItself((<ParentheticalExpressionNode>node).innerExpression)));
+
+                //|| (!this.isInAsyncContext &&
+                //    (node.type === NodeType.IsvoidExpression
+                //        || node.type === NodeType.BinaryOperationExpression
+                //        || node.type === NodeType.UnaryOperationExpression
+                //        || node.type === NodeType.MethodCallExpression)));
         }
 
         private unwrapSelfReturningExpression(node: Node): ExpressionNode {
             if (node.type === NodeType.StringLiteralExpression
                 || node.type === NodeType.IntegerLiteralExpression
                 || node.type === NodeType.ObjectIdentifierExpression
-                || node.type === NodeType.BinaryOperationExpression
-                || node.type === NodeType.UnaryOperationExpression
-                || node.type === NodeType.MethodCallExpression
                 || node.type === NodeType.ParentheticalExpression
                 || node.type === NodeType.TrueKeywordExpression
                 || node.type === NodeType.FalseKeywordExpression
-                || node.type === NodeType.NewExpression
-                || node.type === NodeType.IsvoidExpression) {
+                || node.type === NodeType.NewExpression)
+
+                /*|| (!this.isInAsyncContext &&
+                    (node.type === NodeType.BinaryOperationExpression
+                        || node.type === NodeType.UnaryOperationExpression
+                        || node.type === NodeType.MethodCallExpression
+                        || node.type === NodeType.IsvoidExpression)))*/ {
 
                 return node;
             } else if (node.type === NodeType.BlockExpression) {
@@ -579,14 +586,21 @@
             }
         }
 
-        // TODO: don't create a generator if we're currently executing inside a synchronous function
-        private wrapInSelfExecutingFunction(node: Node, indentLevel: number) {
+        private wrapInSelfExecutingFunction(node: Node, isAsync: boolean, indentLevel: number) {
             var output: Array<string> = [];
-            output.push('(yield* (function *() {\n');
+            if (isAsync) {
+                output.push('(yield* (function *() {\n');
+            } else {
+                output.push('(() => {\n');
+            }
             output.push(this.indent(indentLevel + 2) + 'let _returnValue;\n');
             output.push(this.generateExpression(node, true, indentLevel + 2) + '\n');
             output.push(this.indent(indentLevel + 2) + 'return _returnValue;\n');
-            output.push(this.indent(indentLevel + 1) + '}).apply(this))');
+            if (isAsync) {
+                output.push(this.indent(indentLevel + 1) + '}).apply(this))');
+            } else {
+                output.push(this.indent(indentLevel + 1) + '})()');
+            }
             return output.join('');
         }
 

@@ -64,17 +64,20 @@
 
         var abortMethodNode = new MethodNode();
         abortMethodNode.methodName = 'abort';
-        abortMethodNode.returnTypeName = 'Object'
+        abortMethodNode.returnTypeName = 'Object';
+        abortMethodNode.parent = objectClass;
         objectClass.children.push(abortMethodNode);
 
         var typeNameMethodNode = new MethodNode();
         typeNameMethodNode.methodName = 'type_name';
-        typeNameMethodNode.returnTypeName = 'String'
+        typeNameMethodNode.returnTypeName = 'String';
+        typeNameMethodNode.parent = objectClass;
         objectClass.children.push(typeNameMethodNode);
 
         var copyMethodNode = new MethodNode();
         copyMethodNode.methodName = 'copy';
-        copyMethodNode.returnTypeName = 'SELF_TYPE'
+        copyMethodNode.returnTypeName = 'SELF_TYPE';
+        copyMethodNode.parent = objectClass;
         objectClass.children.push(copyMethodNode);
 
         programNode.children.push(objectClass);
@@ -89,6 +92,7 @@
             parameterName: 'x',
             parameterTypeName: 'String'
         });
+        outStringMethodNode.parent = ioClass;
         ioClass.children.push(outStringMethodNode);
 
         var outIntMethodNode = new MethodNode();
@@ -98,6 +102,7 @@
             parameterName: 'x',
             parameterTypeName: 'Int'
         });
+        outIntMethodNode.parent = ioClass;
         ioClass.children.push(outIntMethodNode);
 
         var inStringMethodNode = new MethodNode();
@@ -105,6 +110,7 @@
         inStringMethodNode.returnTypeName = 'String';
         inStringMethodNode.isAsync = true;
         inStringMethodNode.isInStringOrInInt = true;
+        inStringMethodNode.parent = ioClass;
         ioClass.children.push(inStringMethodNode);
 
         var inIntMethodNode = new MethodNode();
@@ -112,6 +118,7 @@
         inIntMethodNode.returnTypeName = 'Int';
         inIntMethodNode.isAsync = true;
         inIntMethodNode.isInStringOrInInt = true;
+        inIntMethodNode.parent = ioClass;
         ioClass.children.push(inIntMethodNode);
 
         programNode.children.push(ioClass);
@@ -126,6 +133,7 @@
         var lengthMethodNode = new MethodNode();
         lengthMethodNode.methodName = 'length';
         lengthMethodNode.returnTypeName = 'Int';
+        lengthMethodNode.parent = stringClass;
         stringClass.children.push(lengthMethodNode);
 
         var concatMethodNode = new MethodNode();
@@ -135,6 +143,7 @@
             parameterName: 's',
             parameterTypeName: 'String'
         });
+        concatMethodNode.parent = stringClass;
         stringClass.children.push(concatMethodNode);
 
         var substrMethodNode = new MethodNode();
@@ -148,6 +157,7 @@
             parameterName: 'l',
             parameterTypeName: 'Int'
         });
+        stringClass.parent = stringClass;
         stringClass.children.push(substrMethodNode);
 
         programNode.children.push(stringClass);

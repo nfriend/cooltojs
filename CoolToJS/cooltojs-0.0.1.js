@@ -160,6 +160,7 @@ var CoolToJS;
         function PropertyNode() {
             _super.call(this, 2 /* Property */);
             this.isUsed = false;
+            this.isAsync = false;
             this.callsMethods = [];
         }
         Object.defineProperty(PropertyNode.prototype, "hasInitializer", {
@@ -650,6 +651,7 @@ var CoolToJS;
                             methodCallExprNode.methodName = syntaxTree.children[2].token.match;
                             methodCallExprNode.token = syntaxTree.children[2].token;
                             methodCallExprNode.targetExpression = _this.convert(syntaxTree.children[0]);
+                            methodCallExprNode.targetExpression.parent = methodCallExprNode;
                             expressionListIndex = 4;
                         }
                         else if (syntaxTree.children[1].syntaxKind === 16 /* AtSignOperator */) {
@@ -955,6 +957,7 @@ var CoolToJS;
                     generatedJavaScript: output
                 };
             };
+            this.isInAsyncContext = false;
             this.indentCache = [];
             this.singleIndent = '    ';
         }
@@ -1062,13 +1065,14 @@ var CoolToJS;
         };
         JavaScriptGenerator.prototype.generateClassProperty = function (propertyNode, indentLevel) {
             var output = [];
+            this.isInAsyncContext = propertyNode.isAsync;
             if (propertyNode.hasInitializer) {
                 output.push(this.indent(indentLevel) + propertyNode.propertyName + ' = ');
                 if (this.expressionReturnsItself(propertyNode.propertyInitializerExpression)) {
                     output.push(this.generateExpression(propertyNode.propertyInitializerExpression, false, indentLevel + 1));
                 }
                 else {
-                    output.push(this.wrapInSelfExecutingFunction(propertyNode.propertyInitializerExpression, indentLevel));
+                    output.push(this.wrapInSelfExecutingFunction(propertyNode.propertyInitializerExpression, this.isInAsyncContext, indentLevel));
                 }
                 output.push(';\n');
             }
@@ -1088,6 +1092,7 @@ var CoolToJS;
         };
         JavaScriptGenerator.prototype.generateClassMethod = function (methodNode, indentLevel) {
             var output = [];
+            this.isInAsyncContext = methodNode.isAsync;
             output.push(this.indent(indentLevel) + (methodNode.isAsync ? '*' : '') + methodNode.methodName + '(');
             methodNode.parameters.forEach(function (p, index) {
                 var isLast = index === methodNode.parameters.length - 1;
@@ -1179,7 +1184,7 @@ var CoolToJS;
                         output.push(' = ' + _this.generateExpression(_this.unwrapSelfReturningExpression(lvdn.initializerExpression), false, 0));
                     }
                     else {
-                        output.push(' = ' + _this.wrapInSelfExecutingFunction(lvdn.initializerExpression, indentLevel));
+                        output.push(' = ' + _this.wrapInSelfExecutingFunction(lvdn.initializerExpression, _this.isInAsyncContext, indentLevel));
                     }
                 }
                 else if (lvdn.typeName === 'Bool') {
@@ -1228,7 +1233,7 @@ var CoolToJS;
                     output.push(_this.generateExpression(_this.unwrapSelfReturningExpression(p), false, 0));
                 }
                 else {
-                    output.push(_this.wrapInSelfExecutingFunction(p, indentLevel));
+                    output.push(_this.wrapInSelfExecutingFunction(p, _this.isInAsyncContext, indentLevel));
                 }
                 if (index !== methodCallExpression.parameterExpressionList.length - 1) {
                     output.push(',');
@@ -1291,13 +1296,13 @@ var CoolToJS;
                 operand1 = this.generateExpression(this.unwrapSelfReturningExpression(binOpExpressionNode.operand1), false, 0);
             }
             else {
-                operand1 = this.wrapInSelfExecutingFunction(binOpExpressionNode.operand1, indentLevel);
+                operand1 = this.wrapInSelfExecutingFunction(binOpExpressionNode.operand1, this.isInAsyncContext, indentLevel);
             }
             if (this.expressionReturnsItself(binOpExpressionNode.operand2)) {
                 operand2 = this.generateExpression(this.unwrapSelfReturningExpression(binOpExpressionNode.operand2), false, 0);
             }
             else {
-                operand2 = this.wrapInSelfExecutingFunction(binOpExpressionNode.operand2, indentLevel);
+                operand2 = this.wrapInSelfExecutingFunction(binOpExpressionNode.operand2, this.isInAsyncContext, indentLevel);
             }
             output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : ''));
             switch (binOpExpressionNode.operationType) {
@@ -1346,7 +1351,7 @@ var CoolToJS;
                 output.push(this.generateExpression(this.unwrapSelfReturningExpression(unOpExpressionNode.operand), false, 0));
             }
             else {
-                output.push(this.wrapInSelfExecutingFunction(unOpExpressionNode.operand, indentLevel));
+                output.push(this.wrapInSelfExecutingFunction(unOpExpressionNode.operand, this.isInAsyncContext, indentLevel));
             }
             output.push(')');
             return output.join('');
@@ -1358,7 +1363,7 @@ var CoolToJS;
                 output.push(this.generateExpression(this.unwrapSelfReturningExpression(ifExpressionNode.predicate), false, 0));
             }
             else {
-                output.push(this.wrapInSelfExecutingFunction(ifExpressionNode.predicate, indentLevel));
+                output.push(this.wrapInSelfExecutingFunction(ifExpressionNode.predicate, this.isInAsyncContext, indentLevel));
             }
             output.push(')._value) {\n');
             output.push(this.generateExpression(ifExpressionNode.consequent, returnResult, indentLevel + 1) + '\n');
@@ -1374,7 +1379,7 @@ var CoolToJS;
                 output.push(this.generateExpression(this.unwrapSelfReturningExpression(whileExpressionNode.whileConditionExpression), false, 0));
             }
             else {
-                output.push(this.wrapInSelfExecutingFunction(whileExpressionNode.whileConditionExpression, indentLevel));
+                output.push(this.wrapInSelfExecutingFunction(whileExpressionNode.whileConditionExpression, this.isInAsyncContext, indentLevel));
             }
             output.push(')._value) {\n');
             output.push(this.generateExpression(whileExpressionNode.whileBodyExpression, returnResult, indentLevel + 1) + '\n');
@@ -1389,7 +1394,7 @@ var CoolToJS;
                 output.push(this.generateExpression(this.unwrapSelfReturningExpression(caseExpressionNode.condition), false, 0));
             }
             else {
-                output.push(this.wrapInSelfExecutingFunction(caseExpressionNode.condition, indentLevel));
+                output.push(this.wrapInSelfExecutingFunction(caseExpressionNode.condition, this.isInAsyncContext, indentLevel));
             }
             output.push(', [\n');
             caseExpressionNode.caseOptionList.forEach(function (option, index) {
@@ -1400,7 +1405,7 @@ var CoolToJS;
                     output.push(_this.generateExpression(_this.unwrapSelfReturningExpression(option.caseOptionExpression), false, 0));
                 }
                 else {
-                    output.push(_this.wrapInSelfExecutingFunction(option.caseOptionExpression, indentLevel));
+                    output.push(_this.wrapInSelfExecutingFunction(option.caseOptionExpression, _this.isInAsyncContext, indentLevel));
                 }
                 output.push('); }');
                 output.push(']' + (isLast ? '' : ',') + '\n');
@@ -1427,9 +1432,14 @@ var CoolToJS;
         };
         JavaScriptGenerator.prototype.expressionReturnsItself = function (node) {
             return (node.type === 21 /* StringLiteralExpression */ || node.type === 20 /* IntegerLiteralExpression */ || node.type === 19 /* ObjectIdentifierExpression */ || node.type === 22 /* TrueKeywordExpression */ || node.type === 23 /* FalseKeywordExpression */ || node.type === 13 /* NewExpression */ || (node.type === 8 /* BlockExpression */ && node.expressionList.length === 1 && this.expressionReturnsItself(node.expressionList[0])) || (node.type === 17 /* ParentheticalExpression */ && this.expressionReturnsItself(node.innerExpression)));
+            //|| (!this.isInAsyncContext &&
+            //    (node.type === NodeType.IsvoidExpression
+            //        || node.type === NodeType.BinaryOperationExpression
+            //        || node.type === NodeType.UnaryOperationExpression
+            //        || node.type === NodeType.MethodCallExpression)));
         };
         JavaScriptGenerator.prototype.unwrapSelfReturningExpression = function (node) {
-            if (node.type === 21 /* StringLiteralExpression */ || node.type === 20 /* IntegerLiteralExpression */ || node.type === 19 /* ObjectIdentifierExpression */ || node.type === 15 /* BinaryOperationExpression */ || node.type === 16 /* UnaryOperationExpression */ || node.type === 5 /* MethodCallExpression */ || node.type === 17 /* ParentheticalExpression */ || node.type === 22 /* TrueKeywordExpression */ || node.type === 23 /* FalseKeywordExpression */ || node.type === 13 /* NewExpression */ || node.type === 14 /* IsvoidExpression */) {
+            if (node.type === 21 /* StringLiteralExpression */ || node.type === 20 /* IntegerLiteralExpression */ || node.type === 19 /* ObjectIdentifierExpression */ || node.type === 17 /* ParentheticalExpression */ || node.type === 22 /* TrueKeywordExpression */ || node.type === 23 /* FalseKeywordExpression */ || node.type === 13 /* NewExpression */) {
                 return node;
             }
             else if (node.type === 8 /* BlockExpression */) {
@@ -1439,14 +1449,23 @@ var CoolToJS;
                 throw 'unwrapSelfReturningExpression() should not be called without testing whether the expression is self returning using expressionReturnsItself()';
             }
         };
-        // TODO: don't create a generator if we're currently executing inside a synchronous function
-        JavaScriptGenerator.prototype.wrapInSelfExecutingFunction = function (node, indentLevel) {
+        JavaScriptGenerator.prototype.wrapInSelfExecutingFunction = function (node, isAsync, indentLevel) {
             var output = [];
-            output.push('(yield* (function *() {\n');
+            if (isAsync) {
+                output.push('(yield* (function *() {\n');
+            }
+            else {
+                output.push('(() => {\n');
+            }
             output.push(this.indent(indentLevel + 2) + 'let _returnValue;\n');
             output.push(this.generateExpression(node, true, indentLevel + 2) + '\n');
             output.push(this.indent(indentLevel + 2) + 'return _returnValue;\n');
-            output.push(this.indent(indentLevel + 1) + '}).apply(this))');
+            if (isAsync) {
+                output.push(this.indent(indentLevel + 1) + '}).apply(this))');
+            }
+            else {
+                output.push(this.indent(indentLevel + 1) + '})()');
+            }
             return output.join('');
         };
         JavaScriptGenerator.prototype.translateTypeNameIfPrimitiveType = function (typeName) {
@@ -1963,6 +1982,7 @@ var CoolToJS;
                 _this.usageRecord = new CoolToJS.UsageRecord();
                 _this.analyze(astConvertOutput.abstractSyntaxTree, starterTypeEnvironment, errorMessages, warningMessages);
                 _this.markAsyncMethods(_this.typeHeirarchy.findMethodOnType('in_string', 'IO', false), _this.typeHeirarchy.findMethodOnType('in_int', 'IO', false));
+                _this.markAsyncProperties(astConvertOutput.abstractSyntaxTree);
                 return {
                     success: errorMessages.length === 0,
                     abstractSyntaxTree: astConvertOutput.abstractSyntaxTree,
@@ -2421,6 +2441,15 @@ var CoolToJS;
                 }).forEach(function (calledByMethod) {
                     calledByMethod.isAsync = true;
                     _this.markAsyncMethods(calledByMethod);
+                });
+            });
+        };
+        SemanticAnalyzer.prototype.markAsyncProperties = function (programNode) {
+            programNode.classList.forEach(function (cl) {
+                cl.propertyList.forEach(function (prop) {
+                    if (prop.callsMethods.some(function (m) { return m.isAsync; })) {
+                        prop.isAsync = true;
+                    }
                 });
             });
         };
@@ -3147,14 +3176,17 @@ var CoolToJS;
             var abortMethodNode = new CoolToJS.MethodNode();
             abortMethodNode.methodName = 'abort';
             abortMethodNode.returnTypeName = 'Object';
+            abortMethodNode.parent = objectClass;
             objectClass.children.push(abortMethodNode);
             var typeNameMethodNode = new CoolToJS.MethodNode();
             typeNameMethodNode.methodName = 'type_name';
             typeNameMethodNode.returnTypeName = 'String';
+            typeNameMethodNode.parent = objectClass;
             objectClass.children.push(typeNameMethodNode);
             var copyMethodNode = new CoolToJS.MethodNode();
             copyMethodNode.methodName = 'copy';
             copyMethodNode.returnTypeName = 'SELF_TYPE';
+            copyMethodNode.parent = objectClass;
             objectClass.children.push(copyMethodNode);
             programNode.children.push(objectClass);
             // IO Class
@@ -3166,6 +3198,7 @@ var CoolToJS;
                 parameterName: 'x',
                 parameterTypeName: 'String'
             });
+            outStringMethodNode.parent = ioClass;
             ioClass.children.push(outStringMethodNode);
             var outIntMethodNode = new CoolToJS.MethodNode();
             outIntMethodNode.methodName = 'out_int';
@@ -3174,18 +3207,21 @@ var CoolToJS;
                 parameterName: 'x',
                 parameterTypeName: 'Int'
             });
+            outIntMethodNode.parent = ioClass;
             ioClass.children.push(outIntMethodNode);
             var inStringMethodNode = new CoolToJS.MethodNode();
             inStringMethodNode.methodName = 'in_string';
             inStringMethodNode.returnTypeName = 'String';
             inStringMethodNode.isAsync = true;
             inStringMethodNode.isInStringOrInInt = true;
+            inStringMethodNode.parent = ioClass;
             ioClass.children.push(inStringMethodNode);
             var inIntMethodNode = new CoolToJS.MethodNode();
             inIntMethodNode.methodName = 'in_int';
             inIntMethodNode.returnTypeName = 'Int';
             inIntMethodNode.isAsync = true;
             inIntMethodNode.isInStringOrInInt = true;
+            inIntMethodNode.parent = ioClass;
             ioClass.children.push(inIntMethodNode);
             programNode.children.push(ioClass);
             // Int
@@ -3196,6 +3232,7 @@ var CoolToJS;
             var lengthMethodNode = new CoolToJS.MethodNode();
             lengthMethodNode.methodName = 'length';
             lengthMethodNode.returnTypeName = 'Int';
+            lengthMethodNode.parent = stringClass;
             stringClass.children.push(lengthMethodNode);
             var concatMethodNode = new CoolToJS.MethodNode();
             concatMethodNode.methodName = 'concat';
@@ -3204,6 +3241,7 @@ var CoolToJS;
                 parameterName: 's',
                 parameterTypeName: 'String'
             });
+            concatMethodNode.parent = stringClass;
             stringClass.children.push(concatMethodNode);
             var substrMethodNode = new CoolToJS.MethodNode();
             substrMethodNode.methodName = 'substr';
@@ -3216,6 +3254,7 @@ var CoolToJS;
                 parameterName: 'l',
                 parameterTypeName: 'Int'
             });
+            stringClass.parent = stringClass;
             stringClass.children.push(substrMethodNode);
             programNode.children.push(stringClass);
             // Bool

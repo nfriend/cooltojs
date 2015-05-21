@@ -11,6 +11,7 @@
             this.usageRecord = new UsageRecord();
             this.analyze(astConvertOutput.abstractSyntaxTree, starterTypeEnvironment, errorMessages, warningMessages);
             this.markAsyncMethods(this.typeHeirarchy.findMethodOnType('in_string', 'IO', false), this.typeHeirarchy.findMethodOnType('in_int', 'IO', false));
+            this.markAsyncProperties(<ProgramNode>astConvertOutput.abstractSyntaxTree);
 
             return {
                 success: errorMessages.length === 0,
@@ -590,6 +591,16 @@
                 }).forEach(calledByMethod => {
                     calledByMethod.isAsync = true;
                     this.markAsyncMethods(calledByMethod);
+                });
+            });
+        }
+
+        private markAsyncProperties(programNode: ProgramNode): void {
+            programNode.classList.forEach(cl => {
+                cl.propertyList.forEach(prop => {
+                    if (prop.callsMethods.some(m => m.isAsync)) {
+                        prop.isAsync = true;
+                    }
                 });
             });
         }

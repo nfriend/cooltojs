@@ -154,6 +154,7 @@
                         methodCallExprNode.methodName = syntaxTree.children[2].token.match;
                         methodCallExprNode.token = syntaxTree.children[2].token;
                         methodCallExprNode.targetExpression = this.convert(syntaxTree.children[0]);
+                        methodCallExprNode.targetExpression.parent = methodCallExprNode;
                         expressionListIndex = 4;
 
                     } else if (syntaxTree.children[1].syntaxKind === SyntaxKind.AtSignOperator) {
