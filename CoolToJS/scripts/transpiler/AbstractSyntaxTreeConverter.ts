@@ -6,7 +6,7 @@
         public Convert = (parserOutput: ParserOutput): ASTConverterOutput => {
             return {
                 success: true,
-                abstractSyntaxTree: this.convert(parserOutput.syntaxTree),
+                abstractSyntaxTree: this.convert(Utility.ShallowCopySyntaxTree(parserOutput.syntaxTree)),
                 errorMessages: parserOutput.errorMessages,
                 warningMessages: parserOutput.warningMessages
             }
@@ -14,10 +14,6 @@
 
         private convert = (syntaxTree: SyntaxTree): Node => {
             var convertedNode: Node;
-
-            // use a shallow copy of the provided tree so we
-            // don't alter the original
-            syntaxTree = Utility.ShallowCopySyntaxTree(syntaxTree);
 
             /* PROGRAM */
             if (syntaxTree.syntaxKind === SyntaxKind.Program) {

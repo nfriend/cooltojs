@@ -188,6 +188,23 @@
         return result;
     }
 
+    var reserved = [
+        'break', 'case', 'class', 'catch', 'const', 'continue', 'debugger', 'default', 'delete',
+        'do', 'else', 'export', 'extends', 'finally', 'for', 'function', 'if', 'import', 'in',
+        'instanceof', 'let', 'new', 'return', 'super', 'switch', 'this', 'throw', 'try', 'typeof',
+        'var', 'void', 'while', 'with', 'yield', 'enum', 'await', 'implements', 'package', 'protected',
+        'static', 'interface', 'private', 'public', 'abstract', 'boolean', 'byte', 'char', 'double',
+        'final', 'float', 'goto', 'int', 'long', 'native', 'short', 'synchronized', 'transient',
+        'volatile', 'null'
+    ];
+    export function escapeIfReserved(id: string): string {
+        if (reserved.indexOf(id.toLowerCase()) !== -1) {
+            return '__' + id;
+        } else {
+            return id;
+        }
+    }
+
     export var baseObjectClass = "\
 class _Object {\n\
     constructor(typeName) {\n\
@@ -226,11 +243,11 @@ class _String extends _Object {\n\
         if ((this._value.length === 0 && _start._value !== 0)\n\
             || (this._value.length !== 0 && _start._value > this._value.length - 1)) {\n\
 \n\
-            throw "Index to substr is too big";\n\
+            throw "Index provided to substr (" + _start._value + ") is too big (string is of length " + this._value.length + ")";\n\
         } else if ((this._value.length === 0 && _length._value !== 0)\n\
                    || (this._value.length !== 0 && _length._value > this._value.length - _start._value)) {\n\
 \n\
-            throw "Length to substr too long";\n\
+            throw "Start index (" + _start._value + ") + length (" + _length._value + ") provided to substr is too long (string is of length " + this._value.length + ")";\n\
         }\n\
         return new _String(this._value.substr(_start._value, _length._value));\n\
     }\n\
@@ -269,11 +286,18 @@ class _Bool extends _Object {\n\
     ];
 
     export var unaryOperationFunctions = [
-        { operation: UnaryOperationType.Complement, func: '_complement = (a) => { return new _Int(~a._value); }' },
+        { operation: UnaryOperationType.Complement, func: '_complement = (a) => { return new _Int(-1 * a._value); }' },
         { operation: UnaryOperationType.Not, func: '_not = (a) => { return new _Bool(!a._value); }' },
     ];
 
-    export var caseFunction = '_case = (obj, branches, currentTypeName) => {\n\
+    export var getCaseFunction = (isAsync: boolean): string => {
+        if (isAsync) {
+            var funcString = '_asyncCase = function *(obj, branches, thisObj, currentTypeName) {\n';
+        } else {
+            var funcString = '_case = (obj, branches, thisObj, currentTypeName) => {\n';
+        }
+
+        funcString += '\
         if (obj === null || typeof obj === "undefined") {\n\
             throw "Match on void in case statement";\n\
         }\n\
@@ -282,8 +306,15 @@ class _Bool extends _Object {\n\
         });\n\
         if (firstRound.length === 0) {\n\
             throw "No match in case statement for class " + currentTypeName;\n\
-        } else if (firstRound.length === 1) {\n\
-            return firstRound[0][1](obj);\n\
+        } else if (firstRound.length === 1) {\n';
+
+        if (isAsync) {
+            funcString += '            return yield * firstRound[0][1].call(thisObj, obj);\n';
+        } else {
+            funcString += '            return firstRound[0][1].call(thisObj, obj);\n';
+        }
+
+        funcString += '\
         } else {\n\
             let nextRound = firstRound,\n\
                 currentRound,\n\
@@ -303,8 +334,17 @@ class _Bool extends _Object {\n\
             }\n\
             if (eliminatedBranches.length !== 1) {\n\
                 throw "Invalid state: Case statement matched more than one branch";\n\
-            }\n\
-            return eliminatedBranches[0][1](obj);\n\
+            }\n';
+        if (isAsync) {
+            funcString += '            return yield* eliminatedBranches[0][1].call(thisObj, obj);\n';
+        } else {
+            funcString += '            return eliminatedBranches[0][1].call(thisObj, obj);\n';
+        }
+
+        funcString += '\
         }\n\
     }';
+
+        return funcString;
+    }
 } 

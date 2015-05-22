@@ -51,7 +51,9 @@
 
             if (this.usageRecord.caseExpression) {
                 output.push(',\n');
-                output.push(this.indent(1) + Utility.caseFunction);
+                output.push(this.indent(1) + Utility.getCaseFunction(false));
+                output.push(',\n');
+                output.push(this.indent(1) + Utility.getCaseFunction(true));
             }
 
             output.push(';\n\n');
@@ -93,10 +95,10 @@
             output.push(this.indent(indentLevel + 2) + 'super(typeName);\n');
             output.push(this.indent(indentLevel + 1) + '}\n\n');
 
-            ['out_string', 'out_int', 'in_string', 'in_int'].forEach(methodname => {
-                var methodDetails = Utility.getFunctionDetails(ioFunctions[methodname]);
-                output.push(this.indent(indentLevel + 1) + (methodname === 'in_string' || methodname === 'in_int' ? '*' : ''));
-                output.push(methodname + '(');
+            ['out_string', 'out_int', 'in_string', 'in_int'].forEach(methodName => {
+                var methodDetails = Utility.getFunctionDetails(ioFunctions[methodName]);
+                output.push(this.indent(indentLevel + 1) + (methodName === 'in_string' || methodName === 'in_int' ? '*' : ''));
+                output.push(methodName + '(');
                 var firstParamName: string;
                 methodDetails.parameters.forEach((p, index) => {
                     var isLast = methodDetails.parameters.length - 1 === index;
@@ -105,7 +107,7 @@
                     }
                     output.push(p + (isLast ? '' : ', '))
                 });
-                if (methodname === 'out_string' || methodname === 'out_int') {
+                if (methodName === 'out_string' || methodName === 'out_int') {
                     output.push(') {\n');
                     output.push(this.indent(indentLevel + 2) + firstParamName + ' = ' + firstParamName + '._value;');
                     output.push(methodDetails.body);
@@ -114,7 +116,12 @@
                 } else {
                     output.push(') {');
                     output.push(methodDetails.body)
-                    output.push('\n' + this.indent(indentLevel + 2) + 'return yield;\n');
+                    output.push('\n' + this.indent(indentLevel + 2) + 'return new ');
+                    if (methodName === 'in_string') {
+                        output.push('_String(yield);\n');
+                    } else {
+                        output.push('_Int(parseInt(yield, 10));\n');
+                    }
                     output.push(this.indent(indentLevel + 1) + '};\n');
                 }
             });
@@ -149,7 +156,7 @@
             var output: Array<string> = [];
             this.isInAsyncContext = propertyNode.isAsync;
             if (propertyNode.hasInitializer) {
-                output.push(this.indent(indentLevel) + propertyNode.propertyName + ' = ');
+                output.push(this.indent(indentLevel) + Utility.escapeIfReserved(propertyNode.propertyName) + ' = ');
                 if (this.expressionReturnsItself(propertyNode.propertyInitializerExpression)) {
                     output.push(this.generateExpression(propertyNode.propertyInitializerExpression, false, indentLevel + 1));
                 } else {
@@ -171,10 +178,10 @@
         private generateClassMethod(methodNode: MethodNode, indentLevel: number): string {
             var output: Array<string> = [];
             this.isInAsyncContext = methodNode.isAsync;
-            output.push(this.indent(indentLevel) + (methodNode.isAsync ? '*' : '') + methodNode.methodName + '(');
+            output.push(this.indent(indentLevel) + (methodNode.isAsync ? '*' : '') + Utility.escapeIfReserved(methodNode.methodName) + '(');
             methodNode.parameters.forEach((p, index) => {
                 var isLast = index === methodNode.parameters.length - 1;
-                output.push(p.parameterName + (isLast ? '' : ', '));
+                output.push(Utility.escapeIfReserved(p.parameterName) + (isLast ? '' : ', '));
             });
             output.push(') {\n');
             output.push(this.indent(indentLevel + 1) + 'let _returnValue;\n');
@@ -262,7 +269,7 @@
                 var isFirst = index === 0,
                     isLast = index === letExpressionNode.localVariableDeclarations.length - 1;
 
-                output.push(this.indent(indentLevel) + (isFirst ? 'let ' : this.indent(1)) + lvdn.identifierName);
+                output.push(this.indent(indentLevel) + (isFirst ? 'let ' : this.indent(1)) + Utility.escapeIfReserved(lvdn.identifierName));
                 if (lvdn.initializerExpression) {
                     if (this.expressionReturnsItself(lvdn.initializerExpression)) {
                         output.push(' = ' + this.generateExpression(this.unwrapSelfReturningExpression(lvdn.initializerExpression), false, 0))
@@ -298,10 +305,6 @@
                 output.push('_returnValue = ');
             }
 
-            if (methodCallExpression.isInStringOrInInt) {
-                output.push('new _String(');
-            }
-
             if (methodCallExpression.method.isAsync) {
                 output.push('yield* ');
             }
@@ -311,10 +314,10 @@
             }
 
             if (methodCallExpression.isCallToParent) {
-                output.push(methodCallExpression.explicitParentCallTypeName + '.prototype.' + methodCallExpression.methodName + '.call(this, ');
+                output.push(methodCallExpression.explicitParentCallTypeName + '.prototype.' + Utility.escapeIfReserved(methodCallExpression.methodName) + '.call(this, ');
             } else {
                 output.push(methodCallExpression.isCallToSelf ? 'this.' : '.');
-                output.push(methodCallExpression.methodName + '(');
+                output.push(Utility.escapeIfReserved(methodCallExpression.methodName) + '(');
             }
 
             methodCallExpression.parameterExpressionList.forEach((p, index) => {
@@ -330,9 +333,6 @@
 
             if (methodCallExpression.isInStringOrInInt) {
                 output.push('_inputGenerator');
-
-                // close out the extra parenthesis added for the new _String() expression
-                output.push(')');
             }
 
             output.push(')');
@@ -354,13 +354,16 @@
 
         private generateAssignmentExpression(assignmentExpressionNode: AssignmentExpressionNode, returnResult: boolean, indentLevel: number): string {
             var output: Array<string> = [];
-            output.push(this.indent(indentLevel) + (assignmentExpressionNode.isAssignmentToSelfVariable ? 'this.' : '') + assignmentExpressionNode.identifierName + ' = ');
+            output.push(this.indent(indentLevel) + (assignmentExpressionNode.isAssignmentToSelfVariable ? 'this.' : '') + Utility.escapeIfReserved(assignmentExpressionNode.identifierName) + ' = ');
             output.push(this.generateExpression(assignmentExpressionNode.assignmentExpression, returnResult, 0));
             return output.join('');
         }
 
         private generateObjectIdentifierExpression(objectIdentifierExpressionNode: ObjectIdentifierExpressionNode, returnResult: boolean, indentLevel: number): string {
-            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + (objectIdentifierExpressionNode.isCallToSelf ? 'this.' : '') + objectIdentifierExpressionNode.objectIdentifierName;
+            return (this.indent(indentLevel) +
+                (returnResult ? '_returnValue = ' : '') +
+                (objectIdentifierExpressionNode.isCallToSelf ? 'this.' : '') +
+                Utility.escapeIfReserved(objectIdentifierExpressionNode.objectIdentifierName));
         }
 
         private generateSelfExpression(selfExpressionNode: SelfExpressionNode, returnResult: boolean, indentLevel: number): string {
@@ -496,7 +499,7 @@
 
         private generateCaseExpression(caseExpressionNode: CaseExpressionNode, returnResult: boolean, indentLevel: number): string {
             var output: Array<string> = [];
-            output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + '_case(');
+            output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + (this.isInAsyncContext ? 'yield* _asyncCase' : '_case') + '(');
             if (this.expressionReturnsItself(caseExpressionNode.condition)) {
                 output.push(this.generateExpression(this.unwrapSelfReturningExpression(caseExpressionNode.condition), false, 0));
             } else {
@@ -506,7 +509,9 @@
             caseExpressionNode.caseOptionList.forEach((option, index) => {
                 var isLast = index === caseExpressionNode.caseOptionList.length - 1;
                 output.push(this.indent(indentLevel + 1) + '[' + this.translateTypeNameIfPrimitiveType(option.typeName) + ', ');
-                output.push('(' + option.identiferName + ') => { return (');
+                output.push(this.isInAsyncContext ? 'function * ' : '');
+                output.push('(' + Utility.escapeIfReserved(option.identiferName) + ')');
+                output.push((this.isInAsyncContext ? '' : ' =>') + ' { return (');
 
                 if (this.expressionReturnsItself(option.caseOptionExpression)) {
                     output.push(this.generateExpression(this.unwrapSelfReturningExpression(option.caseOptionExpression), false, 0));
@@ -517,7 +522,7 @@
                 output.push('); }');
                 output.push(']' + (isLast ? '' : ',') + '\n');
             });
-            output.push(this.indent(indentLevel) + '], this.type_name()._value)');
+            output.push(this.indent(indentLevel) + '], this, this.type_name()._value)');
             return output.join('');
         }
 
@@ -556,11 +561,11 @@
                 || (node.type === NodeType.ParentheticalExpression
                     && this.expressionReturnsItself((<ParentheticalExpressionNode>node).innerExpression)));
 
-                //|| (!this.isInAsyncContext &&
-                //    (node.type === NodeType.IsvoidExpression
-                //        || node.type === NodeType.BinaryOperationExpression
-                //        || node.type === NodeType.UnaryOperationExpression
-                //        || node.type === NodeType.MethodCallExpression)));
+            //|| (!this.isInAsyncContext &&
+            //    (node.type === NodeType.IsvoidExpression
+            //        || node.type === NodeType.BinaryOperationExpression
+            //        || node.type === NodeType.UnaryOperationExpression
+            //        || node.type === NodeType.MethodCallExpression)));
         }
 
         private unwrapSelfReturningExpression(node: Node): ExpressionNode {

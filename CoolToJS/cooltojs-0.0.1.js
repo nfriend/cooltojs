@@ -537,16 +537,13 @@ var CoolToJS;
             this.Convert = function (parserOutput) {
                 return {
                     success: true,
-                    abstractSyntaxTree: _this.convert(parserOutput.syntaxTree),
+                    abstractSyntaxTree: _this.convert(CoolToJS.Utility.ShallowCopySyntaxTree(parserOutput.syntaxTree)),
                     errorMessages: parserOutput.errorMessages,
                     warningMessages: parserOutput.warningMessages
                 };
             };
             this.convert = function (syntaxTree) {
                 var convertedNode;
-                // use a shallow copy of the provided tree so we
-                // don't alter the original
-                syntaxTree = CoolToJS.Utility.ShallowCopySyntaxTree(syntaxTree);
                 /* PROGRAM */
                 if (syntaxTree.syntaxKind === 53 /* Program */) {
                     _this.flattenRecursion(syntaxTree);
@@ -979,7 +976,9 @@ var CoolToJS;
             });
             if (this.usageRecord.caseExpression) {
                 output.push(',\n');
-                output.push(this.indent(1) + CoolToJS.Utility.caseFunction);
+                output.push(this.indent(1) + CoolToJS.Utility.getCaseFunction(false));
+                output.push(',\n');
+                output.push(this.indent(1) + CoolToJS.Utility.getCaseFunction(true));
             }
             output.push(';\n\n');
             CoolToJS.Utility.baseObjectClasses.forEach(function (c) {
@@ -1017,10 +1016,10 @@ var CoolToJS;
             output.push(this.indent(indentLevel + 1) + 'constructor(typeName) {\n');
             output.push(this.indent(indentLevel + 2) + 'super(typeName);\n');
             output.push(this.indent(indentLevel + 1) + '}\n\n');
-            ['out_string', 'out_int', 'in_string', 'in_int'].forEach(function (methodname) {
-                var methodDetails = CoolToJS.Utility.getFunctionDetails(ioFunctions[methodname]);
-                output.push(_this.indent(indentLevel + 1) + (methodname === 'in_string' || methodname === 'in_int' ? '*' : ''));
-                output.push(methodname + '(');
+            ['out_string', 'out_int', 'in_string', 'in_int'].forEach(function (methodName) {
+                var methodDetails = CoolToJS.Utility.getFunctionDetails(ioFunctions[methodName]);
+                output.push(_this.indent(indentLevel + 1) + (methodName === 'in_string' || methodName === 'in_int' ? '*' : ''));
+                output.push(methodName + '(');
                 var firstParamName;
                 methodDetails.parameters.forEach(function (p, index) {
                     var isLast = methodDetails.parameters.length - 1 === index;
@@ -1029,7 +1028,7 @@ var CoolToJS;
                     }
                     output.push(p + (isLast ? '' : ', '));
                 });
-                if (methodname === 'out_string' || methodname === 'out_int') {
+                if (methodName === 'out_string' || methodName === 'out_int') {
                     output.push(') {\n');
                     output.push(_this.indent(indentLevel + 2) + firstParamName + ' = ' + firstParamName + '._value;');
                     output.push(methodDetails.body);
@@ -1039,7 +1038,13 @@ var CoolToJS;
                 else {
                     output.push(') {');
                     output.push(methodDetails.body);
-                    output.push('\n' + _this.indent(indentLevel + 2) + 'return yield;\n');
+                    output.push('\n' + _this.indent(indentLevel + 2) + 'return new ');
+                    if (methodName === 'in_string') {
+                        output.push('_String(yield);\n');
+                    }
+                    else {
+                        output.push('_Int(parseInt(yield, 10));\n');
+                    }
                     output.push(_this.indent(indentLevel + 1) + '};\n');
                 }
             });
@@ -1067,7 +1072,7 @@ var CoolToJS;
             var output = [];
             this.isInAsyncContext = propertyNode.isAsync;
             if (propertyNode.hasInitializer) {
-                output.push(this.indent(indentLevel) + propertyNode.propertyName + ' = ');
+                output.push(this.indent(indentLevel) + CoolToJS.Utility.escapeIfReserved(propertyNode.propertyName) + ' = ');
                 if (this.expressionReturnsItself(propertyNode.propertyInitializerExpression)) {
                     output.push(this.generateExpression(propertyNode.propertyInitializerExpression, false, indentLevel + 1));
                 }
@@ -1093,10 +1098,10 @@ var CoolToJS;
         JavaScriptGenerator.prototype.generateClassMethod = function (methodNode, indentLevel) {
             var output = [];
             this.isInAsyncContext = methodNode.isAsync;
-            output.push(this.indent(indentLevel) + (methodNode.isAsync ? '*' : '') + methodNode.methodName + '(');
+            output.push(this.indent(indentLevel) + (methodNode.isAsync ? '*' : '') + CoolToJS.Utility.escapeIfReserved(methodNode.methodName) + '(');
             methodNode.parameters.forEach(function (p, index) {
                 var isLast = index === methodNode.parameters.length - 1;
-                output.push(p.parameterName + (isLast ? '' : ', '));
+                output.push(CoolToJS.Utility.escapeIfReserved(p.parameterName) + (isLast ? '' : ', '));
             });
             output.push(') {\n');
             output.push(this.indent(indentLevel + 1) + 'let _returnValue;\n');
@@ -1178,7 +1183,7 @@ var CoolToJS;
             }
             letExpressionNode.localVariableDeclarations.forEach(function (lvdn, index) {
                 var isFirst = index === 0, isLast = index === letExpressionNode.localVariableDeclarations.length - 1;
-                output.push(_this.indent(indentLevel) + (isFirst ? 'let ' : _this.indent(1)) + lvdn.identifierName);
+                output.push(_this.indent(indentLevel) + (isFirst ? 'let ' : _this.indent(1)) + CoolToJS.Utility.escapeIfReserved(lvdn.identifierName));
                 if (lvdn.initializerExpression) {
                     if (_this.expressionReturnsItself(lvdn.initializerExpression)) {
                         output.push(' = ' + _this.generateExpression(_this.unwrapSelfReturningExpression(lvdn.initializerExpression), false, 0));
@@ -1212,9 +1217,6 @@ var CoolToJS;
             if (returnResult) {
                 output.push('_returnValue = ');
             }
-            if (methodCallExpression.isInStringOrInInt) {
-                output.push('new _String(');
-            }
             if (methodCallExpression.method.isAsync) {
                 output.push('yield* ');
             }
@@ -1222,11 +1224,11 @@ var CoolToJS;
                 output.push(this.generateExpression(methodCallExpression.targetExpression, returnResult, 0));
             }
             if (methodCallExpression.isCallToParent) {
-                output.push(methodCallExpression.explicitParentCallTypeName + '.prototype.' + methodCallExpression.methodName + '.call(this, ');
+                output.push(methodCallExpression.explicitParentCallTypeName + '.prototype.' + CoolToJS.Utility.escapeIfReserved(methodCallExpression.methodName) + '.call(this, ');
             }
             else {
                 output.push(methodCallExpression.isCallToSelf ? 'this.' : '.');
-                output.push(methodCallExpression.methodName + '(');
+                output.push(CoolToJS.Utility.escapeIfReserved(methodCallExpression.methodName) + '(');
             }
             methodCallExpression.parameterExpressionList.forEach(function (p, index) {
                 if (_this.expressionReturnsItself(p)) {
@@ -1241,8 +1243,6 @@ var CoolToJS;
             });
             if (methodCallExpression.isInStringOrInInt) {
                 output.push('_inputGenerator');
-                // close out the extra parenthesis added for the new _String() expression
-                output.push(')');
             }
             output.push(')');
             return output.join('');
@@ -1261,12 +1261,12 @@ var CoolToJS;
         };
         JavaScriptGenerator.prototype.generateAssignmentExpression = function (assignmentExpressionNode, returnResult, indentLevel) {
             var output = [];
-            output.push(this.indent(indentLevel) + (assignmentExpressionNode.isAssignmentToSelfVariable ? 'this.' : '') + assignmentExpressionNode.identifierName + ' = ');
+            output.push(this.indent(indentLevel) + (assignmentExpressionNode.isAssignmentToSelfVariable ? 'this.' : '') + CoolToJS.Utility.escapeIfReserved(assignmentExpressionNode.identifierName) + ' = ');
             output.push(this.generateExpression(assignmentExpressionNode.assignmentExpression, returnResult, 0));
             return output.join('');
         };
         JavaScriptGenerator.prototype.generateObjectIdentifierExpression = function (objectIdentifierExpressionNode, returnResult, indentLevel) {
-            return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + (objectIdentifierExpressionNode.isCallToSelf ? 'this.' : '') + objectIdentifierExpressionNode.objectIdentifierName;
+            return (this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + (objectIdentifierExpressionNode.isCallToSelf ? 'this.' : '') + CoolToJS.Utility.escapeIfReserved(objectIdentifierExpressionNode.objectIdentifierName));
         };
         JavaScriptGenerator.prototype.generateSelfExpression = function (selfExpressionNode, returnResult, indentLevel) {
             return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'this';
@@ -1389,7 +1389,7 @@ var CoolToJS;
         JavaScriptGenerator.prototype.generateCaseExpression = function (caseExpressionNode, returnResult, indentLevel) {
             var _this = this;
             var output = [];
-            output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + '_case(');
+            output.push(this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + (this.isInAsyncContext ? 'yield* _asyncCase' : '_case') + '(');
             if (this.expressionReturnsItself(caseExpressionNode.condition)) {
                 output.push(this.generateExpression(this.unwrapSelfReturningExpression(caseExpressionNode.condition), false, 0));
             }
@@ -1400,7 +1400,9 @@ var CoolToJS;
             caseExpressionNode.caseOptionList.forEach(function (option, index) {
                 var isLast = index === caseExpressionNode.caseOptionList.length - 1;
                 output.push(_this.indent(indentLevel + 1) + '[' + _this.translateTypeNameIfPrimitiveType(option.typeName) + ', ');
-                output.push('(' + option.identiferName + ') => { return (');
+                output.push(_this.isInAsyncContext ? 'function * ' : '');
+                output.push('(' + CoolToJS.Utility.escapeIfReserved(option.identiferName) + ')');
+                output.push((_this.isInAsyncContext ? '' : ' =>') + ' { return (');
                 if (_this.expressionReturnsItself(option.caseOptionExpression)) {
                     output.push(_this.generateExpression(_this.unwrapSelfReturningExpression(option.caseOptionExpression), false, 0));
                 }
@@ -1410,7 +1412,7 @@ var CoolToJS;
                 output.push('); }');
                 output.push(']' + (isLast ? '' : ',') + '\n');
             });
-            output.push(this.indent(indentLevel) + '], this.type_name()._value)');
+            output.push(this.indent(indentLevel) + '], this, this.type_name()._value)');
             return output.join('');
         };
         JavaScriptGenerator.prototype.generateIsVoidExpression = function (isVoidExpressionNode, returnResult, indentLevel) {
@@ -2308,6 +2310,7 @@ var CoolToJS;
                         var commonParent = _this.typeHeirarchy.closetCommonParent(caseOptionTypes[0], caseOptionTypes[1]);
                         caseOptionTypes.splice(0, 2, commonParent);
                     }
+                    _this.analyze(caseExpressionNode.condition, typeEnvironment, errorMessages, warningMessages);
                     _this.usageRecord.caseExpression = true;
                     return caseOptionTypes[0];
                 }
@@ -3283,6 +3286,76 @@ var CoolToJS;
             return result;
         }
         Utility.getFunctionParameters = getFunctionParameters;
+        var reserved = [
+            'break',
+            'case',
+            'class',
+            'catch',
+            'const',
+            'continue',
+            'debugger',
+            'default',
+            'delete',
+            'do',
+            'else',
+            'export',
+            'extends',
+            'finally',
+            'for',
+            'function',
+            'if',
+            'import',
+            'in',
+            'instanceof',
+            'let',
+            'new',
+            'return',
+            'super',
+            'switch',
+            'this',
+            'throw',
+            'try',
+            'typeof',
+            'var',
+            'void',
+            'while',
+            'with',
+            'yield',
+            'enum',
+            'await',
+            'implements',
+            'package',
+            'protected',
+            'static',
+            'interface',
+            'private',
+            'public',
+            'abstract',
+            'boolean',
+            'byte',
+            'char',
+            'double',
+            'final',
+            'float',
+            'goto',
+            'int',
+            'long',
+            'native',
+            'short',
+            'synchronized',
+            'transient',
+            'volatile',
+            'null'
+        ];
+        function escapeIfReserved(id) {
+            if (reserved.indexOf(id.toLowerCase()) !== -1) {
+                return '__' + id;
+            }
+            else {
+                return id;
+            }
+        }
+        Utility.escapeIfReserved = escapeIfReserved;
         Utility.baseObjectClass = "\
 class _Object {\n\
     constructor(typeName) {\n\
@@ -3320,11 +3393,11 @@ class _String extends _Object {\n\
         if ((this._value.length === 0 && _start._value !== 0)\n\
             || (this._value.length !== 0 && _start._value > this._value.length - 1)) {\n\
 \n\
-            throw "Index to substr is too big";\n\
+            throw "Index provided to substr (" + _start._value + ") is too big (string is of length " + this._value.length + ")";\n\
         } else if ((this._value.length === 0 && _length._value !== 0)\n\
                    || (this._value.length !== 0 && _length._value > this._value.length - _start._value)) {\n\
 \n\
-            throw "Length to substr too long";\n\
+            throw "Start index (" + _start._value + ") + length (" + _length._value + ") provided to substr is too long (string is of length " + this._value.length + ")";\n\
         }\n\
         return new _String(this._value.substr(_start._value, _length._value));\n\
     }\n\
@@ -3361,10 +3434,17 @@ class _Bool extends _Object {\n\
             { operation: 6 /* Comparison */, func: '_equals = (a, b) => {\n\        if (!a || !b || typeof a._value === "undefined" || typeof b._value === "undefined") {\n\            return new _Bool(a === b);\n\        } else {\n\            return new _Bool(a._value === b._value);\n\        }\n\    }' },
         ];
         Utility.unaryOperationFunctions = [
-            { operation: 0 /* Complement */, func: '_complement = (a) => { return new _Int(~a._value); }' },
+            { operation: 0 /* Complement */, func: '_complement = (a) => { return new _Int(-1 * a._value); }' },
             { operation: 1 /* Not */, func: '_not = (a) => { return new _Bool(!a._value); }' },
         ];
-        Utility.caseFunction = '_case = (obj, branches, currentTypeName) => {\n\
+        Utility.getCaseFunction = function (isAsync) {
+            if (isAsync) {
+                var funcString = '_asyncCase = function *(obj, branches, thisObj, currentTypeName) {\n';
+            }
+            else {
+                var funcString = '_case = (obj, branches, thisObj, currentTypeName) => {\n';
+            }
+            funcString += '\
         if (obj === null || typeof obj === "undefined") {\n\
             throw "Match on void in case statement";\n\
         }\n\
@@ -3373,8 +3453,14 @@ class _Bool extends _Object {\n\
         });\n\
         if (firstRound.length === 0) {\n\
             throw "No match in case statement for class " + currentTypeName;\n\
-        } else if (firstRound.length === 1) {\n\
-            return firstRound[0][1](obj);\n\
+        } else if (firstRound.length === 1) {\n';
+            if (isAsync) {
+                funcString += '            return yield * firstRound[0][1].call(thisObj, obj);\n';
+            }
+            else {
+                funcString += '            return firstRound[0][1].call(thisObj, obj);\n';
+            }
+            funcString += '\
         } else {\n\
             let nextRound = firstRound,\n\
                 currentRound,\n\
@@ -3394,10 +3480,18 @@ class _Bool extends _Object {\n\
             }\n\
             if (eliminatedBranches.length !== 1) {\n\
                 throw "Invalid state: Case statement matched more than one branch";\n\
-            }\n\
-            return eliminatedBranches[0][1](obj);\n\
+            }\n';
+            if (isAsync) {
+                funcString += '            return yield* eliminatedBranches[0][1].call(thisObj, obj);\n';
+            }
+            else {
+                funcString += '            return eliminatedBranches[0][1].call(thisObj, obj);\n';
+            }
+            funcString += '\
         }\n\
     }';
+            return funcString;
+        };
     })(Utility = CoolToJS.Utility || (CoolToJS.Utility = {}));
 })(CoolToJS || (CoolToJS = {}));
 //# sourceMappingURL=cooltojs-0.0.1.js.map

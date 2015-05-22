@@ -196,7 +196,15 @@
                     // to appear *after* the entered text, so schedule
                     // it after this function returns
                     setTimeout(function () {
-                        window.inputGenerator.next(line);
+                        try {
+                            window.inputGenerator.next(line);
+                        } catch(data) {
+                            window.consoleController.report([{
+                                msg: data,
+                                className: "jquery-console-error"
+                            }]);
+                            throw data;
+                        }
                     }, 0)
 
                     return [{
@@ -228,7 +236,7 @@
     //#region IO methods
     var out_string = function (output) {
         window.out_stringBuffer = (window.out_stringBuffer || '') + output;
-        if (/\n/.test(window.out_stringBuffer)) {
+        if (/\n\s*$/.test(window.out_stringBuffer)) {
             window.consoleController.report([{
                 msg: window.out_stringBuffer,
                 className: "jquery-console-output"

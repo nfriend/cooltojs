@@ -424,6 +424,8 @@
                     caseOptionTypes.splice(0, 2, commonParent);
                 }
 
+                this.analyze(caseExpressionNode.condition, typeEnvironment, errorMessages, warningMessages);
+
                 this.usageRecord.caseExpression = true;
 
                 return caseOptionTypes[0];
