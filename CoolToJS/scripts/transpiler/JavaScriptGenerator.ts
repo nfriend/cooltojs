@@ -147,6 +147,22 @@
                 output.push(this.generateClassMethod(methodNode, indentLevel + 1));
             });
 
+            if (classNode.isAsync) {
+                this.isInAsyncContext = true;
+                output.push(this.indent(indentLevel + 1) + '*_initialize() {\n');
+                classNode.propertyList.filter(p => p.isAsync).forEach(propertyNode => {
+                    output.push(this.indent(indentLevel + 2) + 'this.' + Utility.escapeIfReserved(propertyNode.propertyName) + ' = ');
+                    if (this.expressionReturnsItself(propertyNode.propertyInitializerExpression)) {
+                        output.push(this.generateExpression(propertyNode.propertyInitializerExpression, false, indentLevel + 2));
+                    } else {
+                        output.push(this.wrapInSelfExecutingFunction(propertyNode.propertyInitializerExpression, this.isInAsyncContext, indentLevel + 1));
+                    }
+                    output.push(';\n');
+                });
+                output.push(this.indent(indentLevel + 2) + 'return this;\n');
+                output.push(this.indent(indentLevel + 1) + '};\n');
+            }
+
             output.push(this.indent(indentLevel) + '}\n');
 
             return output.join('');
@@ -154,7 +170,13 @@
 
         private generateClassProperty(propertyNode: PropertyNode, indentLevel: number): string {
             var output: Array<string> = [];
-            this.isInAsyncContext = propertyNode.isAsync;
+
+            // if this property has an asynchronous initializer, we'll 
+            // generate it's initializer in the class's _initialize() generator method
+            if (propertyNode.isAsync) {
+                return this.indent(indentLevel) + Utility.escapeIfReserved(propertyNode.propertyName) + ';\n';
+            }
+
             if (propertyNode.hasInitializer) {
                 output.push(this.indent(indentLevel) + Utility.escapeIfReserved(propertyNode.propertyName) + ' = ');
                 if (this.expressionReturnsItself(propertyNode.propertyInitializerExpression)) {
@@ -371,7 +393,11 @@
         }
 
         private generateNewExpression(newExpressionNode: NewExpressionNode, returnResult: boolean, indentLevel: number): string {
-            return this.indent(indentLevel) + 'new ' + this.translateTypeNameIfPrimitiveType(newExpressionNode.typeName) + '("' + newExpressionNode.typeName + '")';
+            if (newExpressionNode.classNode.isAsync) {
+                return this.indent(indentLevel) + '(yield* new ' + this.translateTypeNameIfPrimitiveType(newExpressionNode.typeName) + '("' + newExpressionNode.typeName + '")._initialize())';
+            } else {
+                return this.indent(indentLevel) + 'new ' + this.translateTypeNameIfPrimitiveType(newExpressionNode.typeName) + '("' + newExpressionNode.typeName + '")';
+            }
         }
 
         private generateStringLiteralExpression(stringLiteralExpressionNode: StringLiteralExpressionNode, returnResult: boolean, indentLevel: number): string {

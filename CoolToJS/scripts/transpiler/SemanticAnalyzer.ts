@@ -10,8 +10,7 @@
             }
             this.usageRecord = new UsageRecord();
             this.analyze(astConvertOutput.abstractSyntaxTree, starterTypeEnvironment, errorMessages, warningMessages);
-            this.markAsyncMethods(this.typeHeirarchy.findMethodOnType('in_string', 'IO', false), this.typeHeirarchy.findMethodOnType('in_int', 'IO', false));
-            this.markAsyncProperties(<ProgramNode>astConvertOutput.abstractSyntaxTree);
+            this.markAsyncFeatures(this.typeHeirarchy.findMethodOnType('in_string', 'IO', false), this.typeHeirarchy.findMethodOnType('in_int', 'IO', false));
 
             return {
                 success: errorMessages.length === 0,
@@ -295,22 +294,8 @@
                         }
                     });
 
-                    methodCallExpressionNode.isInStringOrInInt = foundMethodNode.isInStringOrInInt
-                    
-                    var parentFeature = methodCallExpressionNode.parent;
-                    while (parentFeature && parentFeature.type !== NodeType.Method && parentFeature.type !== NodeType.Property) {
-                        parentFeature = parentFeature.parent;
-                    }
-                    if (!parentFeature) {
-                        throw 'Invalid state: MethodCallExpressionNode has no parent Method or Property';
-                    }
-                    if ((<MethodNode|PropertyNode>parentFeature).callsMethods.indexOf(foundMethodNode) === -1) {
-                        (<MethodNode|PropertyNode>parentFeature).callsMethods.push(foundMethodNode);
-                    }
-                    if (parentFeature.type === NodeType.Method && foundMethodNode.calledByMethods.indexOf(<MethodNode>parentFeature) === -1) {
-                        foundMethodNode.calledByMethods.push(<MethodNode>parentFeature);
-                    }
-
+                    methodCallExpressionNode.isInStringOrInInt = foundMethodNode.isInStringOrInInt;
+                    this.markCalledBy(methodCallExpressionNode, foundMethodNode);
                     foundMethodNode.isUsed = true;
 
                     if (foundMethodNode.returnTypeName === 'SELF_TYPE') {
@@ -439,7 +424,18 @@
             /* NEW EXPRESSION */
             else if (ast.type === NodeType.NewExpression) {
                 var newExpressionNode = <NewExpressionNode>ast;
-                return newExpressionNode.typeName;
+                var referencedClassNode = this.typeHeirarchy.findTypeHeirarchy(newExpressionNode.typeName).classNode;
+                if (!referencedClassNode) {
+                    errorMessages.push({
+                        location: newExpressionNode.token.location,
+                        message: 'Class "' + newExpressionNode.token.match + '" is not defined'
+                    });
+                    return UnknownType;
+                } else {
+                    newExpressionNode.classNode = referencedClassNode;
+                    this.markCalledBy(newExpressionNode, referencedClassNode);
+                    return newExpressionNode.typeName;
+                }
             }
 
             /* ISVOID EXPRESSION */
@@ -550,6 +546,7 @@
                 var foundPropertyNode = this.typeHeirarchy.findPropertyOnType(objectIdExpressionNode.objectIdentifierName, typeEnvironment.currentClassType, true);
                 if (foundPropertyNode) {
                     objectIdExpressionNode.isCallToSelf = true;
+                    this.markCalledBy(objectIdExpressionNode, foundPropertyNode);
                     return foundPropertyNode.typeName;
                 }
 
@@ -586,25 +583,41 @@
             });
         }
 
-        private markAsyncMethods(...asyncMethods: MethodNode[]): void {
-            asyncMethods.forEach(asyncMethod => {
-                asyncMethod.calledByMethods.filter(calledByMethod => {
-                    return !calledByMethod.isAsync
-                }).forEach(calledByMethod => {
-                    calledByMethod.isAsync = true;
-                    this.markAsyncMethods(calledByMethod);
+        private markAsyncFeatures(...asyncFeatures: Array<MethodNode|PropertyNode>): void {
+            asyncFeatures.forEach(asyncFeature => {
+                asyncFeature.calledBy.filter(calledByFeature => {
+                    return !calledByFeature.isAsync;
+                }).forEach(calledByFeature => {
+                    calledByFeature.isAsync = true;
+
+                    if (calledByFeature.type === NodeType.Property) {
+                        var asyncClass = (<ClassNode>(<PropertyNode>calledByFeature).parent);
+                        asyncClass.isAsync = true;
+                        asyncClass.calledBy.forEach(calledByFeatureByClass => {
+                            calledByFeatureByClass.isAsync = true;
+                            this.markAsyncFeatures(calledByFeatureByClass);
+                        });
+                    } else {
+                        this.markAsyncFeatures(calledByFeature);
+                    }
                 });
             });
         }
 
-        private markAsyncProperties(programNode: ProgramNode): void {
-            programNode.classList.forEach(cl => {
-                cl.propertyList.forEach(prop => {
-                    if (prop.callsMethods.some(m => m.isAsync)) {
-                        prop.isAsync = true;
-                    }
-                });
-            });
+        private markCalledBy(node: NewExpressionNode|MethodCallExpressionNode|ObjectIdentifierExpressionNode, referencedNode: MethodNode|PropertyNode|ClassNode): void {
+            var parentFeature = node.parent;
+            while (parentFeature && parentFeature.type !== NodeType.Method && parentFeature.type !== NodeType.Property) {
+                parentFeature = parentFeature.parent;
+            }
+            if (!parentFeature) {
+                throw 'Invalid state: ' + node.nodeTypeName + ' has no parent Method or Property';
+            }
+            if ((<MethodNode|PropertyNode>parentFeature).calls.indexOf(referencedNode) === -1) {
+                (<MethodNode|PropertyNode>parentFeature).calls.push(referencedNode);
+            }
+            if (referencedNode.calledBy.indexOf(<MethodNode>parentFeature) === -1) {
+                referencedNode.calledBy.push(<MethodNode>parentFeature);
+            }
         }
     }
 

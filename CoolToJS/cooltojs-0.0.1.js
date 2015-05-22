@@ -79,8 +79,11 @@ var CoolToJS;
     var ClassNode = (function (_super) {
         __extends(ClassNode, _super);
         function ClassNode(className) {
-            this.className = className;
             _super.call(this, 1 /* Class */);
+            this.isAsync = false;
+            this.calls = [];
+            this.calledBy = [];
+            this.className = className;
         }
         Object.defineProperty(ClassNode.prototype, "propertyList", {
             get: function () {
@@ -132,8 +135,8 @@ var CoolToJS;
             this.isAsync = false;
             this.isInStringOrInInt = false;
             this.isUsed = false;
-            this.callsMethods = [];
-            this.calledByMethods = [];
+            this.calls = [];
+            this.calledBy = [];
         }
         Object.defineProperty(MethodNode.prototype, "hasParameters", {
             get: function () {
@@ -161,7 +164,8 @@ var CoolToJS;
             _super.call(this, 2 /* Property */);
             this.isUsed = false;
             this.isAsync = false;
-            this.callsMethods = [];
+            this.calls = [];
+            this.calledBy = [];
         }
         Object.defineProperty(PropertyNode.prototype, "hasInitializer", {
             get: function () {
@@ -1065,12 +1069,32 @@ var CoolToJS;
             classNode.methodList.forEach(function (methodNode) {
                 output.push(_this.generateClassMethod(methodNode, indentLevel + 1));
             });
+            if (classNode.isAsync) {
+                this.isInAsyncContext = true;
+                output.push(this.indent(indentLevel + 1) + '*_initialize() {\n');
+                classNode.propertyList.filter(function (p) { return p.isAsync; }).forEach(function (propertyNode) {
+                    output.push(_this.indent(indentLevel + 2) + 'this.' + CoolToJS.Utility.escapeIfReserved(propertyNode.propertyName) + ' = ');
+                    if (_this.expressionReturnsItself(propertyNode.propertyInitializerExpression)) {
+                        output.push(_this.generateExpression(propertyNode.propertyInitializerExpression, false, indentLevel + 2));
+                    }
+                    else {
+                        output.push(_this.wrapInSelfExecutingFunction(propertyNode.propertyInitializerExpression, _this.isInAsyncContext, indentLevel + 1));
+                    }
+                    output.push(';\n');
+                });
+                output.push(this.indent(indentLevel + 2) + 'return this;\n');
+                output.push(this.indent(indentLevel + 1) + '};\n');
+            }
             output.push(this.indent(indentLevel) + '}\n');
             return output.join('');
         };
         JavaScriptGenerator.prototype.generateClassProperty = function (propertyNode, indentLevel) {
             var output = [];
-            this.isInAsyncContext = propertyNode.isAsync;
+            // if this property has an asynchronous initializer, we'll 
+            // generate it's initializer in the class's _initialize() generator method
+            if (propertyNode.isAsync) {
+                return this.indent(indentLevel) + CoolToJS.Utility.escapeIfReserved(propertyNode.propertyName) + ';\n';
+            }
             if (propertyNode.hasInitializer) {
                 output.push(this.indent(indentLevel) + CoolToJS.Utility.escapeIfReserved(propertyNode.propertyName) + ' = ');
                 if (this.expressionReturnsItself(propertyNode.propertyInitializerExpression)) {
@@ -1272,7 +1296,12 @@ var CoolToJS;
             return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'this';
         };
         JavaScriptGenerator.prototype.generateNewExpression = function (newExpressionNode, returnResult, indentLevel) {
-            return this.indent(indentLevel) + 'new ' + this.translateTypeNameIfPrimitiveType(newExpressionNode.typeName) + '("' + newExpressionNode.typeName + '")';
+            if (newExpressionNode.classNode.isAsync) {
+                return this.indent(indentLevel) + '(yield* new ' + this.translateTypeNameIfPrimitiveType(newExpressionNode.typeName) + '("' + newExpressionNode.typeName + '")._initialize())';
+            }
+            else {
+                return this.indent(indentLevel) + 'new ' + this.translateTypeNameIfPrimitiveType(newExpressionNode.typeName) + '("' + newExpressionNode.typeName + '")';
+            }
         };
         JavaScriptGenerator.prototype.generateStringLiteralExpression = function (stringLiteralExpressionNode, returnResult, indentLevel) {
             return this.indent(indentLevel) + (returnResult ? '_returnValue = ' : '') + 'new _String("' + stringLiteralExpressionNode.value + '")';
@@ -1983,8 +2012,7 @@ var CoolToJS;
                 };
                 _this.usageRecord = new CoolToJS.UsageRecord();
                 _this.analyze(astConvertOutput.abstractSyntaxTree, starterTypeEnvironment, errorMessages, warningMessages);
-                _this.markAsyncMethods(_this.typeHeirarchy.findMethodOnType('in_string', 'IO', false), _this.typeHeirarchy.findMethodOnType('in_int', 'IO', false));
-                _this.markAsyncProperties(astConvertOutput.abstractSyntaxTree);
+                _this.markAsyncFeatures(_this.typeHeirarchy.findMethodOnType('in_string', 'IO', false), _this.typeHeirarchy.findMethodOnType('in_int', 'IO', false));
                 return {
                     success: errorMessages.length === 0,
                     abstractSyntaxTree: astConvertOutput.abstractSyntaxTree,
@@ -2211,19 +2239,7 @@ var CoolToJS;
                             }
                         });
                         methodCallExpressionNode.isInStringOrInInt = foundMethodNode.isInStringOrInInt;
-                        var parentFeature = methodCallExpressionNode.parent;
-                        while (parentFeature && parentFeature.type !== 3 /* Method */ && parentFeature.type !== 2 /* Property */) {
-                            parentFeature = parentFeature.parent;
-                        }
-                        if (!parentFeature) {
-                            throw 'Invalid state: MethodCallExpressionNode has no parent Method or Property';
-                        }
-                        if (parentFeature.callsMethods.indexOf(foundMethodNode) === -1) {
-                            parentFeature.callsMethods.push(foundMethodNode);
-                        }
-                        if (parentFeature.type === 3 /* Method */ && foundMethodNode.calledByMethods.indexOf(parentFeature) === -1) {
-                            foundMethodNode.calledByMethods.push(parentFeature);
-                        }
+                        _this.markCalledBy(methodCallExpressionNode, foundMethodNode);
                         foundMethodNode.isUsed = true;
                         if (foundMethodNode.returnTypeName === 'SELF_TYPE') {
                             return methodTargetType;
@@ -2319,7 +2335,19 @@ var CoolToJS;
                 }
                 else if (ast.type === 13 /* NewExpression */) {
                     var newExpressionNode = ast;
-                    return newExpressionNode.typeName;
+                    var referencedClassNode = _this.typeHeirarchy.findTypeHeirarchy(newExpressionNode.typeName).classNode;
+                    if (!referencedClassNode) {
+                        errorMessages.push({
+                            location: newExpressionNode.token.location,
+                            message: 'Class "' + newExpressionNode.token.match + '" is not defined'
+                        });
+                        return CoolToJS.UnknownType;
+                    }
+                    else {
+                        newExpressionNode.classNode = referencedClassNode;
+                        _this.markCalledBy(newExpressionNode, referencedClassNode);
+                        return newExpressionNode.typeName;
+                    }
                 }
                 else if (ast.type === 14 /* IsvoidExpression */) {
                     _this.analyze(ast.isVoidCondition, typeEnvironment, errorMessages, warningMessages);
@@ -2405,6 +2433,7 @@ var CoolToJS;
                     var foundPropertyNode = _this.typeHeirarchy.findPropertyOnType(objectIdExpressionNode.objectIdentifierName, typeEnvironment.currentClassType, true);
                     if (foundPropertyNode) {
                         objectIdExpressionNode.isCallToSelf = true;
+                        _this.markCalledBy(objectIdExpressionNode, foundPropertyNode);
                         return foundPropertyNode.typeName;
                     }
                     errorMessages.push({
@@ -2432,29 +2461,45 @@ var CoolToJS;
                 message: 'Type "' + type2Name + '" is not assignable to type "' + type1Name + '"'
             });
         };
-        SemanticAnalyzer.prototype.markAsyncMethods = function () {
+        SemanticAnalyzer.prototype.markAsyncFeatures = function () {
             var _this = this;
-            var asyncMethods = [];
+            var asyncFeatures = [];
             for (var _i = 0; _i < arguments.length; _i++) {
-                asyncMethods[_i - 0] = arguments[_i];
+                asyncFeatures[_i - 0] = arguments[_i];
             }
-            asyncMethods.forEach(function (asyncMethod) {
-                asyncMethod.calledByMethods.filter(function (calledByMethod) {
-                    return !calledByMethod.isAsync;
-                }).forEach(function (calledByMethod) {
-                    calledByMethod.isAsync = true;
-                    _this.markAsyncMethods(calledByMethod);
-                });
-            });
-        };
-        SemanticAnalyzer.prototype.markAsyncProperties = function (programNode) {
-            programNode.classList.forEach(function (cl) {
-                cl.propertyList.forEach(function (prop) {
-                    if (prop.callsMethods.some(function (m) { return m.isAsync; })) {
-                        prop.isAsync = true;
+            asyncFeatures.forEach(function (asyncFeature) {
+                asyncFeature.calledBy.filter(function (calledByFeature) {
+                    return !calledByFeature.isAsync;
+                }).forEach(function (calledByFeature) {
+                    calledByFeature.isAsync = true;
+                    if (calledByFeature.type === 2 /* Property */) {
+                        var asyncClass = calledByFeature.parent;
+                        asyncClass.isAsync = true;
+                        asyncClass.calledBy.forEach(function (calledByFeatureByClass) {
+                            calledByFeatureByClass.isAsync = true;
+                            _this.markAsyncFeatures(calledByFeatureByClass);
+                        });
+                    }
+                    else {
+                        _this.markAsyncFeatures(calledByFeature);
                     }
                 });
             });
+        };
+        SemanticAnalyzer.prototype.markCalledBy = function (node, referencedNode) {
+            var parentFeature = node.parent;
+            while (parentFeature && parentFeature.type !== 3 /* Method */ && parentFeature.type !== 2 /* Property */) {
+                parentFeature = parentFeature.parent;
+            }
+            if (!parentFeature) {
+                throw 'Invalid state: ' + node.nodeTypeName + ' has no parent Method or Property';
+            }
+            if (parentFeature.calls.indexOf(referencedNode) === -1) {
+                parentFeature.calls.push(referencedNode);
+            }
+            if (referencedNode.calledBy.indexOf(parentFeature) === -1) {
+                referencedNode.calledBy.push(parentFeature);
+            }
         };
         return SemanticAnalyzer;
     })();

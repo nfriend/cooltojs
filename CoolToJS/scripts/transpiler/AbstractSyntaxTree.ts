@@ -76,12 +76,15 @@
 
     export class ClassNode extends Node {
         constructor(className: string) {
-            this.className = className;
             super(NodeType.Class);
+            this.className = className;
         }
 
         className: string;
         superClassName: string;
+        isAsync: boolean = false;
+        calls: Array<MethodNode|PropertyNode|ClassNode> = [];
+        calledBy: Array<MethodNode|PropertyNode> = [];
 
         get propertyList(): Array<PropertyNode> {
             var propertyList: Array<PropertyNode> = [];
@@ -127,8 +130,8 @@
         isAsync: boolean = false;
         isInStringOrInInt: boolean = false;
         isUsed: boolean = false;
-        callsMethods: Array<MethodNode> = [];
-        calledByMethods: Array<MethodNode> = [];
+        calls: Array<MethodNode|PropertyNode|ClassNode> = [];
+        calledBy: Array<MethodNode|PropertyNode> = [];
 
         get hasParameters(): boolean {
             return this.parameters.length > 0;
@@ -152,7 +155,8 @@
         typeName: string;
         isUsed: boolean = false;
         isAsync: boolean = false;
-        callsMethods: Array<MethodNode> = [];
+        calls: Array<MethodNode|PropertyNode|ClassNode> = [];
+        calledBy: Array<MethodNode|PropertyNode> = [];
 
         get hasInitializer(): boolean {
             return typeof this.propertyInitializerExpression !== 'undefined'
@@ -350,6 +354,7 @@
         }
 
         typeName: string;
+        classNode: ClassNode;
     }
 
     export class IsVoidExpressionNode extends ExpressionNode {
