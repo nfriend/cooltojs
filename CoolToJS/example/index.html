@@ -37,11 +37,11 @@
 
         var $input = $('#input'),
             $output = $('#output'),
-            generator;
+            iterator;
 
         $input.keydown(function (e) {
-            if (e.which === 13 /* Enter */ && generator) {
-                generator.next($input.val());
+            if (e.which === 13 /* Enter */ && iterator) {
+                iterator.next($input.val());
                 $input.val('');
             }
         });
@@ -61,7 +61,7 @@
                         $output.append(output);
                     },
                     in_string: function (newGen) {
-                        generator = newGen;
+                        iterator = newGen;
                     }
                 });
 
