@@ -43,21 +43,32 @@ var transpilerOutput = CoolToJS.Transpile({
 });
 ````
 
-Similarly, you can provide input to your Cool program by providing `in_string` and `in_int` functions.  These functions should accept a callback as a parameter.  This callback should be invoked with the input once it has been entered by the user.  For example:
+Similarly, you can provide input to your Cool program by providing `in_string` and `in_int` functions.  These functions should accept a [generator function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*) as a parameter.  Once input has been entered by the user, the generator's `next()` method should be invoked with the user's input.  For example:
 
 ```` JavaScript
+var myInputField = document.getElementById('my-input-field'),
+    onlyNumbers = false,
+    generator;
+
+myInputField.onkeydown = function(e) {
+    if (e.which === 13 /* Enter */) {
+        // if onlyNumbers === true, input should be validated 
+        // to ensure a valid number was entered
+    
+        generator.next(myInputField.value)
+        myInputField.value = '';
+    }
+}
+
 var transpilerOutput = CoolToJS.Transpile({
     coolProgramSources: sources,
-    in_string: function (callback) {
-        var input = prompt('Please enter a string:');
-        callback(input);
+    in_string: function (newGenerator) {
+        onlyNumbers = false;
+        generator = newGenerator;
     },
-    in_int: function (callback) {
-        var input = prompt('Please enter an integer:');
-        
-        // input should be validated here to 
-        // ensure it only contains numbers
-        callback(input);
+    in_int: function (newGenerator) {
+        onlyNumbers = true;
+        generator = newGenerator;
     }
 });
 ````
