@@ -283,6 +283,7 @@
                         if (syntaxTree.children[3].children[i].syntaxKind === SyntaxKind.ObjectIdentifier) {
                             var caseOptionNode = new CaseOptionNode();
                             caseOptionNode.identiferName = syntaxTree.children[3].children[i].token.match;
+                            caseOptionNode.token = syntaxTree.children[3].children[i].token;
                             caseOptionNode.typeName = syntaxTree.children[3].children[i + 2].token.match;
 
                             var caseOptionExpressionNode = this.convert(syntaxTree.children[3].children[i + 4]);

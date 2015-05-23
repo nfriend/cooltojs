@@ -163,6 +163,14 @@
             /* CLASS PROPERTY */
             else if (ast.type === NodeType.Property) {
                 var propertyNode = <PropertyNode>ast;
+
+                if (!this.typeHeirarchy.findTypeHeirarchy(propertyNode.typeName)) {
+                    errorMessages.push({
+                        location: propertyNode.token.location,
+                        message: 'Class "' + propertyNode.typeName + '" of attribute "' + propertyNode.propertyName + '" is undefined'
+                    });
+                }
+
                 if (propertyNode.hasInitializer) {
                     var initializerType = this.analyze(propertyNode.propertyInitializerExpression, typeEnvironment, errorMessages, warningMessages);
                     if (!this.typeHeirarchy.isAssignableFrom(propertyNode.typeName, initializerType, typeEnvironment.currentClassType)) {
@@ -189,7 +197,12 @@
                 // remove the added variables from the scope
                 typeEnvironment.variableScope.splice(typeEnvironment.variableScope.length - methodNode.parameters.length, methodNode.parameters.length);
 
-                if (!this.typeHeirarchy.isAssignableFrom(methodNode.returnTypeName, methodReturnType, typeEnvironment.currentClassType)) {
+                if (!this.typeHeirarchy.findTypeHeirarchy(methodNode.returnTypeName)) {
+                    errorMessages.push({
+                        location: methodNode.token.location,
+                        message: 'Undefined return type "' + methodNode.returnTypeName + '" of method "' + methodNode.methodName + '"'
+                    });
+                } else if (!this.typeHeirarchy.isAssignableFrom(methodNode.returnTypeName, methodReturnType, typeEnvironment.currentClassType)) {
                     errorMessages.push({
                         location: methodNode.token.location,
                         message: 'Return type "' + methodReturnType + '" of method "' + methodNode.methodName + '" is not assignable to the declared type of "' + methodNode.returnTypeName + '"'
@@ -381,6 +394,14 @@
             /* LOCAL VARIABLE DECLARAION */
             else if (ast.type === NodeType.LocalVariableDeclaration) {
                 var lvdNode = <LocalVariableDeclarationNode>ast;
+
+                if (!this.typeHeirarchy.findTypeHeirarchy(lvdNode.typeName)) {
+                    errorMessages.push({
+                        location: lvdNode.token.location,
+                        message: 'Class "' + lvdNode.typeName + '" of let-bound identifier "' + lvdNode.identifierName + '" is undefined'
+                    });
+                }
+
                 if (lvdNode.initializerExpression) {
                     var initializerType = this.analyze(lvdNode.initializerExpression, typeEnvironment, errorMessages, warningMessages);
                     if (!this.typeHeirarchy.isAssignableFrom(lvdNode.typeName, initializerType, typeEnvironment.currentClassType)) {
@@ -399,9 +420,23 @@
                         variableType: co.typeName
                     });
 
-                    return this.analyze(co.caseOptionExpression, typeEnvironment, errorMessages, warningMessages);
+                    var caseOptionReturnType = this.analyze(co.caseOptionExpression, typeEnvironment, errorMessages, warningMessages);
+                    
+                    if (!this.typeHeirarchy.findTypeHeirarchy(co.typeName)) {
+                        errorMessages.push({
+                            location: co.token.location,
+                            message: 'Class "' + co.typeName + '" of case branch is undefined'
+                        });
+                    } else if (!this.typeHeirarchy.isAssignableFrom(co.typeName, caseOptionReturnType, typeEnvironment.currentClassType)) {
+                        errorMessages.push({
+                            location: co.token.location,
+                            message: 'Return type "' + caseOptionReturnType + '" of case branch is not assignable to the declared type of "' + co.typeName + '"'
+                        });
+                    }
 
                     typeEnvironment.variableScope.pop();
+
+                    return caseOptionReturnType;
                 });
 
                 while (caseOptionTypes.length > 1) {

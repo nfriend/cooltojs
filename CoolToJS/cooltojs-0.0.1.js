@@ -755,6 +755,7 @@ var CoolToJS;
                             if (syntaxTree.children[3].children[i].syntaxKind === 32 /* ObjectIdentifier */) {
                                 var caseOptionNode = new CoolToJS.CaseOptionNode();
                                 caseOptionNode.identiferName = syntaxTree.children[3].children[i].token.match;
+                                caseOptionNode.token = syntaxTree.children[3].children[i].token;
                                 caseOptionNode.typeName = syntaxTree.children[3].children[i + 2].token.match;
                                 var caseOptionExpressionNode = _this.convert(syntaxTree.children[3].children[i + 4]);
                                 caseOptionExpressionNode.parent = caseOptionNode;
@@ -2156,6 +2157,12 @@ var CoolToJS;
                 }
                 else if (ast.type === 2 /* Property */) {
                     var propertyNode = ast;
+                    if (!_this.typeHeirarchy.findTypeHeirarchy(propertyNode.typeName)) {
+                        errorMessages.push({
+                            location: propertyNode.token.location,
+                            message: 'Class "' + propertyNode.typeName + '" of attribute "' + propertyNode.propertyName + '" is undefined'
+                        });
+                    }
                     if (propertyNode.hasInitializer) {
                         var initializerType = _this.analyze(propertyNode.propertyInitializerExpression, typeEnvironment, errorMessages, warningMessages);
                         if (!_this.typeHeirarchy.isAssignableFrom(propertyNode.typeName, initializerType, typeEnvironment.currentClassType)) {
@@ -2176,7 +2183,13 @@ var CoolToJS;
                     var methodReturnType = _this.analyze(methodNode.methodBodyExpression, typeEnvironment, errorMessages, warningMessages);
                     // remove the added variables from the scope
                     typeEnvironment.variableScope.splice(typeEnvironment.variableScope.length - methodNode.parameters.length, methodNode.parameters.length);
-                    if (!_this.typeHeirarchy.isAssignableFrom(methodNode.returnTypeName, methodReturnType, typeEnvironment.currentClassType)) {
+                    if (!_this.typeHeirarchy.findTypeHeirarchy(methodNode.returnTypeName)) {
+                        errorMessages.push({
+                            location: methodNode.token.location,
+                            message: 'Undefined return type "' + methodNode.returnTypeName + '" of method "' + methodNode.methodName + '"'
+                        });
+                    }
+                    else if (!_this.typeHeirarchy.isAssignableFrom(methodNode.returnTypeName, methodReturnType, typeEnvironment.currentClassType)) {
                         errorMessages.push({
                             location: methodNode.token.location,
                             message: 'Return type "' + methodReturnType + '" of method "' + methodNode.methodName + '" is not assignable to the declared type of "' + methodNode.returnTypeName + '"'
@@ -2318,6 +2331,12 @@ var CoolToJS;
                 }
                 else if (ast.type === 10 /* LocalVariableDeclaration */) {
                     var lvdNode = ast;
+                    if (!_this.typeHeirarchy.findTypeHeirarchy(lvdNode.typeName)) {
+                        errorMessages.push({
+                            location: lvdNode.token.location,
+                            message: 'Class "' + lvdNode.typeName + '" of let-bound identifier "' + lvdNode.identifierName + '" is undefined'
+                        });
+                    }
                     if (lvdNode.initializerExpression) {
                         var initializerType = _this.analyze(lvdNode.initializerExpression, typeEnvironment, errorMessages, warningMessages);
                         if (!_this.typeHeirarchy.isAssignableFrom(lvdNode.typeName, initializerType, typeEnvironment.currentClassType)) {
@@ -2332,8 +2351,21 @@ var CoolToJS;
                             variableName: co.identiferName,
                             variableType: co.typeName
                         });
-                        return _this.analyze(co.caseOptionExpression, typeEnvironment, errorMessages, warningMessages);
+                        var caseOptionReturnType = _this.analyze(co.caseOptionExpression, typeEnvironment, errorMessages, warningMessages);
+                        if (!_this.typeHeirarchy.findTypeHeirarchy(co.typeName)) {
+                            errorMessages.push({
+                                location: co.token.location,
+                                message: 'Class "' + co.typeName + '" of case branch is undefined'
+                            });
+                        }
+                        else if (!_this.typeHeirarchy.isAssignableFrom(co.typeName, caseOptionReturnType, typeEnvironment.currentClassType)) {
+                            errorMessages.push({
+                                location: co.token.location,
+                                message: 'Return type "' + caseOptionReturnType + '" of case branch is not assignable to the declared type of "' + co.typeName + '"'
+                            });
+                        }
                         typeEnvironment.variableScope.pop();
+                        return caseOptionReturnType;
                     });
                     while (caseOptionTypes.length > 1) {
                         var commonParent = _this.typeHeirarchy.closetCommonParent(caseOptionTypes[0], caseOptionTypes[1]);
