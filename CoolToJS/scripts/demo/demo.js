@@ -480,6 +480,11 @@
         msg: 'Welcome to CoolToJS!',
         className: 'jquery-console-output'
     }]);
+    window.consoleController.report([{
+        // non-breaking dash: ‑
+        msg: 'Click the "Transpile" button in the Cool editor to begin',
+        className: 'jquery-console-info'
+    }]);
 
     window.onresize();
     coolEditor.refresh();
