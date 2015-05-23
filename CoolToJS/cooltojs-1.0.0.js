@@ -1474,15 +1474,10 @@ var CoolToJS;
             return this.indentCache[indentCount];
         };
         JavaScriptGenerator.prototype.expressionReturnsItself = function (node) {
-            return (node.type === 21 /* StringLiteralExpression */ || node.type === 20 /* IntegerLiteralExpression */ || node.type === 19 /* ObjectIdentifierExpression */ || node.type === 22 /* TrueKeywordExpression */ || node.type === 23 /* FalseKeywordExpression */ || node.type === 13 /* NewExpression */ || (node.type === 8 /* BlockExpression */ && node.expressionList.length === 1 && this.expressionReturnsItself(node.expressionList[0])) || (node.type === 17 /* ParentheticalExpression */ && this.expressionReturnsItself(node.innerExpression)));
-            //|| (!this.isInAsyncContext &&
-            //    (node.type === NodeType.IsvoidExpression
-            //        || node.type === NodeType.BinaryOperationExpression
-            //        || node.type === NodeType.UnaryOperationExpression
-            //        || node.type === NodeType.MethodCallExpression)));
+            return (node.type === 21 /* StringLiteralExpression */ || node.type === 20 /* IntegerLiteralExpression */ || node.type === 19 /* ObjectIdentifierExpression */ || node.type === 22 /* TrueKeywordExpression */ || node.type === 23 /* FalseKeywordExpression */ || node.type === 13 /* NewExpression */ || node.type === 14 /* IsvoidExpression */ || node.type === 15 /* BinaryOperationExpression */ || node.type === 16 /* UnaryOperationExpression */ || node.type === 5 /* MethodCallExpression */ || (node.type === 8 /* BlockExpression */ && node.expressionList.length === 1 && this.expressionReturnsItself(node.expressionList[0])) || (node.type === 17 /* ParentheticalExpression */ && this.expressionReturnsItself(node.innerExpression)));
         };
         JavaScriptGenerator.prototype.unwrapSelfReturningExpression = function (node) {
-            if (node.type === 21 /* StringLiteralExpression */ || node.type === 20 /* IntegerLiteralExpression */ || node.type === 19 /* ObjectIdentifierExpression */ || node.type === 17 /* ParentheticalExpression */ || node.type === 22 /* TrueKeywordExpression */ || node.type === 23 /* FalseKeywordExpression */ || node.type === 13 /* NewExpression */) {
+            if (node.type === 21 /* StringLiteralExpression */ || node.type === 20 /* IntegerLiteralExpression */ || node.type === 19 /* ObjectIdentifierExpression */ || node.type === 17 /* ParentheticalExpression */ || node.type === 22 /* TrueKeywordExpression */ || node.type === 23 /* FalseKeywordExpression */ || node.type === 13 /* NewExpression */ || node.type === 15 /* BinaryOperationExpression */ || node.type === 16 /* UnaryOperationExpression */ || node.type === 5 /* MethodCallExpression */ || node.type === 14 /* IsvoidExpression */) {
                 return node;
             }
             else if (node.type === 8 /* BlockExpression */) {

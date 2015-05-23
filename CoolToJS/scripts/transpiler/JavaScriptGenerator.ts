@@ -597,17 +597,15 @@
                 || node.type === NodeType.TrueKeywordExpression
                 || node.type === NodeType.FalseKeywordExpression
                 || node.type === NodeType.NewExpression
+                || node.type === NodeType.IsvoidExpression
+                || node.type === NodeType.BinaryOperationExpression
+                || node.type === NodeType.UnaryOperationExpression
+                || node.type === NodeType.MethodCallExpression
                 || (node.type === NodeType.BlockExpression
                     && (<BlockExpressionNode>node).expressionList.length === 1
                     && this.expressionReturnsItself((<BlockExpressionNode>node).expressionList[0]))
                 || (node.type === NodeType.ParentheticalExpression
                     && this.expressionReturnsItself((<ParentheticalExpressionNode>node).innerExpression)));
-
-            //|| (!this.isInAsyncContext &&
-            //    (node.type === NodeType.IsvoidExpression
-            //        || node.type === NodeType.BinaryOperationExpression
-            //        || node.type === NodeType.UnaryOperationExpression
-            //        || node.type === NodeType.MethodCallExpression)));
         }
 
         private unwrapSelfReturningExpression(node: Node): ExpressionNode {
@@ -617,13 +615,11 @@
                 || node.type === NodeType.ParentheticalExpression
                 || node.type === NodeType.TrueKeywordExpression
                 || node.type === NodeType.FalseKeywordExpression
-                || node.type === NodeType.NewExpression)
-
-                /*|| (!this.isInAsyncContext &&
-                    (node.type === NodeType.BinaryOperationExpression
-                        || node.type === NodeType.UnaryOperationExpression
-                        || node.type === NodeType.MethodCallExpression
-                        || node.type === NodeType.IsvoidExpression)))*/ {
+                || node.type === NodeType.NewExpression
+                || node.type === NodeType.BinaryOperationExpression
+                || node.type === NodeType.UnaryOperationExpression
+                || node.type === NodeType.MethodCallExpression
+                || node.type === NodeType.IsvoidExpression) {
 
                 return node;
             } else if (node.type === NodeType.BlockExpression) {
