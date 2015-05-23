@@ -980,8 +980,10 @@ var CoolToJS;
             if (this.usageRecord.caseExpression) {
                 output.push(',\n');
                 output.push(this.indent(1) + CoolToJS.Utility.getCaseFunction(false));
-                output.push(',\n');
-                output.push(this.indent(1) + CoolToJS.Utility.getCaseFunction(true));
+                if (ast.classList.filter(function (c) { return c.className === 'Main'; })[0].methodList.filter(function (m) { return m.methodName === 'main'; })[0].isAsync) {
+                    output.push(',\n');
+                    output.push(this.indent(1) + CoolToJS.Utility.getCaseFunction(true));
+                }
             }
             output.push(';\n\n');
             CoolToJS.Utility.baseObjectClasses.forEach(function (c) {

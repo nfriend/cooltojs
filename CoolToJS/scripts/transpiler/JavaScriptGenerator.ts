@@ -52,8 +52,13 @@
             if (this.usageRecord.caseExpression) {
                 output.push(',\n');
                 output.push(this.indent(1) + Utility.getCaseFunction(false));
-                output.push(',\n');
-                output.push(this.indent(1) + Utility.getCaseFunction(true));
+                if ((<ProgramNode>ast).classList
+                    .filter(c => c.className === 'Main')[0]
+                    .methodList.filter(m => m.methodName === 'main')[0].isAsync) {
+
+                    output.push(',\n');
+                    output.push(this.indent(1) + Utility.getCaseFunction(true));
+                }
             }
 
             output.push(';\n\n');
