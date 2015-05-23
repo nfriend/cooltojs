@@ -21,7 +21,6 @@
     <Service Include="{4A0DDDB5-7A95-4FBF-97CC-616D07737A77}" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="cooltojs-0.0.1.js" />
     <Content Include="favicon.ico" />
     <Content Include="img\coolToJsLogo-with-margin.png" />
     <Content Include="img\coolToJsLogo.png" />
@@ -56,7 +55,7 @@
     <Content Include="scripts\transpiler\JisonSimpleTestGrammar.txt" />
     <Content Include="scripts\transpiler\JisonBNFGrammar.txt" />
     <Content Include="styles\CodeMirror-cool-theme.css" />
-    <Content Include="test.html" />
+    <Content Include="example\index.html" />
     <Content Include="convertCsvToArray.html" />
     <Content Include="web.config">
       <SubType>Designer</SubType>
@@ -82,17 +81,13 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="styles\cooltojs.css" />
-    <Content Include="cooltojs-0.0.1.js.map" />
-    <Content Include="cool\HelloWorld.cl" />
     <Content Include="lib\bootstrap-3.3.4-dist\css\bootstrap-theme.css.map" />
     <Content Include="lib\bootstrap-3.3.4-dist\css\bootstrap.css.map" />
     <Content Include="lib\bootstrap-3.3.4-dist\fonts\glyphicons-halflings-regular.eot" />
     <Content Include="lib\bootstrap-3.3.4-dist\fonts\glyphicons-halflings-regular.ttf" />
     <Content Include="lib\bootstrap-3.3.4-dist\fonts\glyphicons-halflings-regular.woff" />
     <Content Include="lib\bootstrap-3.3.4-dist\fonts\glyphicons-halflings-regular.woff2" />
-    <Content Include="cool\atoi.cl" />
-    <Content Include="cool\list.cl" />
-    <Content Include="cool\HelloWorld2.cl" />
+    <Content Include="example\HelloWorld2.cl" />
     <None Include="package.json" />
     <None Include="web.Debug.config">
       <DependentUpon>web.config</DependentUpon>
@@ -132,7 +127,7 @@
     <TypeScriptRemoveComments>false</TypeScriptRemoveComments>
     <TypeScriptSourceMap>true</TypeScriptSourceMap>
     <TypeScriptModuleKind>none</TypeScriptModuleKind>
-    <TypeScriptOutFile>cooltojs-0.0.1.js</TypeScriptOutFile>
+    <TypeScriptOutFile>cooltojs-1.0.0.js</TypeScriptOutFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <TypeScriptRemoveComments>true</TypeScriptRemoveComments>
