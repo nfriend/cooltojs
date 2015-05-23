@@ -2157,7 +2157,7 @@ var CoolToJS;
                 }
                 else if (ast.type === 2 /* Property */) {
                     var propertyNode = ast;
-                    if (!_this.typeHeirarchy.findTypeHeirarchy(propertyNode.typeName)) {
+                    if (propertyNode.typeName !== 'SELF_TYPE' && !_this.typeHeirarchy.findTypeHeirarchy(propertyNode.typeName)) {
                         errorMessages.push({
                             location: propertyNode.token.location,
                             message: 'Class "' + propertyNode.typeName + '" of attribute "' + propertyNode.propertyName + '" is undefined'
@@ -2183,7 +2183,7 @@ var CoolToJS;
                     var methodReturnType = _this.analyze(methodNode.methodBodyExpression, typeEnvironment, errorMessages, warningMessages);
                     // remove the added variables from the scope
                     typeEnvironment.variableScope.splice(typeEnvironment.variableScope.length - methodNode.parameters.length, methodNode.parameters.length);
-                    if (!_this.typeHeirarchy.findTypeHeirarchy(methodNode.returnTypeName)) {
+                    if (methodNode.returnTypeName !== 'SELF_TYPE' && !_this.typeHeirarchy.findTypeHeirarchy(methodNode.returnTypeName)) {
                         errorMessages.push({
                             location: methodNode.token.location,
                             message: 'Undefined return type "' + methodNode.returnTypeName + '" of method "' + methodNode.methodName + '"'
@@ -2331,7 +2331,7 @@ var CoolToJS;
                 }
                 else if (ast.type === 10 /* LocalVariableDeclaration */) {
                     var lvdNode = ast;
-                    if (!_this.typeHeirarchy.findTypeHeirarchy(lvdNode.typeName)) {
+                    if (lvdNode.typeName !== 'SELF_TYPE' && !_this.typeHeirarchy.findTypeHeirarchy(lvdNode.typeName)) {
                         errorMessages.push({
                             location: lvdNode.token.location,
                             message: 'Class "' + lvdNode.typeName + '" of let-bound identifier "' + lvdNode.identifierName + '" is undefined'
@@ -2352,7 +2352,7 @@ var CoolToJS;
                             variableType: co.typeName
                         });
                         var caseOptionReturnType = _this.analyze(co.caseOptionExpression, typeEnvironment, errorMessages, warningMessages);
-                        if (!_this.typeHeirarchy.findTypeHeirarchy(co.typeName)) {
+                        if (co.typeName !== 'SELF_TYPE' && !_this.typeHeirarchy.findTypeHeirarchy(co.typeName)) {
                             errorMessages.push({
                                 location: co.token.location,
                                 message: 'Class "' + co.typeName + '" of case branch is undefined'

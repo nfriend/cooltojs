@@ -164,7 +164,7 @@
             else if (ast.type === NodeType.Property) {
                 var propertyNode = <PropertyNode>ast;
 
-                if (!this.typeHeirarchy.findTypeHeirarchy(propertyNode.typeName)) {
+                if (propertyNode.typeName !== 'SELF_TYPE' && !this.typeHeirarchy.findTypeHeirarchy(propertyNode.typeName)) {
                     errorMessages.push({
                         location: propertyNode.token.location,
                         message: 'Class "' + propertyNode.typeName + '" of attribute "' + propertyNode.propertyName + '" is undefined'
@@ -197,7 +197,7 @@
                 // remove the added variables from the scope
                 typeEnvironment.variableScope.splice(typeEnvironment.variableScope.length - methodNode.parameters.length, methodNode.parameters.length);
 
-                if (!this.typeHeirarchy.findTypeHeirarchy(methodNode.returnTypeName)) {
+                if (methodNode.returnTypeName !== 'SELF_TYPE' && !this.typeHeirarchy.findTypeHeirarchy(methodNode.returnTypeName)) {
                     errorMessages.push({
                         location: methodNode.token.location,
                         message: 'Undefined return type "' + methodNode.returnTypeName + '" of method "' + methodNode.methodName + '"'
@@ -395,7 +395,7 @@
             else if (ast.type === NodeType.LocalVariableDeclaration) {
                 var lvdNode = <LocalVariableDeclarationNode>ast;
 
-                if (!this.typeHeirarchy.findTypeHeirarchy(lvdNode.typeName)) {
+                if (lvdNode.typeName !== 'SELF_TYPE' && !this.typeHeirarchy.findTypeHeirarchy(lvdNode.typeName)) {
                     errorMessages.push({
                         location: lvdNode.token.location,
                         message: 'Class "' + lvdNode.typeName + '" of let-bound identifier "' + lvdNode.identifierName + '" is undefined'
@@ -422,7 +422,7 @@
 
                     var caseOptionReturnType = this.analyze(co.caseOptionExpression, typeEnvironment, errorMessages, warningMessages);
                     
-                    if (!this.typeHeirarchy.findTypeHeirarchy(co.typeName)) {
+                    if (co.typeName !== 'SELF_TYPE' && !this.typeHeirarchy.findTypeHeirarchy(co.typeName)) {
                         errorMessages.push({
                             location: co.token.location,
                             message: 'Class "' + co.typeName + '" of case branch is undefined'
