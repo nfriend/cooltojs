@@ -442,11 +442,6 @@
                             location: co.token.location,
                             message: 'Class "' + co.typeName + '" of case branch is undefined'
                         });
-                    } else if (!this.typeHeirarchy.isAssignableFrom(co.typeName, caseOptionReturnType, typeEnvironment.currentClassType)) {
-                        errorMessages.push({
-                            location: co.token.location,
-                            message: 'Return type "' + caseOptionReturnType + '" of case branch is not assignable to the declared type of "' + co.typeName + '"'
-                        });
                     }
 
                     typeEnvironment.variableScope.pop();
