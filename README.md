@@ -43,19 +43,19 @@ var transpilerOutput = CoolToJS.Transpile({
 });
 ````
 
-Similarly, you can provide input to your Cool program by providing `in_string` and `in_int` functions.  These functions should accept an [iterator object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols#iterator) as a parameter.  Once input has been entered by the user, the generator's `next()` method should be invoked with the user's input.  For example:
+Similarly, you can provide input to your Cool program by providing `in_string` and `in_int` functions.  These functions should accept an [iterator object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols#iterator) as a parameter.  Once input has been entered by the user, the iterator's `next()` method should be invoked with the user's input.  For example:
 
 ```` JavaScript
 var myInputField = document.getElementById('my-input-field'),
     onlyNumbers = false,
-    generator;
+    iterator;
 
 myInputField.onkeydown = function(e) {
     if (e.which === 13 /* Enter */) {
         // if onlyNumbers === true, input should be validated 
         // to ensure a valid number was entered
     
-        generator.next(myInputField.value)
+        iterator.next(myInputField.value)
         myInputField.value = '';
     }
 }
@@ -64,11 +64,11 @@ var transpilerOutput = CoolToJS.Transpile({
     coolProgramSources: sources,
     in_string: function (newGenerator) {
         onlyNumbers = false;
-        generator = newGenerator;
+        iterator = newGenerator;
     },
     in_int: function (newGenerator) {
         onlyNumbers = true;
-        generator = newGenerator;
+        iterator = newGenerator;
     }
 });
 ````
