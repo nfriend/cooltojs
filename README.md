@@ -70,7 +70,7 @@ The output of the CoolToJS transpiler is valid ES6 JavaScript.  Note that suppor
 <script type="text/cool" src="HelloWorld.cl"></script>
 <script src="lib/babel/browser-polyfill.js"></script>
 <script src="lib/babel/browser.js"></script>
-<script src="cooltojs-0.0.1.js"></script>
+<script src="cooltojs-1.0.0.js"></script>
 <script>
 
     // automatically fetch any Cool source referenced 
