@@ -43,7 +43,7 @@ var transpilerOutput = CoolToJS.Transpile({
 });
 ````
 
-Similarly, you can provide input to your Cool program by providing `in_string` and `in_int` functions.  These functions should accept a [generator function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*) as a parameter.  Once input has been entered by the user, the generator's `next()` method should be invoked with the user's input.  For example:
+Similarly, you can provide input to your Cool program by providing `in_string` and `in_int` functions.  These functions should accept an [iterator object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols#iterator) as a parameter.  Once input has been entered by the user, the generator's `next()` method should be invoked with the user's input.  For example:
 
 ```` JavaScript
 var myInputField = document.getElementById('my-input-field'),
