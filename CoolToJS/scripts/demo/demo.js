@@ -184,7 +184,7 @@
             return !(line === '');
         },
         commandHandle: function (line) {
-            if (isInputRestrictedToNumbers && !/^\d*$/.test(line)) {
+            if (isInputRestrictedToNumbers && !/^-?\d*$/.test(line)) {
                 return [{
                     msg: 'Invalid input: Please enter an integer',
                     className: "jquery-console-error"
