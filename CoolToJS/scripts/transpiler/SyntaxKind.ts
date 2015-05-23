@@ -223,11 +223,42 @@
             token: SyntaxKind.Tab,
             regex: /^(\t)/,
         },
-
-        // currently doesn't allow nested (* ... *) comments
         {
             token: SyntaxKind.Comment,
-            regex: /^((?:--.*)|(?:\(\*(?:(?!\*\))[\s\S])*\*\)))/,
+            matchFunction: (input) => {
+                var simpleCommentRegex = /^(--.*)/;
+                if (simpleCommentRegex.test(input)) {
+                    return simpleCommentRegex.exec(input)[1];
+                } else {
+                    if (input.indexOf('(*') === 0) {
+                        var workingInput = input.substring(2),
+                            unmatchedOpenCommentCount = 1,
+                            commentLength = 2;
+                        while (unmatchedOpenCommentCount !== 0) {
+                            var nextOpen = workingInput.indexOf('(*');
+                            var nextClosed = workingInput.indexOf('*)');
+                            if (nextClosed === -1) {
+                                return null;
+                            }
+
+                            if (nextOpen !== -1 && nextOpen < nextClosed) {
+                                unmatchedOpenCommentCount++;
+                                workingInput = workingInput.substring(nextOpen + 2);
+                                commentLength += nextOpen + 2;
+                            } else {
+                                unmatchedOpenCommentCount--;
+                                commentLength += nextClosed + 2;
+                                workingInput = workingInput.substring(nextClosed + 2);
+                            }
+                        }
+                        var returnVal = input.substr(0, commentLength);
+                        return input.substr(0, commentLength);
+
+                    } else {
+                        return null;
+                    }
+                }
+            }
         },
 
         {
