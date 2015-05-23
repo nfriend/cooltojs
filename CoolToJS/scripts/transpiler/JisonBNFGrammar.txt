@@ -36,6 +36,7 @@ Class
 	: ClassKeyword TypeIdentifier InheritsKeyword TypeIdentifier '{' FeatureList '}'
 	| ClassKeyword TypeIdentifier InheritsKeyword TypeIdentifier '{' '}'
 	| ClassKeyword TypeIdentifier '{' FeatureList '}'
+	| ClassKeyword TypeIdentifier '{' '}'
 	;
 
 FormalList
