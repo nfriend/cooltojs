@@ -7,7 +7,7 @@ A [Cool](http://en.wikipedia.org/wiki/Cool_%28programming_language%29)-to-JavaSc
 #### Example usage
 ```` HTML
 <script type="text/cool" src="HelloWorld.cl"></script>
-<script src="cooltojs-0.0.1.js"></script>
+<script src="cooltojs-1.0.0.js"></script>
 <script>
 
     // automatically fetch any Cool source referenced 
@@ -43,21 +43,32 @@ var transpilerOutput = CoolToJS.Transpile({
 });
 ````
 
-Similarly, you can provide input to your Cool program by providing `in_string` and `in_int` functions.  These functions should accept a callback as a parameter.  This callback should be invoked with the input once it has been entered by the user.  For example:
+Similarly, you can provide input to your Cool program by providing `in_string` and `in_int` functions.  These functions should accept an [iterator object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols#iterator) as a parameter.  Once input has been entered by the user, the iterator's `next()` method should be invoked with the user's input.  For example:
 
 ```` JavaScript
+var myInputField = document.getElementById('my-input-field'),
+    onlyNumbers = false,
+    iterator;
+
+myInputField.onkeydown = function(e) {
+    if (e.which === 13 /* Enter */) {
+        // if onlyNumbers === true, input should be validated 
+        // to ensure a valid number was entered
+    
+        iterator.next(myInputField.value)
+        myInputField.value = '';
+    }
+}
+
 var transpilerOutput = CoolToJS.Transpile({
     coolProgramSources: sources,
-    in_string: function (callback) {
-        var input = prompt('Please enter a string:');
-        callback(input);
+    in_string: function (newGenerator) {
+        onlyNumbers = false;
+        iterator = newGenerator;
     },
-    in_int: function (callback) {
-        var input = prompt('Please enter an integer:');
-        
-        // input should be validated here to 
-        // ensure it only contains numbers
-        callback(input);
+    in_int: function (newGenerator) {
+        onlyNumbers = true;
+        iterator = newGenerator;
     }
 });
 ````
@@ -70,7 +81,7 @@ The output of the CoolToJS transpiler is valid ES6 JavaScript.  Note that suppor
 <script type="text/cool" src="HelloWorld.cl"></script>
 <script src="lib/babel/browser-polyfill.js"></script>
 <script src="lib/babel/browser.js"></script>
-<script src="cooltojs-0.0.1.js"></script>
+<script src="cooltojs-1.0.0.js"></script>
 <script>
 
     // automatically fetch any Cool source referenced 
