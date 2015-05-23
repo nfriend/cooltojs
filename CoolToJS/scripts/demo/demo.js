@@ -1,6 +1,6 @@
 ﻿var CoolToJSDemo;
 (function (CoolToJSDemo) {
-    'use strict';
+    //'use strict';
 
     var isDebug = document.location.hostname === "localhost",
         programIndexToUse = 8,
@@ -198,11 +198,12 @@
                     setTimeout(function () {
                         try {
                             window.inputGenerator.next(line);
-                        } catch(data) {
+                        } catch (data) {
                             window.consoleController.report([{
                                 msg: data,
                                 className: "jquery-console-error"
                             }]);
+                            testForChromeBug(data);
                             throw data;
                         }
                     }, 0)
@@ -324,7 +325,7 @@
     function convertES6toES5() {
         try {
             var es5Code = babel.transform(generatedEs6JavaScriptEditor.getValue(), {
-                stage: 0
+                stage: 0,
             }).code;
             if (es5Code) {
                 es5Code = "/* ES6 to ES5 conversion by Babel: http://babeljs.io */\n" + es5Code;
@@ -351,6 +352,7 @@
 
     function run() {
         $('.console').click();
+
         try {
             eval(generatedEs5JavaScriptEditor.getValue());
         } catch (data) {
@@ -358,7 +360,21 @@
                 msg: data,
                 className: "jquery-console-error"
             }]);
+            testForChromeBug(data);
             throw data;
+        }
+    }
+
+    function testForChromeBug(errorMessage) {
+        if (/ReferenceError: [\S]+ is not defined/.test(errorMessage)) {
+            window.consoleController.report([{
+                msg: 'Note that this error may be caused by a bug in Chrome.\n' +
+                    'To fix, try one of the following:\n' +
+                    '  • Run the program again\n' +
+                    '  • Open Chrome\'s Dev Tools (F12) and run the program again\n' +
+                    '  • Run this program in a different browser',
+                className: "jquery-console-error"
+            }]);
         }
     }
 

@@ -90,7 +90,6 @@
     <Content Include="lib\bootstrap-3.3.4-dist\fonts\glyphicons-halflings-regular.woff2" />
     <Content Include="example\HelloWorld2.cl" />
     <Content Include="cooltojs-1.0.0.js.map" />
-    <None Include="package.json" />
     <None Include="web.Debug.config">
       <DependentUpon>web.config</DependentUpon>
     </None>

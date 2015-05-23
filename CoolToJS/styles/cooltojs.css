@@ -150,6 +150,9 @@ div.console {
         color: #ef0505;
         font-family: monospace;
         padding: 0.1em;
+        white-space: pre;
+        -ms-word-wrap: break-word;
+        word-wrap: break-word;
     }
 
     div.console div.jquery-console-success {

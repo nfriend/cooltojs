@@ -1,5 +1,4 @@
 ﻿module CoolToJS {
-    'use strict';
 
     export enum NodeType {
         Program = 0,

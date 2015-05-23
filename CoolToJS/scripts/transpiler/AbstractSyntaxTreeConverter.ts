@@ -1,6 +1,4 @@
 ﻿module CoolToJS {
-    'use strict';
-
     export class AbstractSyntaxTreeConverter {
 
         public Convert = (parserOutput: ParserOutput): ASTConverterOutput => {

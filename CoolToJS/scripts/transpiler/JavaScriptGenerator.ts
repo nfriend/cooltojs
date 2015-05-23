@@ -100,7 +100,6 @@
             } else {
                 output.push('new Main("Main").main();\n');
             }
-
             return output.join('');
         }
 
