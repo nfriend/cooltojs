@@ -2105,14 +2105,28 @@ var CoolToJS;
                     CoolToJS.Utility.addBuiltinObjects(programNode);
                     _this.typeHeirarchy = CoolToJS.TypeHeirarchy.createHeirarchy(programNode);
                     // ensure that superclasses exist
+                    var allSuperclassesExist = true;
                     programNode.classList.forEach(function (classNode) {
-                        if (classNode.superClassName && !_this.typeHeirarchy.typeExists(classNode.superClassName)) {
+                        if (classNode.superClassName && !programNode.classList.some(function (c) { return c.className === classNode.superClassName; })) {
+                            allSuperclassesExist = false;
                             errorMessages.push({
                                 location: classNode.token.location,
                                 message: 'Inherited type "' + classNode.superClassName + '" does not exist'
                             });
                         }
                     });
+                    // check for circular inheritance
+                    if (allSuperclassesExist) {
+                        var typeHeirachyFlattened = _this.typeHeirarchy.flatten();
+                        programNode.classList.forEach(function (c) {
+                            if (!typeHeirachyFlattened.some(function (t) { return t.classNode === c; }) && programNode.classList.some(function (cc) { return cc.className === c.superClassName; })) {
+                                errorMessages.push({
+                                    location: c.token.location,
+                                    message: 'Class "' + c.className + '", or an ancestor of "' + c.className + '", is involved in an inheritance cycle'
+                                });
+                            }
+                        });
+                    }
                     ast.children.forEach(function (node) {
                         if (['String', 'Int', 'Bool', 'Object', 'IO'].indexOf(node.className) === -1) {
                             _this.analyze(node, typeEnvironment, errorMessages, warningMessages);
@@ -3185,6 +3199,15 @@ var CoolToJS;
                 typeHeirarchy = includeInheritedProperties ? typeHeirarchy.parent : null;
             }
             return null;
+        };
+        // returns this tree as a list
+        TypeHeirarchy.prototype.flatten = function (result) {
+            result = result || [];
+            result.push(this);
+            this.children.forEach(function (c) {
+                c.flatten(result);
+            });
+            return result;
         };
         return TypeHeirarchy;
     })();

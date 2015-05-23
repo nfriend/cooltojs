@@ -101,16 +101,31 @@
 
                 Utility.addBuiltinObjects(programNode);
                 this.typeHeirarchy = TypeHeirarchy.createHeirarchy(programNode);
-
+                
                 // ensure that superclasses exist
+                var allSuperclassesExist = true;
                 programNode.classList.forEach(classNode => {
-                    if (classNode.superClassName && !this.typeHeirarchy.typeExists(classNode.superClassName)) {
+                    if (classNode.superClassName && !programNode.classList.some(c => c.className === classNode.superClassName)) {
+                        allSuperclassesExist = false;
                         errorMessages.push({
                             location: classNode.token.location,
                             message: 'Inherited type "' + classNode.superClassName + '" does not exist'
                         });
                     }
                 });
+
+                // check for circular inheritance
+                if (allSuperclassesExist) {
+                    var typeHeirachyFlattened = this.typeHeirarchy.flatten();
+                    programNode.classList.forEach(c => {
+                        if (!typeHeirachyFlattened.some(t => t.classNode === c) && programNode.classList.some(cc => cc.className === c.superClassName)) {
+                            errorMessages.push({
+                                location: c.token.location,
+                                message: 'Class "' + c.className + '", or an ancestor of "' + c.className + '", is involved in an inheritance cycle'
+                            });
+                        }
+                    });
+                }
 
                 ast.children.forEach(node => {
                     if (['String', 'Int', 'Bool', 'Object', 'IO'].indexOf((<ClassNode>node).className) === -1) {
@@ -421,7 +436,7 @@
                     });
 
                     var caseOptionReturnType = this.analyze(co.caseOptionExpression, typeEnvironment, errorMessages, warningMessages);
-                    
+
                     if (co.typeName !== 'SELF_TYPE' && !this.typeHeirarchy.findTypeHeirarchy(co.typeName)) {
                         errorMessages.push({
                             location: co.token.location,

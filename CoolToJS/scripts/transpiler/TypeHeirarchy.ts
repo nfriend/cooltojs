@@ -168,5 +168,16 @@
 
             return null;
         }
+
+        // returns this tree as a list
+        public flatten(result?: Array<TypeHeirarchy>): Array<TypeHeirarchy> {
+            result = result || [];
+            result.push(this);
+            this.children.forEach(c => {
+                c.flatten(result);
+            });
+
+            return result;
+        }
     }
 } 
