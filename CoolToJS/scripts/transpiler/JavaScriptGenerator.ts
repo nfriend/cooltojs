@@ -69,6 +69,8 @@
                     return ['Object', 'IO', 'Int', 'String', 'Bool'].indexOf(classNode.className) === -1;
                 });
 
+            // generate classes in the order of their inheritance
+            // i.e. base classes first, sub classes next
             while (classesToGenerate.length > 0) {
                 var classNode = classesToGenerate[generatingClassIndex];
                 if (classesToGenerate.some(c => c.className === classNode.superClassName)) {
