@@ -95,3 +95,4 @@ The output of the CoolToJS transpiler is valid ES6 JavaScript.  Note that suppor
     });
 </script>
 ````
+See the live version of this example at http://nathanfriend.io/cooltojs/example/.
