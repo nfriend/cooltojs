@@ -35,11 +35,12 @@
     <script>
 
         var $input = $('#input'),
-            $output = $('#output');
+            $output = $('#output'),
+            generator;
 
         $input.keydown(function (e) {
-            if (e.which === 13 /* Enter */ && window.generator) {
-                window.generator.next($input.val());
+            if (e.which === 13 /* Enter */ && generator) {
+                generator.next($input.val());
                 $input.val('');
             }
         });
@@ -58,8 +59,8 @@
                     out_string: function (output) {
                         $output.append(output);
                     },
-                    in_string: function (generator) {
-                        window.generator = generator;
+                    in_string: function (newGen) {
+                        generator = newGen;
                     }
                 });
 
