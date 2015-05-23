@@ -990,21 +990,34 @@ var CoolToJS;
             });
             output.push(this.generateIOClass(ioFunctions, 0));
             output.push('\n');
-            var isMainMethodAsync = false;
-            ast.classList.forEach(function (classNode) {
-                if (['Object', 'IO', 'Int', 'String', 'Bool'].indexOf(classNode.className) === -1) {
-                    output.push(_this.generateClass(classNode, 0));
+            var isMainMethodAsync = false, mainClass, generatingClassIndex = 0, classesToGenerate = ast.classList.filter(function (classNode) {
+                return ['Object', 'IO', 'Int', 'String', 'Bool'].indexOf(classNode.className) === -1;
+            });
+            while (classesToGenerate.length > 0) {
+                var classNode = classesToGenerate[generatingClassIndex];
+                if (classesToGenerate.some(function (c) { return c.className === classNode.superClassName; })) {
+                    generatingClassIndex++;
+                }
+                else {
+                    output.push(this.generateClass(classNode, 0));
                     output.push('\n');
                     if (classNode.className === 'Main') {
+                        mainClass = classNode;
                         var mainMethod = classNode.methodList.filter(function (m) { return m.methodName === 'main'; });
                         if (mainMethod.length !== 1) {
                             throw 'More than one "main" method found on class Main';
                         }
                         isMainMethodAsync = mainMethod[0].isAsync;
                     }
+                    classesToGenerate.splice(generatingClassIndex, 1);
+                    generatingClassIndex = 0;
                 }
-            });
-            if (isMainMethodAsync) {
+            }
+            if (mainClass.isAsync) {
+                output.push('_inputGenerator = (function* () { return (yield* new Main("Main")._initialize()).main(); })();\n');
+                output.push('_inputGenerator.next()\n');
+            }
+            else if (isMainMethodAsync) {
                 output.push('_inputGenerator = new Main("Main").main();\n');
                 output.push('_inputGenerator.next()\n');
             }
