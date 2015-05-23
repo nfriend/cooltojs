@@ -21,6 +21,7 @@
     <Service Include="{4A0DDDB5-7A95-4FBF-97CC-616D07737A77}" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="cooltojs-1.0.0.js" />
     <Content Include="favicon.ico" />
     <Content Include="img\coolToJsLogo-with-margin.png" />
     <Content Include="img\coolToJsLogo.png" />
@@ -88,6 +89,7 @@
     <Content Include="lib\bootstrap-3.3.4-dist\fonts\glyphicons-halflings-regular.woff" />
     <Content Include="lib\bootstrap-3.3.4-dist\fonts\glyphicons-halflings-regular.woff2" />
     <Content Include="example\HelloWorld2.cl" />
+    <Content Include="cooltojs-1.0.0.js.map" />
     <None Include="package.json" />
     <None Include="web.Debug.config">
       <DependentUpon>web.config</DependentUpon>
