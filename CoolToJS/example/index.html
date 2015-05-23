@@ -1,0 +1,80 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>CoolToJS Basic Example</title>
+    <link rel="stylesheet" href="../lib/bootstrap-3.3.4-dist/css/bootstrap.min.css" type="text/css" />
+</head>
+<body>
+
+    <div class="container">
+        <h1 style="text-align: center; margin-top: 60px;">CoolToJS Basic Example</h1>
+        <p style="text-align: center;">View source to see a very basic example of CoolToJS in action</p>
+        <hr />
+        <div style="text-align: center;">
+            <button id="run-button" class="btn btn-success"><span class="glyphicon glyphicon-play"></span>&nbsp;&nbsp;Run the program</button>
+        </div>
+        <br />
+
+        <div class="row">
+            <div class="col-sm-6">
+                <b>Output:</b>
+                <pre id="output" style="min-height: 200px;"></pre>
+            </div>
+            <div class="col-sm-6">
+                <b>Input:</b>
+                <input class="form-control" id="input" type="text" />
+            </div>
+        </div>
+    </div>
+
+    <script type="text/cool" src="HelloWorld2.cl"></script>
+    <script src="../lib/babel/browser-polyfill.js"></script>
+    <script src="../lib/babel/browser.js"></script>
+    <script src="../cooltojs-1.0.0.js"></script>
+    <script src="../lib/jquery/jquery-2.1.3.min.js"></script>
+    <script>
+
+        var $input = $('#input'),
+            $output = $('#output');
+
+        $input.keydown(function (e) {
+            if (e.which === 13 /* Enter */ && window.generator) {
+                window.generator.next($input.val());
+                $input.val('');
+            }
+        });
+
+        $('#run-button').click(function () {
+
+            $input.focus();
+
+            // automatically fetch any Cool source referenced
+            // by a <script type="text/cool"> element
+            CoolToJS.GetReferencedCoolSources(function (sources) {
+
+                // transpile the source
+                var transpilerOutput = CoolToJS.Transpile({
+                    coolProgramSources: sources,
+                    out_string: function (output) {
+                        $output.append(output);
+                    },
+                    in_string: function (generator) {
+                        window.generator = generator;
+                    }
+                });
+
+                if (transpilerOutput.success) {
+
+                    // transform the generated ES6 code to ES5 code
+                    var es5Code = babel.transform(transpilerOutput.generatedJavaScript, {
+                        stage: 0
+                    }).code;
+
+                    // do what you want with the ES5 code
+                    eval(es5Code);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
