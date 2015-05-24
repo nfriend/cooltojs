@@ -344,6 +344,7 @@
                 msg: e,
                 className: 'jquery-console-error'
             }]);
+            testForIE10Bug(e);
             return false;
         }
     }
@@ -373,6 +374,16 @@
                     '  • Run the program again\n' +
                     '  • Open Chrome\'s Dev Tools (F12) and run the program again\n' +
                     '  • Run this program in a different browser',
+                className: "jquery-console-error"
+            }]);
+        }
+    }
+
+    function testForIE10Bug(errorMessage) {
+        if (/Circular reference in value argument not supported/.test(errorMessage)) {
+            window.consoleController.report([{
+                msg: 'Note that this error is most likely caused by using CoolToJS with an old version of IE (10 or below).\n' +
+                    'To fix, try transpiling this program in a different browser.',
                 className: "jquery-console-error"
             }]);
         }
