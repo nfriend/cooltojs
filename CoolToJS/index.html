@@ -23,9 +23,18 @@
 
     <meta name="description" content="A Cool-to-JavaScript transpiler, written in TypeScript.">
 
-    <!--[if lt IE 9]><script type="text/javascript">
+    <!--[if lt IE 11]><script type="text/javascript">
         window.location = "old-browser.html";
     </script><![endif]-->
+
+    <script type="text/javascript">
+        var isIE10 = false;
+        /*@cc_on
+            if (/^10/.test(@_jscript_version)) {
+                window.location = "old-browser.html";
+            }
+        @*/
+    </script>
 
 </head>
 <body>
