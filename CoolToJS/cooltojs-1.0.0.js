@@ -1291,7 +1291,7 @@ var CoolToJS;
             blockExpressionNode.expressionList.forEach(function (en, index) {
                 var isLast = index === blockExpressionNode.expressionList.length - 1;
                 output.push(_this.generateExpression(en, isLast && returnResult, indentLevel));
-                if (blockExpressionNode.expressionList.length !== 1) {
+                if (blockExpressionNode.expressionList.length !== 1 && !_this.doesEndInSemiColon(output[output.length - 1])) {
                     output.push(';\n');
                 }
             });
@@ -1521,6 +1521,9 @@ var CoolToJS;
                 default:
                     return typeName;
             }
+        };
+        JavaScriptGenerator.prototype.doesEndInSemiColon = function (codeToTest) {
+            return /;\s*$/.test(codeToTest);
         };
         return JavaScriptGenerator;
     })();

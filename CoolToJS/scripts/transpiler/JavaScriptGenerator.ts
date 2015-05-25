@@ -388,7 +388,7 @@
             blockExpressionNode.expressionList.forEach((en, index) => {
                 var isLast: boolean = index === blockExpressionNode.expressionList.length - 1;
                 output.push(this.generateExpression(en, isLast && returnResult, indentLevel));
-                if (blockExpressionNode.expressionList.length !== 1) {
+                if (blockExpressionNode.expressionList.length !== 1 && !this.doesEndInSemiColon(output[output.length - 1])) {
                     output.push(';\n');
                 }
             });
@@ -665,6 +665,10 @@
                 default:
                     return typeName;
             }
+        }
+
+        private doesEndInSemiColon(codeToTest: string): boolean {
+            return /;\s*$/.test(codeToTest);
         }
     }
 } 
