@@ -669,6 +669,9 @@
     interface TypeEnvironment {
         currentClassType: string;
         variableScope: Array<VariableScope>;
+
+        // adding in 2018 in order to compile
+        methodScope: any[];
     }
 
     interface VariableScope {

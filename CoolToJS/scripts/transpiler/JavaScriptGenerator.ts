@@ -244,46 +244,32 @@
             switch (expressionNode.type) {
                 case NodeType.LetExpression:
                     return this.generateLetExpression(<LetExpressionNode>expressionNode, returnResult, indentLevel);
-                    break;
                 case NodeType.StringLiteralExpression:
                     return this.generateStringLiteralExpression(<StringLiteralExpressionNode>expressionNode, returnResult, indentLevel);
-                    break;
                 case NodeType.IntegerLiteralExpression:
                     return this.generateIntegerLiteralExpression(<IntegerLiteralExpressionNode>expressionNode, returnResult, indentLevel);
-                    break;
                 case NodeType.MethodCallExpression:
                     return this.generateMethodCallExpression(<MethodCallExpressionNode>expressionNode, returnResult, indentLevel);
-                    break;
                 case NodeType.BlockExpression:
                     return this.generateBlockExpression(<BlockExpressionNode>expressionNode, returnResult, indentLevel);
-                    break;
                 case NodeType.AssignmentExpression:
                     return this.generateAssignmentExpression(<AssignmentExpressionNode>expressionNode, returnResult, indentLevel);
-                    break;
                 case NodeType.ObjectIdentifierExpression:
                     return this.generateObjectIdentifierExpression(<ObjectIdentifierExpressionNode>expressionNode, returnResult, indentLevel);
-                    break;
                 case NodeType.SelfExpression:
                     return this.generateSelfExpression(<ObjectIdentifierExpressionNode>expressionNode, returnResult, indentLevel);
-                    break;
                 case NodeType.NewExpression:
                     return this.generateNewExpression(<NewExpressionNode>expressionNode, returnResult, indentLevel);
-                    break;
                 case NodeType.BinaryOperationExpression:
                     return this.generateBinaryOperationExpression(<BinaryOperationExpressionNode>expressionNode, returnResult, indentLevel);
-                    break;
                 case NodeType.UnaryOperationExpression:
                     return this.generateUnaryOperationExpression(<UnaryOperationExpressionNode>expressionNode, returnResult, indentLevel);
-                    break;
                 case NodeType.ParentheticalExpression:
                     return this.generateParentheticalExpressionNode(<ParentheticalExpressionNode>expressionNode, returnResult, indentLevel);
-                    break;
                 case NodeType.TrueKeywordExpression:
                     return this.generateTrueKeywordExpression(<TrueKeywordExpressionNode>expressionNode, returnResult, indentLevel);
-                    break;
                 case NodeType.FalseKeywordExpression:
                     return this.generateFalseKeywordExpression(<FalseKeywordExpressionNode>expressionNode, returnResult, indentLevel);
-                    break;
                 case NodeType.IfThenElseExpression:
                     return this.generateIfThenElseExpression(<IfThenElseExpressionNode>expressionNode, returnResult, indentLevel);
                 case NodeType.WhileExpression:
@@ -292,7 +278,6 @@
                     return this.generateCaseExpression(<CaseExpressionNode>expressionNode, returnResult, indentLevel);
                 case NodeType.IsvoidExpression:
                     return this.generateIsVoidExpression(<IsVoidExpressionNode>expressionNode, returnResult, indentLevel);
-                    break;
                 default:
                     this.errorMessages.push({
                         location: null,
@@ -484,7 +469,7 @@
                     output.push('_lessThanOrEqualTo');
                     break;
                 default:
-                    throw 'Unrecognized BinaryOperationType: ' + binOpExpressionNode[binOpExpressionNode.operationType];
+                    throw 'Unrecognized BinaryOperationType: ' + binOpExpressionNode[<any>binOpExpressionNode.operationType];
             }
             output.push('(' + operand1 + ', ' + operand2 + ')');
 
@@ -502,7 +487,7 @@
                     output.push('_not');
                     break;
                 default:
-                    throw 'Unrecognized UnaryOperationType: ' + unOpExpressionNode[unOpExpressionNode.operationType];
+                    throw 'Unrecognized UnaryOperationType: ' + unOpExpressionNode[<any>unOpExpressionNode.operationType];
             }
             output.push('(');
             if (this.expressionReturnsItself(unOpExpressionNode)) {

@@ -1,4 +1,6 @@
-﻿module CoolToJS {
+﻿/// <reference path="./SyntaxKind.ts" />
+
+module CoolToJS {
 
     export enum Action {
         Shift, Reduce, Accept, None
