@@ -2,7 +2,8 @@
 (function (CoolToJSDemo) {
     //'use strict';
 
-    var isDebug = document.location.hostname === "localhost",
+    var isDebug = document.location.hostname === "localhost" 
+                    || /\bdebug=true\b/i.test(document.location.search),
         programIndexToUse = 8,
         coolSourceCookieKey = 'cool-source',
         liveErrorChecking = !isDebug;

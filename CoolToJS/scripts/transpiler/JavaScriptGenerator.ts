@@ -334,7 +334,7 @@
             }
 
             if (methodCallExpression.method.isAsync) {
-                output.push('yield* ');
+                output.push('(yield* ');
             }
 
             if (methodCallExpression.targetExpression && !methodCallExpression.isCallToParent) {
@@ -361,6 +361,11 @@
 
             if (methodCallExpression.isInStringOrInInt) {
                 output.push('_inputGenerator');
+            }
+
+            // async methods get an extra layer of parathesis
+            if (methodCallExpression.method.isAsync) {
+                output.push(')');
             }
 
             output.push(')');

@@ -1,6 +1,12 @@
 {
   "name": "@nathanfriend/cooltojs",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "All build artifacts necessary to run CoolToJS",
-  "license": "MIT"
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^3.1.1"
+  }
 }

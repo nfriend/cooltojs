@@ -22,6 +22,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="cooltojs-1.0.0.js" />
+    <Content Include="cooltojs-1.0.1.js" />
     <Content Include="favicon.ico" />
     <Content Include="img\coolToJsLogo-with-margin.png" />
     <Content Include="img\coolToJsLogo.png" />
@@ -90,6 +91,7 @@
     <Content Include="lib\bootstrap-3.3.4-dist\fonts\glyphicons-halflings-regular.woff2" />
     <Content Include="example\HelloWorld2.cl" />
     <Content Include="cooltojs-1.0.0.js.map" />
+    <Content Include="cooltojs-1.0.1.js.map" />
     <None Include="web.Debug.config">
       <DependentUpon>web.config</DependentUpon>
     </None>
@@ -128,7 +130,7 @@
     <TypeScriptRemoveComments>false</TypeScriptRemoveComments>
     <TypeScriptSourceMap>true</TypeScriptSourceMap>
     <TypeScriptModuleKind>none</TypeScriptModuleKind>
-    <TypeScriptOutFile>cooltojs-1.0.0.js</TypeScriptOutFile>
+    <TypeScriptOutFile>cooltojs-1.0.1.js</TypeScriptOutFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <TypeScriptRemoveComments>true</TypeScriptRemoveComments>
