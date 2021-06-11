@@ -1,9 +1,10 @@
 {
-    "compilerOptions": {
-        "target": "es5",
-        "outFile": "cooltojs-1.0.1.js",
-        "sourceMap": true,
-        "declaration": true,
-        "removeComments": false  
-    }
+  "compilerOptions": {
+    "target": "es5",
+    "outFile": "cooltojs-1.0.1.js",
+    "sourceMap": true,
+    "declaration": true,
+    "removeComments": false
+  },
+  "include": ["scripts/transpiler/**/*.ts"]
 }
